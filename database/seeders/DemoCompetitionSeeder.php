@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Services\Competition\MatchCloser;
 use App\Services\Competition\PhaseLauncher;
 use App\Services\Competition\StageService;
+use App\Services\PreselectionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -164,7 +165,7 @@ class DemoCompetitionSeeder extends Seeder
             return;
         }
 
-        app(\App\Services\PreselectionService::class)->configure($competition, [
+        app(PreselectionService::class)->configure($competition, [
             'starts_at' => now()->subHour(),
             'ends_at' => now()->addDays(5),
             'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 4, 'media_types' => ['video', 'audio'], 'media_max_duration' => 180, 'media_max_size_mb' => 100],

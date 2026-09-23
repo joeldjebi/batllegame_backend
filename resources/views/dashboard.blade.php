@@ -6,7 +6,7 @@
             <span>Voici l'activité de vos organisateurs.</span>
         </x-slot:description>
         <x-slot:actions>
-            <x-ui.button variant="gradient" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-organizer')">Nouvel organisateur</x-ui.button>
+            <x-ui.button variant="primary" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-organizer')">Nouvel organisateur</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 

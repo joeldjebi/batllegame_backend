@@ -54,7 +54,7 @@ class LoginController extends Controller
 
         Log::info('Platform admin logged in', ['user_id' => $user->id, 'ip' => $request->ip()]);
 
-        return redirect()->intended(route('admin.organizers.index'));
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse

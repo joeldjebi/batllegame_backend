@@ -67,7 +67,7 @@ final readonly class PhaseRules extends JsonData
 
         if ($voteMode === VoteMode::Mixed && ($juryWeight + $publicWeight !== 100 || $juryWeight === 0 || $publicWeight === 0)) {
             throw ValidationException::withMessages([
-                'jury_weight' => 'In mixed mode, jury and public weights must both be positive and add up to 100.',
+                'jury_weight' => 'En mode mixte, les poids du jury et du public doivent être positifs et totaliser 100 %.',
             ]);
         }
 
@@ -120,15 +120,15 @@ final readonly class PhaseRules extends JsonData
         $errors = [];
 
         if ($this->allowDraws && $type !== PhaseType::Groups) {
-            $errors['allow_draws'] = 'Draws are only allowed in group phases.';
+            $errors['allow_draws'] = 'Les matchs nuls ne sont possibles qu\'en phase de poules.';
         }
 
         if ($this->grandFinalReset && $type !== PhaseType::DoubleElimination) {
-            $errors['grand_final_reset'] = 'A grand final reset only exists in double elimination.';
+            $errors['grand_final_reset'] = 'La finale « reset » n\'existe qu\'en double élimination.';
         }
 
         if ($type === PhaseType::Groups && $this->groupCount === null) {
-            $errors['group_count'] = 'The number of groups is required for a group phase.';
+            $errors['group_count'] = 'Le nombre de poules est obligatoire pour une phase de poules.';
         }
 
         if ($errors !== []) {

@@ -6,16 +6,20 @@
 @endphp
 
 <div class="flex h-full flex-col gap-y-6 overflow-y-auto border-r border-slate-200/70 bg-white px-4 py-5 dark:border-white/5 dark:bg-slate-900">
-    <a href="{{ $admin ? route('admin.organizers.index') : route('dashboard') }}" class="px-2"><x-bo.logo :admin="$admin" /></a>
+    <a href="{{ $admin ? route('admin.dashboard') : route('dashboard') }}" class="px-2"><x-bo.logo :admin="$admin" /></a>
 
     <nav class="flex flex-1 flex-col gap-6">
         @if ($admin)
             <div class="space-y-1">
+                <x-bo.nav-link :href="route('admin.dashboard')" icon="chart-bar-square" :active="request()->routeIs('admin.dashboard')">Vue d'ensemble</x-bo.nav-link>
+            </div>
+
+            <div class="space-y-1">
                 <p class="px-3 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Plateforme</p>
-                <x-bo.nav-link :href="route('admin.organizers.index')" icon="building-office-2" :active="request()->routeIs('admin.organizers.*') && ! request('status')" :count="$adminCounts['all'] ?? null">Organisateurs</x-bo.nav-link>
-                <x-bo.nav-link :href="route('admin.organizers.index', ['status' => 'en_attente'])" icon="clock" :active="request('status') === 'en_attente'" :count="$adminCounts['en_attente'] ?? null">À vérifier</x-bo.nav-link>
-                <x-bo.nav-link :href="route('admin.organizers.index', ['status' => 'verifie'])" icon="check-badge" :active="request('status') === 'verifie'">Vérifiés</x-bo.nav-link>
-                <x-bo.nav-link :href="route('admin.organizers.index', ['status' => 'suspendu'])" icon="no-symbol" :active="request('status') === 'suspendu'">Suspendus</x-bo.nav-link>
+                <x-bo.nav-link :href="route('admin.organizers.index')" icon="building-office-2" :active="request()->routeIs('admin.organizers.index', 'admin.organizers.show') && request('status') !== 'en_attente'" :count="$adminCounts['all'] ?? null">Organisateurs</x-bo.nav-link>
+                <x-bo.nav-link :href="route('admin.organizers.index', ['status' => 'en_attente'])" icon="clock" :active="request()->routeIs('admin.organizers.index') && request('status') === 'en_attente'" :count="($adminCounts['en_attente'] ?? 0) ?: null">À vérifier</x-bo.nav-link>
+                <x-bo.nav-link :href="route('admin.competitions.index')" icon="trophy" :active="request()->routeIs('admin.competitions.*', 'admin.organizers.competitions.*')">Compétitions</x-bo.nav-link>
+                <x-bo.nav-link :href="route('admin.users.index')" icon="users" :active="request()->routeIs('admin.users.*')">Utilisateurs</x-bo.nav-link>
             </div>
         @else
             <div class="space-y-1">
@@ -64,8 +68,7 @@
                     <p class="mt-1 text-xs text-white/60">Déconnexion automatique après {{ config('admin.idle_timeout') }} min d'inactivité.</p>
                 </div>
             @else
-                <div class="relative overflow-hidden rounded-2xl bg-brand-gradient p-4 text-white shadow-lift">
-                    <div class="bg-grid absolute inset-0 opacity-20"></div>
+                <div class="relative overflow-hidden rounded-2xl bg-brand-600 p-4 text-white shadow-lift">
                     <div class="relative">
                         <x-ui.icon name="sparkles" class="size-5" />
                         <p class="mt-2 text-sm font-semibold">Lancez votre prochaine battle</p>

@@ -30,7 +30,7 @@ it('serves the admin login under the configured path', function () {
 
 it('logs the platform admin in by email on the admin guard only', function () {
     $this->post(route('admin.login'), emailCredentials('sa@example.com'))
-        ->assertRedirect(route('admin.organizers.index'));
+        ->assertRedirect(route('admin.dashboard'));
 
     $this->assertAuthenticatedAs($this->admin, 'admin');
     $this->assertGuest('web');

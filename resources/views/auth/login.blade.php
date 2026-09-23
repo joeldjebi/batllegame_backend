@@ -16,7 +16,7 @@
             Rester connecté
         </label>
 
-        <x-ui.button type="submit" variant="gradient" size="lg" class="w-full" icon-right="arrow-right">Se connecter</x-ui.button>
+        <x-ui.button type="submit" variant="primary" size="lg" class="w-full" icon-right="arrow-right">Se connecter</x-ui.button>
     </form>
 
     <p class="mt-10 text-xs text-slate-400">Participants et public : connectez-vous depuis l'application mobile Battle Game.</p>

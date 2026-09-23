@@ -1,7 +1,7 @@
 @props(['admin' => false, 'light' => false])
 
 <span {{ $attributes->class('flex items-center gap-2.5') }}>
-    <span class="relative grid size-9 place-items-center rounded-xl bg-brand-gradient text-white shadow-lift">
+    <span class="relative grid size-9 place-items-center rounded-xl bg-brand-600 text-white shadow-lift">
         <x-ui.icon :name="$admin ? 'shield-check' : 'bolt'" variant="s" class="size-5" />
     </span>
     <span class="leading-tight">

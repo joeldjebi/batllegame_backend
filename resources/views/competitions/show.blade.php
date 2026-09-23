@@ -22,8 +22,6 @@
     $voting = $matches->where('status', MatchStatus::Voting)->count();
     $settings = $competition->settings;
 
-    $lifecycle = [CompetitionStatus::Draft, CompetitionStatus::Registration, CompetitionStatus::InProgress, CompetitionStatus::Finished];
-    $currentStep = array_search($competition->status, $lifecycle, true);
     $nextStatuses = collect($competition->status->nextStatuses())->filter(fn ($s) => $user->can('changeStatus', [$competition, $s]));
 
     $usesJury = $competition->phases->contains(fn ($p) => $p->rules->usesJury());
@@ -40,7 +38,7 @@
 <x-layouts.app :title="$competition->name">
     <x-ui.page-header :title="$competition->name" :breadcrumbs="['Tableau de bord' => route('dashboard'), $organizer->name => route('organizers.show', $organizer), $competition->name => null]">
         <x-slot:leading>
-            <span class="hidden size-14 shrink-0 place-items-center rounded-2xl bg-brand-gradient text-white shadow-lift sm:grid">
+            <span class="hidden size-14 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-lift sm:grid">
                 <x-ui.icon :name="$competition->discipline->icon()" class="size-7" />
             </span>
         </x-slot:leading>
@@ -66,7 +64,7 @@
                         default => null,
                     }" confirm="Confirmer">
                     <x-slot:fields><input type="hidden" name="status" value="{{ $next->value }}"></x-slot:fields>
-                    <x-ui.button variant="gradient" icon="arrow-right-circle">
+                    <x-ui.button variant="primary" icon="arrow-right-circle">
                         {{ match ($next) { CompetitionStatus::Registration => 'Ouvrir les inscriptions', CompetitionStatus::InProgress => 'Lancer la compétition', CompetitionStatus::Finished => 'Terminer', default => $next->label() } }}
                     </x-ui.button>
                 </x-ui.confirm>
@@ -91,33 +89,7 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    {{-- Lifecycle --}}
-    @if ($competition->status !== CompetitionStatus::Cancelled)
-        <ol class="mb-8 grid grid-cols-4 gap-2 rounded-2xl bg-white p-2 shadow-soft ring-1 ring-slate-900/5 dark:bg-slate-900/60 dark:ring-white/10">
-            @foreach ($lifecycle as $index => $step)
-                <li @class([
-                    'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium',
-                    'bg-brand-gradient text-white shadow-lift' => $index === $currentStep,
-                    'text-slate-700 dark:text-slate-200' => $index < $currentStep,
-                    'text-slate-400' => $index > $currentStep,
-                ])>
-                    <span @class([
-                        'grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold',
-                        'bg-white/20' => $index === $currentStep,
-                        'bg-emerald-500 text-white' => $index < $currentStep,
-                        'bg-slate-100 dark:bg-white/10' => $index > $currentStep,
-                    ])>
-                        @if ($index < $currentStep)<x-ui.icon name="check" variant="m" class="size-4" />@else{{ $index + 1 }}@endif
-                    </span>
-                    <span class="hidden truncate sm:block">{{ $step->label() }}</span>
-                </li>
-            @endforeach
-        </ol>
-    @else
-        <div class="mb-8 flex items-center gap-3 rounded-2xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200">
-            <x-ui.icon name="x-circle" class="size-5" /> Cette compétition a été annulée.
-        </div>
-    @endif
+    <x-bo.lifecycle :competition="$competition" class="mb-8" />
 
     <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.stat label="Participants" :value="$participants->count().($competition->max_participants ? ' / '.$competition->max_participants : '')" icon="users"
@@ -144,7 +116,7 @@
                             <span @class([
                                 'relative grid size-10 shrink-0 place-items-center rounded-xl ring-4 ring-white dark:ring-slate-900',
                                 'bg-emerald-500 text-white' => $phase->status === \App\Enums\PhaseStatus::Finished,
-                                'bg-brand-gradient text-white shadow-lift' => $phase->status === \App\Enums\PhaseStatus::InProgress,
+                                'bg-brand-600 text-white shadow-lift' => $phase->status === \App\Enums\PhaseStatus::InProgress,
                                 'bg-slate-100 text-slate-500 dark:bg-white/10' => $phase->status === \App\Enums\PhaseStatus::Pending,
                             ])><x-ui.icon :name="$phase->type->icon()" class="size-5" /></span>
                             <div class="min-w-0 flex-1 pt-1">
@@ -161,7 +133,7 @@
                                 @if ($phase->matches->isNotEmpty())
                                     @php($done = $phase->matches->whereIn('status', [MatchStatus::Closed, MatchStatus::Cancelled])->count())
                                     <div class="mt-3 flex items-center gap-3">
-                                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-brand-gradient" style="width: {{ round($done / $phase->matches->count() * 100) }}%"></div></div>
+                                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-brand-600" style="width: {{ round($done / $phase->matches->count() * 100) }}%"></div></div>
                                         <span class="text-xs text-slate-500 tabular-nums">{{ $done }}/{{ $phase->matches->count() }} matchs</span>
                                     </div>
                                 @endif
@@ -231,7 +203,7 @@
                             </x-ui.confirm>
                             <x-ui.confirm :action="route('organizers.competitions.phases.start', [$organizer, $competition, $phase])" :danger="false" icon="rocket-launch"
                                 title="Démarrer la phase ?" message="Les règles seront figées et les poules ou le bracket générés automatiquement." confirm="Démarrer">
-                                <x-ui.button size="sm" variant="gradient" icon="rocket-launch">Démarrer</x-ui.button>
+                                <x-ui.button size="sm" variant="primary" icon="rocket-launch">Démarrer</x-ui.button>
                             </x-ui.confirm>
                         </x-slot:actions>
                     @endif
@@ -367,7 +339,7 @@
                                     @endif
                                 </div>
                             </div>
-                            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-brand-gradient" style="width: {{ $criterion->weight / $totalWeight * 100 }}%"></div></div>
+                            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-brand-600" style="width: {{ $criterion->weight / $totalWeight * 100 }}%"></div></div>
                         </div>
                     @empty
                         <x-ui.empty icon="adjustments-horizontal" title="Aucun critère" description="Ex. Flow, Lyrics, Présence scénique, Technique." />
@@ -407,7 +379,7 @@
 
                 @if ($canUpdate)
                     <div class="flex justify-end xl:col-span-3">
-                        <x-ui.button type="submit" variant="gradient" icon="check">Enregistrer les modifications</x-ui.button>
+                        <x-ui.button type="submit" variant="primary" icon="check">Enregistrer les modifications</x-ui.button>
                     </div>
                 @endif
             </form>
@@ -479,7 +451,7 @@
 
                 <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-phase')">Annuler</x-ui.button>
-                    <x-ui.button type="submit" variant="gradient" icon="plus">Ajouter la phase</x-ui.button>
+                    <x-ui.button type="submit" variant="primary" icon="plus">Ajouter la phase</x-ui.button>
                 </div>
             </form>
         </x-ui.slide-over>

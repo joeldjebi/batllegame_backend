@@ -22,7 +22,7 @@
         </x-slot:description>
         <x-slot:actions>
             @if ($canCreate)
-                <x-ui.button variant="gradient" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Nouvelle compétition</x-ui.button>
+                <x-ui.button variant="primary" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Nouvelle compétition</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -62,8 +62,7 @@
                         @php($max = $competition->max_participants)
                         <a href="{{ route('organizers.competitions.show', [$organizer, $competition]) }}"
                             class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5 transition hover:-translate-y-1 hover:shadow-lift hover:ring-brand-300 dark:bg-slate-900/60 dark:ring-white/10 dark:hover:ring-brand-500/40">
-                            <div class="relative h-24 overflow-hidden bg-brand-gradient">
-                                <div class="bg-grid absolute inset-0 opacity-25"></div>
+                            <div class="relative h-24 overflow-hidden bg-brand-600">
                                 <x-ui.icon :name="$competition->discipline->icon()" class="absolute -right-3 -bottom-4 size-24 text-white/15 transition group-hover:scale-110" />
                                 <div class="absolute top-3 left-3"><x-ui.badge :value="$competition->status" class="!bg-white/90 dark:!bg-slate-900/80" /></div>
                             </div>
@@ -80,7 +79,7 @@
                                         @if ($competition->registration_ends_at)<span class="text-slate-400">jusqu'au {{ $competition->registration_ends_at->translatedFormat('d M') }}</span>@endif
                                     </div>
                                     <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                                        <div class="h-full rounded-full bg-brand-gradient" style="width: {{ $max ? min(100, round($competition->participants_count / $max * 100)) : min(100, $competition->participants_count * 5) }}%"></div>
+                                        <div class="h-full rounded-full bg-brand-600" style="width: {{ $max ? min(100, round($competition->participants_count / $max * 100)) : min(100, $competition->participants_count * 5) }}%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -203,7 +202,7 @@
 
                 <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-competition')">Annuler</x-ui.button>
-                    <x-ui.button type="submit" variant="gradient" icon="sparkles">Créer la compétition</x-ui.button>
+                    <x-ui.button type="submit" variant="primary" icon="sparkles">Créer la compétition</x-ui.button>
                 </div>
             </form>
         </x-ui.slide-over>

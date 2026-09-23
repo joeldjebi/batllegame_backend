@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ? route('admin.login')
             : route('login'));
         $middleware->redirectUsersTo(fn (Request $request) => $request->routeIs('admin.*')
-            ? route('admin.organizers.index')
+            ? route('admin.dashboard')
             : route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -12,7 +12,7 @@
         <x-ui.stat label="Organisateurs" :value="$counts->sum()" icon="building-office-2" />
         <x-ui.stat label="À vérifier" :value="$counts['en_attente'] ?? 0" icon="clock" tone="amber" hint="En attente de validation" />
         <x-ui.stat label="Vérifiés" :value="$counts['verifie'] ?? 0" icon="check-badge" tone="green" />
-        <x-ui.stat label="Compétitions" :value="$competitionsCount" icon="trophy" tone="blue" hint="Sur toute la plateforme" />
+        <x-ui.stat label="Suspendus" :value="$counts['suspendu'] ?? 0" icon="no-symbol" tone="red" :hint="$competitionsCount.' compétition(s) sur la plateforme'" />
     </div>
 
     <x-ui.card :padding="false">
@@ -49,13 +49,13 @@
                                 <div class="flex items-center gap-3">
                                     <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" square />
                                     <div>
-                                        <p class="font-semibold text-slate-900 dark:text-white">{{ $organizer->name }}</p>
+                                        <a href="{{ route('admin.organizers.show', $organizer) }}" class="font-semibold text-slate-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-300">{{ $organizer->name }}</a>
                                         <p class="text-xs text-slate-500">{{ $organizer->city ?? '—' }} · créé le {{ $organizer->created_at->translatedFormat('d M Y') }}</p>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                @if ($owner)<p>{{ $owner->name }}</p><p class="text-xs text-slate-500">{{ $owner->email }}</p>@else<span class="text-slate-400">—</span>@endif
+                                @if ($owner)<a href="{{ route('admin.users.show', $owner) }}" class="hover:text-brand-600">{{ $owner->name }}</a><p class="text-xs text-slate-500">{{ $owner->email }}</p>@else<span class="text-slate-400">—</span>@endif
                             </td>
                             <td class="text-slate-500">
                                 <span class="inline-flex items-center gap-1"><x-ui.icon name="trophy" variant="m" class="size-4" />{{ $organizer->competitions_count }}</span>
@@ -67,6 +67,7 @@
                             </td>
                             <td>
                                 <div class="flex justify-end gap-2">
+                                    <x-ui.button size="sm" variant="secondary" :href="route('admin.organizers.show', $organizer)" icon="eye">Détails</x-ui.button>
                                     @if ($organizer->status !== OrganizerStatus::Verified)
                                         <x-ui.confirm :action="route('admin.organizers.status', $organizer)" method="PATCH" :danger="false" icon="check-badge"
                                             :title="'Vérifier '.$organizer->name.' ?'" message="L'organisateur pourra ouvrir des inscriptions publiques." confirm="Vérifier">

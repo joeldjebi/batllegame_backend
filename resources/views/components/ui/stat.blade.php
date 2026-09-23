@@ -2,11 +2,11 @@
 
 @php
     $tones = [
-        'brand' => 'from-brand-500 to-fuchsia-500 shadow-brand-500/30',
-        'green' => 'from-emerald-500 to-teal-500 shadow-emerald-500/30',
-        'amber' => 'from-amber-500 to-orange-500 shadow-amber-500/30',
-        'blue' => 'from-sky-500 to-indigo-500 shadow-sky-500/30',
-        'red' => 'from-rose-500 to-pink-500 shadow-rose-500/30',
+        'brand' => 'bg-brand-600 shadow-brand-600/25',
+        'green' => 'bg-emerald-500 shadow-emerald-500/25',
+        'amber' => 'bg-amber-500 shadow-amber-500/25',
+        'blue' => 'bg-sky-500 shadow-sky-500/25',
+        'red' => 'bg-rose-500 shadow-rose-500/25',
     ];
 @endphp
 
@@ -17,14 +17,14 @@
             <p class="mt-2 font-display text-3xl font-bold tracking-tight text-slate-900 tabular-nums dark:text-white">{{ $value }}</p>
         </div>
         @if ($icon)
-            <span @class(['grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white shadow-lg', $tones[$tone] ?? $tones['brand']])>
+            <span @class(['grid size-11 shrink-0 place-items-center rounded-xl text-white shadow-lg', $tones[$tone] ?? $tones['brand']])>
                 <x-ui.icon :name="$icon" class="size-5" />
             </span>
         @endif
     </div>
     @if ($progress !== null)
         <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-            <div class="h-full rounded-full bg-brand-gradient transition-all" style="width: {{ max(0, min(100, $progress)) }}%"></div>
+            <div class="h-full rounded-full bg-brand-600 transition-all" style="width: {{ max(0, min(100, $progress)) }}%"></div>
         </div>
     @endif
     @if ($hint)

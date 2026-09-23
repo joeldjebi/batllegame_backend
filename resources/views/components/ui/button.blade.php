@@ -12,7 +12,6 @@
 
     $variants = [
         'primary' => 'bg-brand-600 text-white shadow-sm shadow-brand-600/25 hover:bg-brand-500 focus-visible:outline-brand-600',
-        'gradient' => 'bg-brand-gradient text-white shadow-lift hover:brightness-110 focus-visible:outline-brand-600',
         'secondary' => 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 shadow-soft hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-slate-400 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10',
         'soft' => 'bg-brand-50 text-brand-700 hover:bg-brand-100 focus-visible:outline-brand-600 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20',
         'ghost' => 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-slate-400 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white',

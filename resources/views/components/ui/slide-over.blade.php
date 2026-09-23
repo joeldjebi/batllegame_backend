@@ -13,8 +13,7 @@
             x-transition:enter="transform transition ease-out duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
             x-transition:leave="transform transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
             class="pointer-events-auto flex h-full w-screen max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900">
-            <div class="relative overflow-hidden bg-brand-gradient px-6 py-6 text-white">
-                <div class="bg-grid absolute inset-0 opacity-20"></div>
+            <div class="relative overflow-hidden bg-brand-600 px-6 py-6 text-white">
                 <div class="relative flex items-start justify-between gap-4">
                     <div class="flex items-start gap-3">
                         @if ($icon)<span class="grid size-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25"><x-ui.icon :name="$icon" class="size-5" /></span>@endif

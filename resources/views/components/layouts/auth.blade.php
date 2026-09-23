@@ -27,10 +27,8 @@
             </div>
         </div>
 
-        <div @class(['relative hidden flex-1 overflow-hidden lg:block', 'bg-slate-950' => $admin, 'bg-brand-gradient' => ! $admin])>
-            <div class="bg-grid absolute inset-0 opacity-25"></div>
-            <div @class(['absolute -top-32 -right-32 size-[32rem] rounded-full blur-3xl', 'bg-emerald-500/10' => $admin, 'bg-white/10' => ! $admin])></div>
-            <div @class(['absolute -bottom-40 -left-20 size-[28rem] rounded-full blur-3xl', 'bg-brand-600/20' => $admin, 'bg-fuchsia-400/30' => ! $admin])></div>
+        <div @class(['relative hidden flex-1 overflow-hidden lg:block', 'bg-slate-950' => $admin, 'bg-brand-700' => ! $admin])>
+
 
             <div class="relative flex h-full flex-col justify-between p-12 text-white xl:p-16">
                 {{ $aside }}

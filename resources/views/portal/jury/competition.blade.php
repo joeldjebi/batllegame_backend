@@ -42,4 +42,6 @@
             </div>
         </x-ui.card>
     @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::jury($competition->id), \App\Realtime\Channel::user(auth('jury')->id())]" />
 </x-layouts.portal>

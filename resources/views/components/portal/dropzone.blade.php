@@ -6,6 +6,8 @@
         :class="dragging ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : (file ? 'border-emerald-400 bg-emerald-50/60 dark:bg-emerald-500/5' : 'border-slate-300 bg-white hover:border-brand-400 hover:bg-brand-50/40 dark:border-white/15 dark:bg-white/[0.02]')"
         class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-7 text-center transition active:scale-[0.99]">
         <input x-ref="input" type="file" name="{{ $name }}" accept="{{ $accept }}" required class="sr-only" x-on:change="pick($event.target.files)">
+        {{-- File date on the device: shown to the organizer as an indication. --}}
+        <input type="hidden" name="client_modified_at" :value="file ? file.lastModified : ''">
         <template x-if="! file">
             <span class="flex flex-col items-center gap-2">
                 <span class="grid size-14 place-items-center rounded-2xl bg-brand-600 text-white shadow-lift"><x-ui.icon name="arrow-up-tray" class="size-7" /></span>

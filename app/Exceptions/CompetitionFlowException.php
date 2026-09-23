@@ -112,6 +112,11 @@ class CompetitionFlowException extends DomainException
         return new self('Les soumissions ne sont pas ouvertes pour cette étape.');
     }
 
+    public static function presentationMissing(): self
+    {
+        return new self('Ajoutez une description et au moins une récompense avant d\'ouvrir les inscriptions.');
+    }
+
     public static function nothingToPay(): self
     {
         return new self("Aucun paiement n'est attendu pour cette inscription.");
@@ -134,7 +139,7 @@ class CompetitionFlowException extends DomainException
 
     public static function preselectionStillOpen(): self
     {
-        return new self("La présélection n'est pas terminée.");
+        return new self('La sélection se publie après la fin de la délibération du jury.');
     }
 
     public static function preselectionEmpty(): self
@@ -142,14 +147,14 @@ class CompetitionFlowException extends DomainException
         return new self('Aucune prestation validée : impossible de publier la sélection.');
     }
 
-    public static function preselectionJuryMissing(): self
-    {
-        return new self('Le jury doit noter toutes les prestations validées avant la publication.');
-    }
-
     public static function preselectionNotPublished(): self
     {
         return new self("Publiez d'abord la sélection de la présélection.");
+    }
+
+    public static function entryUnpaid(): self
+    {
+        return new self("Cet artiste n'a pas réglé ses frais d'inscription : sa prestation ne peut pas être validée.");
     }
 
     public static function paymentRequired(): self

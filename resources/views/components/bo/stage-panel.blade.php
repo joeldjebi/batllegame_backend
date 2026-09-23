@@ -29,6 +29,7 @@
                     <span>{{ $online ? 'En ligne' : 'Présentiel' }}</span>
                     @if ($online)<span>Limite : {{ $fmt($stage->submission_deadline) ?? 'non définie' }}</span>@endif
                     <span>Vote : {{ $fmt($stage->voting_opens_at) ?? ($online ? 'après la limite' : 'en direct') }} → {{ $fmt($stage->voting_closes_at) ?? 'clôture manuelle' }}</span>
+                    @if ($stage->deliberation_minutes > 0)<span>Délibération : {{ \Carbon\CarbonInterval::minutes($stage->deliberation_minutes)->cascade()->forHumans(short: true) }} après le vote</span>@endif
                 </p>
             </div>
         </div>
@@ -91,6 +92,7 @@
                                 · {{ number_format(($performance->size_bytes ?? 0) / 1048576, 1, ',', ' ') }} Mo
                                 · {{ $performance->updated_at->translatedFormat('d M, H:i') }}
                             </p>
+                            <x-bo.media-provenance :media="$performance" :timezone="$competition->settings->timezone" class="mt-2" />
                             @if ($performance->rejection_reason)<p class="mt-1 text-xs text-rose-600">{{ $performance->rejection_reason }}</p>@endif
                             @if ($canRun && $performance->status === PerformanceStatus::Pending)
                                 <div class="mt-3 flex gap-2" x-data="{ rejecting: false }">
@@ -127,8 +129,10 @@
                 @endif
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-ui.input name="voting_opens_at" type="datetime-local" label="Ouverture du vote" :value="$stage->voting_opens_at" :hint="$online ? 'Vide = dès la date limite.' : null" />
-                    <x-ui.input name="voting_closes_at" type="datetime-local" label="Clôture du vote" :value="$stage->voting_closes_at" hint="Vide = clôture manuelle." />
+                    <x-ui.input name="voting_closes_at" type="datetime-local" label="Fin du vote du public" :value="$stage->voting_closes_at" hint="Vide = clôture manuelle." />
                 </div>
+                <x-ui.input name="deliberation_minutes" type="number" min="0" max="10080" label="Délibération du jury" :value="$stage->deliberation_minutes" suffix="min"
+                    hint="Temps laissé au jury après la fin du vote (ex. 1440 = 24 h). Les matchs se clôturent ensuite automatiquement." />
                 <div class="flex justify-end gap-2 pt-2">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', '{{ $modal }}')">Annuler</x-ui.button>
                     <x-ui.button type="submit" icon="check">Enregistrer</x-ui.button>

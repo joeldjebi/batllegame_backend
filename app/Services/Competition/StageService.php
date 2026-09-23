@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\Log;
  * Drives a stage through its lifecycle.
  *
  * Online:  Pending -> Submissions (until the deadline) -> forfeits for missing
- *          submissions -> Voting (jury + public on the videos) -> Closed.
+ *          submissions -> Voting (jury + public on the videos, then the jury alone
+ *          during the deliberation) -> Closed.
  * On-site: Pending -> Voting (the organizer opens each match live) -> Closed.
  */
 class StageService
@@ -26,7 +27,7 @@ class StageService
     public function __construct(private MatchCloser $closer) {}
 
     /**
-     * @param  array{submission_deadline?: ?string, voting_opens_at?: ?string, voting_closes_at?: ?string}  $dates
+     * @param  array{submission_deadline?: ?string, voting_opens_at?: ?string, voting_closes_at?: ?string, deliberation_minutes?: int}  $dates
      */
     public function schedule(Stage $stage, array $dates): Stage
     {
@@ -36,8 +37,11 @@ class StageService
 
         $stage->fill($dates)->save();
 
-        // Keep the voting window of matches already open in sync.
-        $stage->matches()->where('status', MatchStatus::Voting)->update(['voting_closes_at' => $stage->voting_closes_at]);
+        // Keep the voting window and the deliberation of matches already open in sync.
+        $stage->matches()->where('status', MatchStatus::Voting)->update([
+            'voting_closes_at' => $stage->voting_closes_at,
+            'deliberation_ends_at' => $stage->deliberationEndFor($stage->voting_closes_at),
+        ]);
 
         return $stage;
     }
@@ -149,9 +153,12 @@ class StageService
     /**
      * Open the vote of one match (on-site: the organizer does it when the battle
      * is over on stage). Generates the room code when the competition requires it.
+     * The jury keeps scoring $deliberationMinutes (default: the stage's) after the vote.
      */
-    public function openMatchVoting(BattleMatch $match, ?Carbon $closesAt = null): BattleMatch
+    public function openMatchVoting(BattleMatch $match, ?Carbon $closesAt = null, ?int $deliberationMinutes = null): BattleMatch
     {
+        $minutes = $deliberationMinutes ?? $match->stage?->deliberation_minutes ?? 0;
+
         $phase = $match->phase;
         $onSite = $phase->effectiveMode() === CompetitionMode::OnSite;
 
@@ -159,6 +166,7 @@ class StageService
             'status' => MatchStatus::Voting,
             'voting_opens_at' => now(),
             'voting_closes_at' => $closesAt,
+            'deliberation_ends_at' => $closesAt && $minutes > 0 ? $closesAt->copy()->addMinutes($minutes) : null,
             'vote_code' => $onSite && $phase->competition->settings->onsiteVoteCode
                 ? str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT)
                 : null,

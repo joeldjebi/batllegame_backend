@@ -78,16 +78,26 @@ Inside one transaction (phase row locked):
   (Registered when a pre-selection exists or approval is required, else Validated).
 - `PaymentService::simulate(participant, method, succeeds)` records a `Payment` (provider `simulation`) and, when paid,
   moves the participant out of `PaymentPending`. Replace this method when a real provider is plugged in.
+- **Timeline** (`Preselection`): `starts_at` → `ends_at` (submissions) → `voteEndsAt()` (`vote_ends_at` ?? `ends_at`, likes)
+  → `deliberationEndsAt()` (+ `deliberation_hours`, jury only) → publish. `state()`: Scheduled, Open, Voting,
+  Deliberation, Closed, Published. `acceptsLikes()` (Open|Voting **and** `settings.publicVotingEnabled`),
+  `acceptsScores()` (Open|Voting|Deliberation), `effectiveWeights()` (100 % jury when the public vote is disabled),
+  `timeline()` (items for `x-ui.timeline`), `nextDeadline()`.
+- Matches: public votes until `voting_closes_at` (`isVotingOpen()`), jury scores until `juryDeadline()` =
+  `deliberation_ends_at` ?? `voting_closes_at` (`acceptsJuryScores()`, `isDeliberating()`). `deliberation_ends_at` =
+  vote end + `stages.deliberation_minutes` (or the minutes chosen when opening an on-site vote), synced by
+  `StageService::schedule()`. `matches:close-expired` closes at the jury deadline.
 - `PreselectionService`: `configure()` (freezes rules once started), `submit()` (Registered artists only, open period,
   one entry replaced on re-upload, `ProcessSubmission` job), `like()` / `unlike()` (one like per user and pre-selection,
   moved on a new like, `likes_count` refreshed), `score()` (judge, all criteria), `rank()` (jury normalized on 100 +
-  likes relative to the top entry, weights, ties: jury, likes, participant id), `publish()` (closed, everything reviewed,
-  jury complete if weighted → top N `Validated` + `selected`, others `NotSelected`).
+  likes relative to the top entry, weights, ties: jury, likes, participant id), `publish()` (deliberation over, everything reviewed;
+  unscored entries count 0 for the jury — `unscoredCount()` warns → top N `Validated` + `selected`, others `NotSelected`).
 - `PhaseLauncher` refuses to start a phase while a pre-selection is not published.
 - `Participant::hasPaid()` (free competition or a paid `Payment`) gates **every** upload: `PreselectionService::submit()`
   and `SubmissionService::submit()` refuse unpaid artists; the artist dashboard never renders an upload form for them.
 - `ProcessSubmission` handles any `Contracts\ReviewableMedia` (performances and pre-selection entries).
-- Policies: `PreselectionSubmissionPolicy::like` (verified phone, open, published entry, not own, not judge) and `::score`.
+- Policies: `PreselectionSubmissionPolicy::like` (verified phone, public vote enabled, `acceptsLikes()`, published entry,
+  not own, not judge) and `::score` (`acceptsScores()`); `JuryScorePolicy` uses `acceptsJuryScores()`.
 
 ## Shared services (API + portals)
 
@@ -98,3 +108,17 @@ room code, one vote with savepoint, device limit — aborts 409/429), `JuryScori
 input)` (all criteria, max points), `RegistrationService::register(user, competition, stageName)`,
 `JudgeAccountService::assign(competition, country, phone, name)` (creates the account + SMS or reuses it),
 `PhoneVerificationService` (6-digit code, 10 min, 5 attempts).
+
+## Media provenance
+- `ProcessSubmission` also calls `Media\MediaProvenance::analyze($path)` (never blocking, `rescue`): pure-PHP
+  `Mp4MetadataReader` (ftyp brand, mvhd creation time, hdlr names, ©too/©swr/©day/©cmt/©mak/©mod, iTunes ilst,
+  Apple/Android `meta/keys`) + `FfprobeTagReader` (bound to `MediaTagReader`, skipped when ffprobe is missing).
+- Stored on `performances` and `preselection_submissions`: `recorded_at`, `media_origin` (`MediaOrigin` enum:
+  appareil, montage, plateforme, reencode, efface, inconnu), `media_metadata` (device, software, encoder, app, platform,
+  date_source, handlers, brand, has_location, uploaded_at), `client_modified_at` (browser `File.lastModified`, sent
+  by `x-portal.dropzone` as `client_modified_at`; API accepts ms or ISO).
+- `HasMediaFile::recordingPeriod()` (`RecordingPeriod`: pendant, avant, incoherente, inconnue) vs
+  `ReviewableMedia::submissionWindow()`; `uploadedAt()` uses `media_metadata.uploaded_at` (rows are reused on replace).
+- Shown to organizers only by `x-bo.media-provenance` (preselection panel, stage panel). Indication, never an automatic
+  rejection. GPS coordinates are never stored.
+

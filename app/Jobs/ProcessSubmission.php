@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\PerformanceStatus;
 use App\Models\Contracts\ReviewableMedia;
 use App\Services\Media\MediaInspector;
+use App\Services\Media\MediaProvenance;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Checks an uploaded media (stage submission or pre-selection entry) against
- * its rules (real duration via ffprobe), then publishes it or leaves it for
- * the organizer's review.
+ * its rules (real duration via ffprobe), reads its provenance (hidden metadata),
+ * then publishes it or leaves it for the organizer's review.
  */
 class ProcessSubmission implements ShouldQueue
 {
@@ -31,7 +32,7 @@ class ProcessSubmission implements ShouldQueue
      */
     public function __construct(public Model $media) {}
 
-    public function handle(MediaInspector $inspector): void
+    public function handle(MediaInspector $inspector, MediaProvenance $provenance): void
     {
         /** @var (Model&ReviewableMedia)|null $media */
         $media = $this->media->fresh();
@@ -41,7 +42,19 @@ class ProcessSubmission implements ShouldQueue
         }
 
         $maxDuration = $media->maxMediaDuration();
-        $duration = $this->withLocalCopy($media, fn (string $path) => $inspector->duration($path));
+        [$duration, $origin] = $this->withLocalCopy($media, fn (string $path) => [
+            $inspector->duration($path),
+            // Hidden metadata: an indication for the organizer, never blocking.
+            rescue(fn () => $provenance->analyze($path), null),
+        ]);
+
+        if ($origin !== null) {
+            $media->forceFill([
+                'recorded_at' => $origin['recorded_at'],
+                'media_origin' => $origin['origin'],
+                'media_metadata' => [...$origin['metadata'], 'uploaded_at' => $media->media_metadata['uploaded_at'] ?? now()->toIso8601String()],
+            ]);
+        }
 
         if ($duration !== null && $duration > $maxDuration + self::DURATION_TOLERANCE) {
             $media->forceFill([

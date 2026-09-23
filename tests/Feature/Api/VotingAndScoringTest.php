@@ -135,3 +135,28 @@ it('keeps the database consistent when a duplicate vote hits the unique constrai
         ->toThrow(UniqueConstraintViolationException::class)
         ->and($this->match->publicVotes()->count())->toBe(1);
 });
+
+it('closes the public vote first, then lets the jury deliberate until the organizer deadline', function () {
+    $judge = Judge::factory()->for($this->competition)->create();
+    $criterion = Criterion::factory()->for($this->competition)->create(['max_points' => 10]);
+    $this->match->forceFill(['voting_opens_at' => now(), 'voting_closes_at' => now()->addMinutes(5), 'deliberation_ends_at' => now()->addMinutes(15)])->save();
+    $juryUrl = "/api/competitions/{$this->competition->slug}/matches/{$this->match->id}/jury-scores";
+    $score = fn (Participant $p) => ['participant_id' => $p->id, 'scores' => [['criterion_id' => $criterion->id, 'score' => $p->is($this->a) ? 8 : 6]]];
+
+    $this->actingAs(User::factory()->create(), 'sanctum')->postJson($this->voteUrl, ['participant_id' => $this->a->id])->assertCreated();
+
+    // Deliberation: public vote closed, jury still scores, the scheduler does not close the match.
+    $this->travel(7)->minutes();
+    $this->actingAs(User::factory()->create(), 'sanctum')->postJson($this->voteUrl, ['participant_id' => $this->a->id])->assertForbidden();
+    $this->actingAs($judge->user, 'sanctum')->postJson($juryUrl, $score($this->a))->assertCreated();
+    $this->actingAs($judge->user, 'sanctum')->postJson($juryUrl, $score($this->b))->assertCreated();
+    expect($this->match->fresh()->isDeliberating())->toBeTrue();
+    $this->artisan('matches:close-expired');
+    expect($this->match->fresh()->status)->toBe(MatchStatus::Voting);
+
+    // Deliberation over: scores locked, the match closes automatically.
+    $this->travel(10)->minutes();
+    $this->actingAs($judge->user, 'sanctum')->postJson($juryUrl, $score($this->a))->assertForbidden();
+    $this->artisan('matches:close-expired');
+    expect($this->match->fresh())->status->toBe(MatchStatus::Closed)->winner_id->toBe($this->a->id);
+});

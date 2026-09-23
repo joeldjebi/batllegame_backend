@@ -32,7 +32,7 @@ class PreselectionController extends Controller
     public function unlike(Request $request, Competition $competition, PreselectionService $preselections): RedirectResponse
     {
         $preselection = $competition->preselection ?? abort(404);
-        abort_unless($preselection->isOpen(), 403, "La présélection n'est pas ouverte.");
+        abort_unless($preselection->acceptsLikes(), 403, 'Le vote du public est clos.');
 
         $preselections->unlike($request->user(), $preselection);
 

@@ -53,6 +53,7 @@
                 @if ($admin)
                     <x-ui.badge tone="red" icon="shield-exclamation">Zone super-admin</x-ui.badge>
                 @endif
+                <x-realtime-status class="[&:not([hidden])]:inline-flex" />
             </div>
 
             {{-- Theme switcher --}}
@@ -116,6 +117,7 @@
         </template>
     </div>
 
-    @stack('modals')
+    {{-- Live region too: modals of rows added by a realtime refresh must exist. --}}
+    <div data-live="modals">@stack('modals')</div>
 </body>
 </html>

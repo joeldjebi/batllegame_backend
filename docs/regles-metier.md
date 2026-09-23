@@ -26,6 +26,14 @@ dans son propre match, un juré ne vote pas avec le public.
   connexion (`/mot-de-passe` au back-office, `/jury/mot-de-passe` au jury).
 - `suspendu` : tout reste lisible, aucune écriture, aucun vote, aucune notation.
 - Un organisateur garde toujours au moins un owner.
+- **Gestion des compétitions** (back-office → organisateur → Compétitions) : liste avec recherche, filtres
+  (statut, discipline, mode), tri (récentes, nom, fin des inscriptions, participants) et pagination.
+  - **Créer** (owner, admin) : toujours en brouillon ;
+  - **Modifier** : onglet Paramètres, tant que la compétition n'est ni terminée ni annulée ;
+  - **Dupliquer** (owner, admin) : nouveau brouillon avec présentation, récompenses, options, critères et
+    phases ; jamais les participants, jurés, matchs, votes, paiements ni la présélection (datée) ;
+  - **Supprimer** (owner) : seulement en brouillon ou annulée (suppression douce) ;
+  - le staff consulte sans agir.
 
 ## Inscription et frais
 
@@ -44,23 +52,50 @@ dans son propre match, un juré ne vote pas avec le public.
 
 Étape optionnelle, une par compétition, configurée par l'organisateur après les inscriptions :
 
-- **Période** (début, fin) pendant laquelle les artistes inscrits (frais payés) envoient **une** prestation
-  (vidéo ou audio, remplaçable jusqu'à la fin, règles de médias propres à la présélection, validation par
-  l'organisateur si l'option est active).
-- **Likes du public** : un utilisateur au numéro vérifié like **une seule prestation par compétition** pendant la
-  période (il peut déplacer ou retirer son like) ; jamais la sienne ; les jurés ne likent pas.
-- **Jury** : les jurés de la compétition notent chaque prestation selon les critères (sur 100, moyenne des jurés).
+- **Calendrier défini par l'organisateur** :
+  1. **Envois** (début → fin des envois) : les artistes inscrits (frais payés) envoient **une** prestation (vidéo ou
+     audio, remplaçable jusqu'à la fin des envois, règles de médias propres, validation si l'option est active) ;
+  2. **Vote du public** jusqu'à la **fin du vote** (≥ fin des envois ; vide = fin des envois) ;
+  3. **Délibération du jury** : une durée en heures après la fin du vote, pendant laquelle seuls les jurés notent ;
+  4. **Résultats** : la sélection se publie après la fin de la délibération.
+- **Likes du public** (seulement si l'option « Vote du public » de la compétition est active) : un utilisateur au
+  numéro vérifié like **une seule prestation par compétition**, dès qu'une prestation est publiée et jusqu'à la fin
+  du vote (il peut déplacer ou retirer son like) ; jamais la sienne ; les jurés ne likent pas. Option désactivée :
+  aucun like, classement **100 % jury**.
+- **Jury** : les jurés notent chaque prestation selon les critères (sur 100, moyenne des jurés), du début des envois
+  à la fin de la délibération ; ensuite les notes sont figées.
 - **Score final** = score jury × % jury + score likes × % likes (définis par l'organisateur, total 100 %).
   Score likes = likes de la prestation ÷ likes de la plus likée × 100.
 - **Nombre d'artistes retenus** (participants de l'événement) défini par l'organisateur.
-- Après la fin, l'organisateur **publie la sélection** (toutes les prestations traitées, jury complet si le jury
-  compte) : les N premiers passent **« validé »**, les autres **« non retenu »**. Départage : jury, likes, ancienneté.
+- Après la délibération, l'organisateur **publie la sélection** (toutes les prestations traitées) avec les notes
+  reçues : une prestation qu'aucun juré n'a notée compte 0 pour la part jury (l'organisateur est averti avant de
+  publier). Les N premiers passent **« validé »**, les autres **« non retenu »**. Départage : jury, likes, ancienneté.
 - La première phase de la compétition ne peut démarrer qu'après la publication ; seuls les artistes retenus y participent.
 - Les règles de la présélection sont figées dès son début (les dates restent modifiables jusqu'à la publication).
+
+## Provenance des prestations (métadonnées cachées)
+
+À chaque envoi (présélection et étapes), le serveur lit les **métadonnées cachées** du fichier
+(`App\Services\Media\MediaProvenance` : lecteur MP4/MOV en PHP, complété par ffprobe s'il est installé) :
+- **date d'enregistrement** (date Apple `creationdate`, balise date, ou date du conteneur) comparée à la période
+  attendue (présélection : début → fin des envois ; étape : démarrage de la phase → date limite) :
+  « pendant la période », « avant la période », « date incohérente » (postérieure à l'envoi), « inconnue » ;
+- **origine probable** : appareil (marque / modèle), application de montage (CapCut, InShot…), plateforme
+  (TikTok, YouTube, Instagram…), fichier ré-encodé (convertisseur, messagerie), métadonnées effacées ;
+- la **date du fichier sur l'appareil** transmise par le navigateur (indicative).
+
+L'organisateur voit ces badges et le détail dans la liste des prestations à valider. C'est un **indice, jamais une
+preuve** (les métadonnées peuvent être effacées ou modifiées) : rien n'est refusé automatiquement, l'organisateur
+décide. La position GPS n'est jamais conservée (seulement sa présence). `php artisan media:provenance` analyse les
+médias envoyés avant cette fonctionnalité.
 
 ## Cycle de vie d'une compétition
 
 `brouillon → inscriptions → en_cours → terminee` (ou `annulee` à tout moment avant la fin).
+Pour ouvrir les inscriptions, l'organisateur doit avoir rédigé une **description** (texte enrichi : gras, italique,
+titres, listes, citations, liens — nettoyée côté serveur) et listé **au moins une récompense** (rang + lot, dans l'ordre
+du classement ; un rang vide devient « 1er prix », « 2e prix »…). Les deux sont affichées au public et aux artistes
+et exposées par l'API (`description`, `prizes`).
 Démarrer la première phase fait passer la compétition `en_cours`. La fin de la dernière
 phase **d'élimination** la termine (une phase de poules seule ne la termine pas : l'organisateur
 peut encore ajouter la phase suivante). Suppression (soft delete) : owner, brouillon ou annulée.
@@ -82,7 +117,9 @@ peut encore ajouter la phase suivante). Suppression (soft delete) : owner, broui
 
 Une **étape** regroupe les matchs joués en même temps : toute la phase pour des poules, un tour
 de bracket en élimination. Chaque étape a son calendrier : date limite de soumission, ouverture
-et clôture du vote.
+et **fin du vote du public**, puis **délibération du jury** (durée en minutes après la fin du vote,
+0 = aucune). Pendant la délibération, le public ne vote plus et seuls les jurés notent ; à la fin,
+le match se clôture automatiquement avec les notes reçues.
 
 ### En ligne
 
@@ -96,11 +133,13 @@ et clôture du vote.
    Élimination : l'adversaire gagne ; si les deux manquent, match annulé, les deux passent `forfait`.
    Poules : défaite (les deux perdent si aucun n'a soumis).
 5. Le vote s'ouvre automatiquement (ou à l'heure prévue) une fois les soumissions traitées ;
-   il se ferme à `voting_closes_at` (commande planifiée).
+   le public vote jusqu'à `voting_closes_at`, le jury note jusqu'à `deliberation_ends_at`, puis la commande
+   planifiée clôture le match.
 
 ### Présentiel
 
-- L'organisateur ouvre le vote **match par match**, en direct, avec une durée optionnelle.
+- L'organisateur ouvre le vote **match par match**, en direct, avec une durée optionnelle et le temps de
+  délibération du jury (par défaut celui de l'étape).
 - Option « Code de salle » : un code à 4 chiffres affiché dans la salle est exigé pour voter
   (seules les personnes présentes votent). Sans l'option, tout le monde vote dans l'application.
 - Le staff peut ajouter la **captation** vidéo d'une prestation (publiée directement).

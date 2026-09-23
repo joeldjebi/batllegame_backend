@@ -27,11 +27,21 @@ Plugins: `@alpinejs/intersect`, `collapse`, `focus`. Utilities in `app.css` (all
 
 ## Portals (mobile-first)
 The artist / public / jury portals are used mostly on phones: `x-layouts.portal` has a fixed **bottom tab bar**
-on small screens (safe-area aware, `pb-28` on main). Artist space = hero, **action center** (sorted: payment first,
+on small screens (`x-portal.bottom-nav`, safe-area aware, `pb-28` on main). Tabs: **Accueil first**, then Voter /
+Mon espace (members, shared by artist and fan portals) or Compétitions / Compte (jury). Active tab = exact route,
+else the tab of the current area (`fan.*` → Voter); the landing also renders it for signed-in users (Accueil active). Artist space = hero, **action center** (sorted: payment first,
 then closest deadline), journey cards with `x-portal.stepper`, horizontal snap carousel of open competitions.
 Components: `x-portal.payment-pitch` (marketing CTA shown instead of any upload while unpaid),
 `x-portal.dropzone` (touch-friendly file picker, drag & drop, client size check, submit disabled until a file is
-picked), `x-portal.stepper`. Alpine: `countdown(iso)` (`label`, `urgent`), `dropzone(maxMb)`. Test on 390 px width.
+picked), `x-portal.stepper`. Alpine: `countdown(iso)` (`label` always shows seconds so it visibly ticks, `urgent` < 24 h), `dropzone(maxMb)`. Test on 390 px width.
+
+## Rich text
+`x-ui.rich-editor name value placeholder hint` = Trix (lazy-loaded by `app.js` only when a `<trix-editor>` exists,
+attachments disabled; chrome styled **unlayered** at the end of `app.css` to beat `trix.css`). Output is sanitized on
+write by the `Competition::description` mutator (`App\Support\RichText::sanitize`, symfony/html-sanitizer allowlist);
+display with `x-ui.rich-text :html` (`.rich-text` styles) or `RichText::excerpt()` for cards. `x-portal.competition-about`
+= public « À propos » (collapsible) + « À gagner » list. Grids holding the editor need `grid-cols-1` (else the toolbar
+widens the implicit track on mobile).
 
 ## Layouts
 - `x-layouts.app` — back-office and admin console (sidebar `bo.sidebar`, fed by a view composer in
@@ -75,3 +85,22 @@ layouts; `window.dispatchEvent(new CustomEvent('toast', {detail: {type, message}
 ## Build
 `npm run dev` / `npm run build` with **Node 22** (`.nvmrc`; on the owner's Mac `PATH=/opt/homebrew/bin:$PATH`).
 `public/build` is not committed. Tests render views without assets (`withoutVite()`).
+
+## Realtime regions
+- `<x-realtime :channels="[Channel::competition($id), Channel::user($userId)]" />` (bottom of the page): public channels
+  are joined as is, private ones signed if the viewer may read them. `x-realtime-status` shows « En direct » (both layouts).
+- Mark areas to refresh with `data-live="key"` (unique per page). The portal layout wraps the whole page
+  (`data-live="page"`), the back-office marks `summary`, `tab-*` panels, tab counts, lists; the modal stack is a region
+  too (new rows need their confirm modals). On `update`, `resources/js/realtime.js` fetches the same URL and
+  `Alpine.morph`s each region (debounced 350 ms + trailing 2.5 s for throttled votes), skipping regions with a focused
+  field, a changed field (`data-dirty`) or a picked file. Never wrap an `x-show` element directly (wrap its content).
+- Toasts: `message` of private-channel updates (+ `match.voting` on public pages).
+
+## Pre-selection ranking
+`x-bo.preselection-panel`: header + « Configurer » (slide-over `preselection-settings` with `x-bo.preselection-form`,
+inline only before creation), timeline, stats, ranking card with client-side filters (Toutes / À valider / Validées /
+Rejetées) and search. Each row is `x-bo.preselection-entry` (rank, artist, compact provenance, likes / jury / score,
+quick « Valider », « Voir ») and pushes its detail modal `entry-{id}` (max-width 4xl: player with `preload="none"`,
+file info + « Ouvrir le fichier », expanded provenance, scores, review with a reason textarea). `x-ui.modal` pauses its
+media on close; `x-bo.media-player` shows « Lecture impossible » + a link when the file cannot be played.
+

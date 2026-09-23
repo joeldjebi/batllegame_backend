@@ -30,6 +30,8 @@ class CompetitionFactory extends Factory
             'max_participants' => 32,
             'entry_fee' => 0,
             'currency' => 'XOF',
+            'description' => '<div>La plus grande scène de battle de la ville : trois phases, un jury de professionnels et le vote du public.</div>',
+            'prizes' => [['rank' => '1er prix', 'reward' => '500 000 XOF et un enregistrement studio'], ['rank' => '2e prix', 'reward' => '200 000 XOF']],
         ];
     }
 

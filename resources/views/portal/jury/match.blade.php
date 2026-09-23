@@ -4,13 +4,23 @@
         <x-slot:description>
             <x-ui.badge :value="$match->status" />
             <span>{{ $match->phase->effectiveMode()->label() }}</span>
-            @if ($match->voting_closes_at)<span>Clôture : {{ $match->voting_closes_at->translatedFormat('d M, H:i') }}</span>@endif
+            @if ($match->voting_closes_at)<span>Fin du vote : {{ $match->voting_closes_at->translatedFormat('d M, H:i') }}</span>@endif
+            @if ($match->deliberation_ends_at)<span>Délibération jusqu'au {{ $match->deliberation_ends_at->translatedFormat('d M, H:i') }}</span>@endif
         </x-slot:description>
     </x-ui.page-header>
 
+    @if ($canScore && $match->juryDeadline())
+        <div @class(['mb-6 flex flex-wrap items-center gap-2 rounded-2xl p-4 text-sm ring-1', 'bg-amber-50 text-amber-900 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200' => $match->isDeliberating(), 'bg-brand-50 text-brand-800 ring-brand-600/20 dark:bg-brand-500/10 dark:text-brand-200' => ! $match->isDeliberating()])
+            x-data="countdown('{{ $match->juryDeadline()->toIso8601String() }}')">
+            <x-ui.icon name="scale" class="size-5 shrink-0" />
+            {{ $match->isDeliberating() ? 'Vote du public clos : délibération du jury, clôture dans' : 'Vos notes sont modifiables jusqu\'à la clôture, dans' }}
+            <strong class="font-display tabular-nums" x-text="label">{{ $match->juryDeadline()->diffForHumans(syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}</strong>
+        </div>
+    @endif
+
     @unless ($canScore)
         <div class="mb-6 flex items-start gap-3 rounded-2xl bg-slate-100 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
-            <x-ui.icon name="lock-closed" class="size-5 shrink-0" /> La notation de ce match n'est pas ouverte : vos notes sont affichées en lecture seule.
+            <x-ui.icon name="lock-closed" class="size-5 shrink-0" /> {{ $match->status === \App\Enums\MatchStatus::Voting && $match->juryDeadline()?->isPast() ? 'La délibération est close' : 'La notation de ce match n\'est pas ouverte' }} : vos notes sont affichées en lecture seule.
         </div>
     @endunless
 
@@ -55,4 +65,6 @@
             </x-ui.card>
         @endforeach
     </div>
+
+    <x-realtime :channels="[\App\Realtime\Channel::jury($competition->id), \App\Realtime\Channel::user(auth('jury')->id())]" />
 </x-layouts.portal>

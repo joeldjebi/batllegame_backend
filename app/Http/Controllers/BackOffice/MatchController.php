@@ -26,12 +26,19 @@ class MatchController extends Controller
             throw CompetitionFlowException::matchNotPlayable();
         }
 
-        $match->update($request->validate([
+        $validated = $request->validate([
             'scheduled_at' => ['nullable', 'date'],
             'submission_deadline' => ['nullable', 'date'],
             'voting_opens_at' => ['nullable', 'date'],
             'voting_closes_at' => ['nullable', 'date', 'after:voting_opens_at'],
-        ]));
+        ]);
+        $match->fill($validated);
+
+        if (array_key_exists('voting_closes_at', $validated)) {
+            $match->deliberation_ends_at = $match->stage?->deliberationEndFor($match->voting_closes_at);
+        }
+
+        $match->save();
 
         return back()->with('status', 'Match programmé.');
     }
@@ -43,7 +50,10 @@ class MatchController extends Controller
     {
         $this->authorize('runMatches', $competition);
 
-        $validated = $request->validate(['duration' => ['nullable', 'integer', 'min:1', 'max:1440']]);
+        $validated = $request->validate([
+            'duration' => ['nullable', 'integer', 'min:1', 'max:1440'],
+            'deliberation' => ['nullable', 'integer', 'min:0', 'max:1440'],
+        ]);
 
         $playable = in_array($match->status, [MatchStatus::Scheduled, MatchStatus::Submissions], true)
             && $match->slots()->whereNotNull('participant_id')->count() === 2;
@@ -52,7 +62,11 @@ class MatchController extends Controller
             throw CompetitionFlowException::matchNotPlayable();
         }
 
-        $match = $stages->openMatchVoting($match, isset($validated['duration']) ? now()->addMinutes((int) $validated['duration']) : null);
+        $match = $stages->openMatchVoting(
+            $match,
+            isset($validated['duration']) ? now()->addMinutes((int) $validated['duration']) : null,
+            isset($validated['deliberation']) ? (int) $validated['deliberation'] : null,
+        );
 
         return back()->with('status', $match->vote_code ? "Vote ouvert : code de salle {$match->vote_code}." : 'Vote ouvert.');
     }

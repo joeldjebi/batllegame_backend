@@ -4,21 +4,28 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "realtime": "node realtime/server.js"
     },
     "devDependencies": {
         "@alpinejs/collapse": "^3.17.4",
         "@alpinejs/focus": "^3.17.4",
         "@alpinejs/intersect": "^3.17.4",
+        "@alpinejs/morph": "^3.17.4",
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/vite": "^4.0.0",
         "alpinejs": "^3.17.4",
         "concurrently": "^10.0.3",
         "laravel-vite-plugin": "^3.1",
+        "socket.io-client": "^4.8.3",
         "tailwindcss": "^4.0.0",
+        "trix": "^2.1.19",
         "vite": "^8.0.0"
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "socket.io": "^4.8.3"
     }
 }

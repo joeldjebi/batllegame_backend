@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Competition;
 use App\Models\PreselectionSubmission;
 use App\Services\PreselectionService;
+use App\Services\SubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,9 +31,14 @@ class PreselectionController extends Controller
                 'state' => $state,
                 'starts_at' => $preselection->starts_at,
                 'ends_at' => $preselection->ends_at,
+                'vote_ends_at' => $preselection->voteEndsAt(),
+                'deliberation_ends_at' => $preselection->deliberationEndsAt(),
+                'next_deadline' => $preselection->nextDeadline(),
+                'likes_open' => $preselection->acceptsLikes(),
+                'public_voting_enabled' => $preselection->publicVotingEnabled(),
                 'selection_size' => $preselection->rules->selectionSize,
-                'like_weight' => $preselection->rules->likeWeight,
-                'jury_weight' => $preselection->rules->juryWeight,
+                'like_weight' => $preselection->effectiveWeights()['likes'],
+                'jury_weight' => $preselection->effectiveWeights()['jury'],
                 'media_rules' => [
                     'types' => $preselection->rules->mediaTypes,
                     'max_duration_seconds' => $preselection->rules->mediaMaxDuration,
@@ -60,7 +66,7 @@ class PreselectionController extends Controller
             'media' => ['required', 'file', 'mimetypes:'.implode(',', $rules->acceptedMimeTypes()), 'max:'.($rules->mediaMaxSizeMb * 1024)],
         ]);
 
-        $entry = $preselections->submit($participant, $request->file('media'));
+        $entry = $preselections->submit($participant, $request->file('media'), SubmissionService::clientModifiedAt($request));
 
         return response()->json(['message' => 'Prestation reçue.', 'data' => ['id' => $entry->id, 'status' => $entry->fresh()->status]], 201);
     }
@@ -77,7 +83,7 @@ class PreselectionController extends Controller
     public function unlike(Request $request, Competition $competition, PreselectionService $preselections): JsonResponse
     {
         $preselection = $competition->preselection ?? abort(404);
-        abort_unless($preselection->isOpen(), 403, "La présélection n'est pas ouverte.");
+        abort_unless($preselection->acceptsLikes(), 403, 'Le vote du public est clos.');
 
         $preselections->unlike($request->user(), $preselection);
 

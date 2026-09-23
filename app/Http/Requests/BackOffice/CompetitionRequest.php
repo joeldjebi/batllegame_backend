@@ -30,7 +30,37 @@ class CompetitionRequest extends FormRequest
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:1024'],
             'entry_fee' => ['nullable', 'integer', 'min:0'],
             'settings' => ['nullable', 'array'],
+            'description' => ['nullable', 'string', 'max:20000'],
+            'prizes' => ['nullable', 'array', 'max:20'],
+            'prizes.*.rank' => ['nullable', 'string', 'max:60'],
+            'prizes.*.reward' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * Validated attributes, rewards cleaned: empty rows dropped, a missing rank
+     * gets its position (« 1er prix », « 2e prix »…).
+     *
+     * @return array<string, mixed>
+     */
+    public function competitionData(): array
+    {
+        $data = $this->safe()->except('status');
+
+        if (array_key_exists('prizes', $data)) {
+            $prizes = collect($data['prizes'] ?? [])
+                ->filter(fn ($p) => filled($p['reward'] ?? null))
+                ->values()
+                ->map(fn ($p, $i) => [
+                    'rank' => trim((string) ($p['rank'] ?? '')) ?: ($i === 0 ? '1er prix' : ($i + 1).'e prix'),
+                    'reward' => trim($p['reward']),
+                ])
+                ->all();
+
+            $data['prizes'] = $prizes ?: null;
+        }
+
+        return $data;
     }
 
     /**

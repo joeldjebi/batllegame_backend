@@ -48,7 +48,14 @@
         </div>
     @endforeach
 
-    @if ($match->vote_code && $match->status === MatchStatus::Voting)
+    @if ($match->isDeliberating())
+        <div class="flex items-center justify-between gap-2 border-t border-slate-100 bg-brand-50 px-3 py-2 text-xs text-brand-800 dark:border-white/5 dark:bg-brand-500/10 dark:text-brand-200">
+            <span class="inline-flex items-center gap-1 font-semibold"><x-ui.icon name="scale" variant="m" class="size-4" /> Délibération du jury</span>
+            <span class="tabular-nums">jusqu'à {{ $match->deliberation_ends_at->translatedFormat('H:i') }}</span>
+        </div>
+    @endif
+
+    @if ($match->vote_code && $match->isVotingOpen())
         <div class="flex items-center justify-between border-t border-slate-100 bg-fuchsia-50 px-3 py-2 dark:border-white/5 dark:bg-fuchsia-500/10">
             <span class="text-[11px] font-semibold tracking-wide text-fuchsia-700 uppercase dark:text-fuchsia-300">Code de salle</span>
             <span class="font-display text-lg font-bold tracking-[0.3em] text-fuchsia-700 tabular-nums dark:text-fuchsia-200">{{ $match->vote_code }}</span>
@@ -63,6 +70,10 @@
                     <select name="duration" title="Durée du vote" class="rounded-lg border-0 bg-slate-50 py-1 pr-7 pl-2 text-xs ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
                         <option value="">Sans limite</option>
                         @foreach ([2, 5, 10, 15, 30] as $minutes)<option value="{{ $minutes }}">{{ $minutes }} min</option>@endforeach
+                    </select>
+                    <select name="deliberation" title="Délibération du jury après le vote" class="rounded-lg border-0 bg-slate-50 py-1 pr-7 pl-2 text-xs ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
+                        <option value="">Jury : {{ $match->stage?->deliberation_minutes ? '+'.$match->stage->deliberation_minutes.' min' : 'même délai' }}</option>
+                        @foreach ([0, 2, 5, 10] as $minutes)<option value="{{ $minutes }}">Jury : {{ $minutes ? '+'.$minutes.' min' : 'même délai' }}</option>@endforeach
                     </select>
                     <x-ui.button type="submit" size="xs" variant="soft" icon="play" class="flex-1">Ouvrir le vote</x-ui.button>
                 </form>

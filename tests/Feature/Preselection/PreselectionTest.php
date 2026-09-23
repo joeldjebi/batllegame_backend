@@ -126,7 +126,7 @@ it('ranks entries with the jury and like weights, then publishes the selection',
         likeAs($e2);
     }
 
-    expect(fn () => $service->publish($competition->preselection))->toThrow(CompetitionFlowException::class, "n'est pas terminée");
+    expect(fn () => $service->publish($competition->preselection))->toThrow(CompetitionFlowException::class, 'délibération');
 
     $competition->preselection->update(['ends_at' => now()->subMinute()]);
     expect($service->publish($competition->preselection->fresh()))->toBe(2);
@@ -139,13 +139,76 @@ it('ranks entries with the jury and like weights, then publishes the selection',
         ->and($competition->preselection->fresh()->state())->toBe(PreselectionState::Published);
 });
 
-it('requires the jury to score every entry before publishing', function () {
+it('publishes after the deliberation with the scores received: an unscored entry counts 0 for the jury', function () {
     ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(2);
-    preselectionEntry($artists[0]);
+    $criterion = Criterion::factory()->for($competition)->create(['max_points' => 10]);
+    $judge = $competition->judges()->create(['user_id' => User::factory()->create()->id, 'status' => JudgeStatus::Accepted]);
+    [$scored, $forgotten] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
+    $service = app(PreselectionService::class);
+    $service->score($judge, $scored, ['scores' => [['criterion_id' => $criterion->id, 'score' => 5]]]);
     $competition->preselection->update(['ends_at' => now()->subMinute()]);
 
-    app(PreselectionService::class)->publish($competition->preselection->fresh());
-})->throws(CompetitionFlowException::class, 'jury');
+    expect($service->unscoredCount($competition->preselection->fresh()))->toBe(1)
+        ->and($service->publish($competition->preselection->fresh()))->toBe(2)
+        ->and($forgotten->fresh()->jury_score)->toBeNull()
+        ->and($scored->fresh()->rank)->toBe(1);
+});
+
+it('follows the organizer timeline: submissions, then public vote, then jury deliberation', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(2);
+    $criterion = Criterion::factory()->for($competition)->create(['max_points' => 10]);
+    $judge = $competition->judges()->create(['user_id' => User::factory()->create()->id, 'status' => JudgeStatus::Accepted]);
+    $entry = preselectionEntry($artists[0]);
+    $service = app(PreselectionService::class);
+    $preselection = $competition->preselection;
+    $preselection->update(['ends_at' => now()->addHour(), 'vote_ends_at' => now()->addHours(3), 'deliberation_hours' => 24]);
+    $likeUrl = "/api/competitions/{$competition->slug}/preselection/entries/{$entry->id}/like";
+    $scoreUrl = route('jury.competitions.preselection.scores.store', [$competition, $entry]);
+    $score = ['scores' => [['criterion_id' => $criterion->id, 'score' => 7]]];
+
+    // Submissions open: likes open too.
+    expect($preselection->fresh()->state())->toBe(PreselectionState::Open);
+    $this->actingAs(User::factory()->create(), 'sanctum')->postJson($likeUrl)->assertCreated();
+
+    // Public vote: no new submission, likes still allowed, jury scores.
+    $this->travel(2)->hours();
+    expect($preselection->fresh()->state())->toBe(PreselectionState::Voting)
+        ->and(fn () => preselectionEntry($artists[1]))->toThrow(CompetitionFlowException::class);
+    $this->actingAs(User::factory()->create(), 'sanctum')->postJson($likeUrl)->assertCreated();
+
+    // Deliberation: likes closed, the jury still scores, publication not yet possible.
+    $this->travel(2)->hours();
+    expect($preselection->fresh()->state())->toBe(PreselectionState::Deliberation);
+    $this->actingAs(User::factory()->create(), 'sanctum')->postJson($likeUrl)->assertForbidden();
+    $this->actingAs($judge->user, 'jury')->post($scoreUrl, $score)->assertSessionHasNoErrors();
+    expect(fn () => $service->publish($preselection->fresh()))->toThrow(CompetitionFlowException::class, 'délibération');
+
+    // Deliberation over: scores locked, the organizer publishes.
+    $this->travel(1)->days();
+    expect($preselection->fresh()->state())->toBe(PreselectionState::Closed)
+        ->and($judge->user->can('score', $entry->fresh()))->toBeFalse()
+        ->and($service->publish($preselection->fresh()))->toBe(1)
+        ->and($entry->fresh()->likes_count)->toBe(2);
+});
+
+it('closes likes and ranks 100 % jury when the organizer disabled the public vote', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(2, ['like_weight' => 50, 'jury_weight' => 50], ['submissions_require_approval' => false, 'public_voting_enabled' => false]);
+    $criterion = Criterion::factory()->for($competition)->create(['max_points' => 10]);
+    $judge = $competition->judges()->create(['user_id' => User::factory()->create()->id, 'status' => JudgeStatus::Accepted]);
+    [$e1, $e2] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson("/api/competitions/{$competition->slug}/preselection/entries/{$e1->id}/like")
+        ->assertForbidden();
+
+    $service = app(PreselectionService::class);
+    $service->score($judge, $e1, ['scores' => [['criterion_id' => $criterion->id, 'score' => 4]]]);
+    $service->score($judge, $e2, ['scores' => [['criterion_id' => $criterion->id, 'score' => 8]]]);
+    $service->rank($competition->preselection->fresh());
+
+    expect($e2->fresh())->final_score->toBe(80.0)->rank->toBe(1)
+        ->and($competition->preselection->fresh()->effectiveWeights())->toBe(['jury' => 100, 'likes' => 0]);
+});
 
 it('blocks the first phase until the selection is published, then only selected artists compete', function () {
     ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(3, ['like_weight' => 100, 'jury_weight' => 0]);
@@ -261,4 +324,42 @@ it('unlocks the upload once the fee is paid', function () {
         ->assertOk()
         ->assertSee(route('artist.competitions.preselection.submit', $competition))
         ->assertDontSee("Plus qu'un pas pour monter sur scène", false);
+});
+
+it('never validates nor ranks the entry of an artist who has not paid', function () {
+    ['competition' => $competition, 'owner' => $owner, 'organizer' => $organizer, 'artists' => $artists] = competitionWithPreselection(2, settings: ['submissions_require_approval' => true], fee: 5000);
+    $artists->each(fn ($artist) => app(PaymentService::class)->simulate($artist->forceFill(['status' => ParticipantStatus::PaymentPending]), PaymentMethod::Wave));
+    [$paid, $refunded] = $artists->map(fn ($artist) => preselectionEntry($artist->fresh()))->all();
+    // The second payment is voided afterwards (refund, fake demo payment…).
+    $refunded->participant->payments()->delete();
+    $review = fn ($entry) => route('organizers.competitions.preselection.entries.review', [$organizer, $competition, $entry]);
+
+    $this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))
+        ->assertSee('Frais non payés')->assertSee('validation possible après paiement')->assertSee('2 prestation(s) à valider');
+
+    $this->actingAs($owner, 'web')->patch($review($refunded), ['decision' => 'approve'])->assertSessionHasErrors('flow');
+    $this->actingAs($owner, 'web')->patch($review($paid), ['decision' => 'approve'])->assertSessionHasNoErrors();
+    expect($refunded->fresh()->status)->toBe(PerformanceStatus::Pending);
+
+    // Even an entry approved before the payment was voided stays out of the ranking.
+    $refunded->forceFill(['status' => PerformanceStatus::Approved])->save();
+    app(PreselectionService::class)->rank($competition->preselection->fresh());
+
+    expect($paid->fresh()->rank)->toBe(1)->and($refunded->fresh()->rank)->toBeNull();
+});
+
+it('lists entries in an airy ranking with a detail modal to watch and review each one', function () {
+    ['competition' => $competition, 'owner' => $owner, 'organizer' => $organizer, 'artists' => $artists] = competitionWithPreselection(2, settings: ['submissions_require_approval' => true]);
+    $artists->each(fn ($artist) => preselectionEntry($artist));
+
+    $this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))
+        ->assertOk()
+        ->assertSee('Rechercher un artiste')
+        ->assertSeeInOrder(['Toutes', 'À valider', 'Validées', 'Rejetées'])
+        ->assertSee("\$dispatch('open-modal', 'entry-", false)
+        ->assertSee('Valider la prestation')
+        ->assertSee('Provenance du fichier')
+        ->assertSee("Motif (visible par l'artiste)", false)
+        ->assertSee('Configuration de la présélection')
+        ->assertDontSee('@js(', false);
 });

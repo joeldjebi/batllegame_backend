@@ -23,4 +23,6 @@
             @endforeach
         </div>
     @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::LIVE, ...$competitions->map(fn ($c) => \App\Realtime\Channel::competition($c->id))->all(), auth('member')->id() ? \App\Realtime\Channel::user(auth('member')->id()) : null]" />
 </x-layouts.portal>

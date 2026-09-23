@@ -98,6 +98,20 @@ MatchCloser::close / forfeit ──► MatchClosed (après commit)
 Les scores stockés (`match_participants.*_score`, `group_participants`) sont dénormalisés et
 **recalculables** depuis `jury_scores` et `public_votes` (`php artisan scores:recompute {slug}`).
 
+## Temps réel (Socket.IO)
+
+- **Serveur** `realtime/server.js` (Node, Socket.IO 4) : Laravel publie par `POST /publish` (secret partagé) ;
+  les clients s'abonnent aux canaux. Canaux publics libres, canaux privés via un **jeton signé HMAC** émis par
+  Laravel (`App\Realtime\RealtimeToken`) après vérification des droits de chaque compte connecté.
+- **Émission** : `App\Realtime\BroadcastModelChanges` observe les modèles clés (après commit) et appelle
+  `App\Realtime\Realtime::push()` ; les mises à jour d'une requête ou d'un job partent en **un seul appel**, sans
+  doublon ; votes, likes et notes sont limités (1 diffusion / 2 s par match ou compétition). Une panne du serveur
+  Socket.IO est journalisée, jamais bloquante.
+- **Pages** : `<x-realtime :channels="[...]" />` déclare les canaux ; les zones `data-live="clé"` sont re-rendues
+  depuis le serveur à chaque mise à jour (`resources/js/realtime.js`, Alpine morph), sauf si l'utilisateur y
+  saisit quelque chose. Les messages des canaux privés s'affichent en toasts ; un badge « En direct » indique la
+  connexion.
+
 ## Indexation
 
 Chaque liste, tableau de bord et recherche s'appuie sur un index (migration `add_listing_indexes`) :

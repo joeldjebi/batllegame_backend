@@ -126,7 +126,13 @@
                                             <span>Ta prestation</span><x-ui.badge :value="$journey['entry']->status" />
                                             <span class="inline-flex items-center gap-1 text-slate-500"><x-ui.icon name="heart" variant="m" class="size-4 text-fuchsia-500" /> {{ $journey['entry']->likes_count }} like(s)</span>
                                         </div>
-                                        @if ($journey['state'] === PreselectionState::Closed)<p class="text-slate-500">Présélection terminée : résultats bientôt.</p>@endif
+                                        @if ($journey['preselection']->acceptsLikes())
+                                            <p class="text-slate-500">Partage ton lien : le public peut liker jusqu'au {{ $journey['preselection']->voteEndsAt()->translatedFormat('d F à H:i') }}.</p>
+                                        @elseif ($journey['state'] === PreselectionState::Deliberation)
+                                            <p class="text-slate-500">Le jury délibère : résultats après le {{ $journey['preselection']->deliberationEndsAt()->translatedFormat('d F à H:i') }}.</p>
+                                        @elseif ($journey['state'] === PreselectionState::Closed)
+                                            <p class="text-slate-500">Présélection terminée : résultats bientôt.</p>
+                                        @endif
                                     @endif
                                 @elseif ($journey['playing'] && $journey['submission'])
                                     <div class="flex flex-wrap items-center gap-2"><span>{{ $journey['stage']->name }} :</span><x-ui.badge :value="$journey['submission']->status" /></div>
@@ -168,6 +174,16 @@
                             </div>
                             <h3 class="mt-4 font-display text-lg font-bold">{{ $competition->name }}</h3>
                             <p class="text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }}</p>
+                            @if (filled($competition->description))
+                                <p class="mt-3 line-clamp-3 text-sm text-slate-600 dark:text-slate-300">{{ \App\Support\RichText::excerpt($competition->description, 220) }}</p>
+                            @endif
+                            @if ($topPrize = $competition->prizeList()[0] ?? null)
+                                <p class="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                                    <x-ui.icon name="trophy" variant="s" class="mt-0.5 size-4 shrink-0 text-amber-500" />
+                                    <span><span class="font-semibold">{{ $topPrize['rank'] }} :</span> {{ $topPrize['reward'] }}@if (count($competition->prizeList()) > 1)<span class="text-amber-700/70 dark:text-amber-300/70"> · +{{ count($competition->prizeList()) - 1 }} autre(s)</span>@endif</span>
+                                </p>
+                            @endif
+                            <a href="{{ route('fan.competitions.show', $competition) }}" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 dark:text-brand-300">Voir les détails <x-ui.icon name="arrow-right" variant="m" class="size-4" /></a>
                             <dl class="mt-4 grid grid-cols-2 gap-2 text-xs">
                                 <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Frais</dt><dd class="font-semibold">{{ $fmtFee($competition) }}</dd></div>
                                 <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Inscrits</dt><dd class="font-semibold">{{ $competition->participants_count }}{{ $competition->max_participants ? ' / '.$competition->max_participants : '' }}</dd></div>
@@ -186,4 +202,6 @@
             @endif
         </section>
     </div>
+
+    <x-realtime :channels="[\App\Realtime\Channel::user($user->id), ...$participations->map(fn ($j) => \App\Realtime\Channel::competition($j['competition']->id))->all()]" />
 </x-layouts.portal>

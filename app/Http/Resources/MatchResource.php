@@ -34,6 +34,8 @@ class MatchResource extends JsonResource
             'voting_opens_at' => $this->voting_opens_at,
             'voting_closes_at' => $this->voting_closes_at,
             'voting_open' => $this->isVotingOpen(),
+            'deliberation_ends_at' => $this->deliberation_ends_at,
+            'jury_scoring_open' => $this->acceptsJuryScores(),
             // On-site: the room code displayed on screen must be sent with the vote.
             'vote_code_required' => $this->vote_code !== null,
             'is_forfeit' => $this->is_forfeit,

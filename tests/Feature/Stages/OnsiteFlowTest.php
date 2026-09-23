@@ -82,3 +82,24 @@ it('closes an on-site stage when all its matches are played', function () {
 
     expect($match->stage->fresh()->status)->toBe(StageStatus::Closed);
 });
+
+it('gives the jury the deliberation time chosen by the organizer after a live vote', function () {
+    ['phase' => $phase, 'organizer' => $organizer, 'competition' => $competition, 'owner' => $owner] = startedCompetition(CompetitionMode::OnSite);
+    $match = $phase->matches()->where('round', 1)->first();
+
+    $this->actingAs($owner)
+        ->post(route('organizers.competitions.matches.open-voting', [$organizer, $competition, $match]), ['duration' => 5, 'deliberation' => 10])
+        ->assertSessionHasNoErrors();
+
+    $match->refresh();
+    expect((int) round($match->voting_closes_at->diffInMinutes($match->deliberation_ends_at)))->toBe(10);
+
+    // Stage default, synced on the matches already open.
+    $stage = $match->stage;
+    $this->actingAs($owner)
+        ->put(route('organizers.competitions.stages.update', [$organizer, $competition, $stage]), ['voting_closes_at' => now()->addHour()->format('Y-m-d H:i'), 'deliberation_minutes' => 30])
+        ->assertSessionHasNoErrors();
+
+    expect($stage->fresh()->deliberation_minutes)->toBe(30)
+        ->and((int) round($match->fresh()->voting_closes_at->diffInMinutes($match->fresh()->deliberation_ends_at)))->toBe(30);
+});

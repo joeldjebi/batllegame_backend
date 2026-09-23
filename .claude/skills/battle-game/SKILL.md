@@ -67,6 +67,12 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
    created by someone else go through `BackOfficeAccountService` / `JudgeAccountService` (temporary password by
    SMS, shown once in the flash message, `must_change_password` enforced by `fresh.password` / `jury.access`).
 9. Every new listing / filter / sort needs an index (see `docs/architecture.md` › Indexation).
+10. **Realtime (Socket.IO)**: a change users should see live goes through `App\Realtime\BroadcastModelChanges`
+    (observer, add the model in `AppServiceProvider::registerRealtime()`), never through a direct emit. Public channels
+    (`competition.{id}`, `live`) never receive vote/like data unless `settings.showLiveResults`. A page declares its
+    channels with `<x-realtime :channels="[...]" />` and marks re-renderable areas `data-live="unique-key"` (never a
+    region holding a Trix editor; forms are safe: dirty regions are skipped). Private channels must be checked in
+    `RealtimeToken::allows()`.
 
 ## Workflow
 
@@ -104,6 +110,11 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
 - Use `BattleMatch::votingNow()` (status vote **and** window not expired) for anything shown as « en direct »;
   the scheduler may not have closed expired matches yet.
 - Do not name a Blade loop variable `$slot`/`$slots` inside components (reserved).
+- Uploads stay « en traitement » until `ProcessSubmission` runs: locally start a worker (`composer dev` or
+  `php artisan queue:work`), otherwise the organizer never gets the Valider / Rejeter buttons. Entries of unpaid artists
+  cannot be approved and are left out of `PreselectionService::rank()`.
+- Uploaded media are served from `/storage`: run `php artisan storage:link` once per machine (otherwise every player
+  shows « Lecture impossible »).
 - Local machine: Node 18 by default (use `/opt/homebrew/bin` Node 22), no ffmpeg (duration check skipped),
   PHP upload limit 2 MB, SMS written to `storage/logs/laravel.log`, login throttling is 6/min per IP.
 
@@ -115,5 +126,6 @@ php artisan db:seed --class=LocalAccountsSeeder          # SA, organizer, judge,
 php artisan db:seed --class=DemoCompetitionSeeder        # demo competitions (local only), then re-run LocalAccountsSeeder
 php artisan stages:process | matches:close-expired       # scheduler jobs (every minute in production)
 php artisan scores:recompute {slug}                      # rebuild derived scores
+composer dev                                             # server + queue + logs + Vite + Socket.IO (npm run realtime)
 php artisan route:list --except-vendor                   # 90+ routes across the 6 areas
 ```

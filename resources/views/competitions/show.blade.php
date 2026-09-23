@@ -26,6 +26,7 @@
 
     $usesJury = $competition->phases->contains(fn ($p) => $p->rules->usesJury());
     $checklist = [
+        ['Description et récompenses', filled($competition->description) && $competition->prizeList() !== []],
         ['Au moins une phase', $competition->phases->isNotEmpty()],
         ['Critères de notation', ! $usesJury || $competition->criteria->isNotEmpty()],
         ['Au moins un juré', ! $usesJury || $competition->judges->isNotEmpty()],
@@ -37,6 +38,7 @@
 @endphp
 
 <x-layouts.app :title="$competition->name">
+    <div data-live="summary">
     <x-ui.page-header :title="$competition->name" :breadcrumbs="['Tableau de bord' => route('dashboard'), $organizer->name => route('organizers.show', $organizer), $competition->name => null]">
         <x-slot:leading>
             <span class="hidden size-14 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-lift sm:grid">
@@ -99,6 +101,7 @@
         <x-ui.stat label="Matchs joués" :value="$played.' / '.$matches->count()" icon="bolt" tone="red" :progress="$matches->count() ? $played / $matches->count() * 100 : null" :hint="$voting ? $voting.' vote(s) en cours' : 'Aucun vote en cours'" />
         <x-ui.stat label="Jury" :value="$competition->judges->count()" icon="scale" tone="green" :hint="$competition->criteria->count().' critère(s) de notation'" />
     </div>
+    </div>
 
     <x-ui.tabs key="competition" :tabs="[
         'overview' => ['label' => 'Aperçu', 'icon' => 'home'],
@@ -110,6 +113,7 @@
     ]">
         {{-- Overview --}}
         <x-ui.tab-panel name="overview">
+            <div data-live="tab-overview">
             <div class="grid gap-6 xl:grid-cols-3">
                 <x-ui.card title="Déroulé" description="Les phases s'enchaînent dans cet ordre" icon="queue-list" class="xl:col-span-2">
                     @forelse ($competition->phases as $phase)
@@ -180,10 +184,12 @@
                     </x-ui.card>
                 </div>
             </div>
+            </div>
         </x-ui.tab-panel>
 
         {{-- Phases & matches --}}
         <x-ui.tab-panel name="phases" class="space-y-6">
+            <div data-live="tab-phases">
             @if ($canUpdate)
                 <div class="flex justify-end">
                     <x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>
@@ -253,15 +259,19 @@
                     @if ($canUpdate)<x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>@endif
                 </x-ui.empty>
             @endforelse
+            </div>
         </x-ui.tab-panel>
 
         {{-- Pre-selection --}}
         <x-ui.tab-panel name="preselection">
+            <div data-live="tab-preselection">
             <x-bo.preselection-panel :competition="$competition" :organizer="$organizer" :can-update="$canUpdate" :can-run="$canRun" />
+            </div>
         </x-ui.tab-panel>
 
         {{-- Participants --}}
         <x-ui.tab-panel name="participants">
+            <div data-live="tab-participants">
             <x-ui.card title="Participants" description="Validez les inscriptions et attribuez les têtes de série" icon="users"
                 x-data="{ search: '', status: '' }">
                 <x-slot:actions>
@@ -325,10 +335,12 @@
                     </x-ui.table>
                 @endif
             </x-ui.card>
+            </div>
         </x-ui.tab-panel>
 
         {{-- Jury & criteria --}}
         <x-ui.tab-panel name="jury">
+            <div data-live="tab-jury">
             <div class="grid gap-6 xl:grid-cols-2">
                 <x-ui.card title="Jury" description="Les jurés notent depuis l'application mobile" icon="scale">
                     @if ($canUpdate)
@@ -379,11 +391,12 @@
                     @endforelse
                 </x-ui.card>
             </div>
+            </div>
         </x-ui.tab-panel>
 
         {{-- Settings --}}
         <x-ui.tab-panel name="settings">
-            <form method="POST" action="{{ route('organizers.competitions.update', [$organizer, $competition]) }}" class="grid gap-6 xl:grid-cols-3">
+            <form method="POST" action="{{ route('organizers.competitions.update', [$organizer, $competition]) }}" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 @csrf @method('PUT')
                 <x-ui.card title="Informations générales" icon="pencil-square" class="xl:col-span-2">
                     <fieldset @disabled(! $canUpdate) class="grid gap-5 sm:grid-cols-2">
@@ -409,6 +422,37 @@
                         <div class="px-3 pt-2">
                             <x-ui.input name="settings[timezone]" label="Fuseau horaire" :value="$settings->timezone" icon="globe-alt" />
                         </div>
+                    </fieldset>
+                </x-ui.card>
+
+                <x-ui.card title="Présentation" icon="document-text" class="xl:col-span-2" description="Ce que les artistes et le public liront avant de s'inscrire : l'esprit, le déroulé, les règles.">
+                    <fieldset @disabled(! $canUpdate) class="min-w-0">
+                        <x-ui.rich-editor name="description" :value="$competition->description" placeholder="Présentez votre compétition : concept, déroulé, règles, lieu…" hint="Gras, italique, titres, listes, citations et liens. Obligatoire pour ouvrir les inscriptions." />
+                    </fieldset>
+                </x-ui.card>
+
+                @php($prizeRows = old('prizes', $competition->prizeList() ?: [['rank' => '1er prix', 'reward' => '']]))
+                <x-ui.card title="Récompenses" icon="gift" description="Dans l'ordre du classement.">
+                    <fieldset @disabled(! $canUpdate) x-data="{ prizes: @js(array_values($prizeRows)) }" class="space-y-3">
+                        <template x-for="(prize, index) in prizes" :key="index">
+                            <div class="flex items-start gap-2 rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
+                                <span class="mt-1.5 grid size-7 shrink-0 place-items-center rounded-lg bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" x-text="index + 1"></span>
+                                <div class="min-w-0 flex-1 space-y-1.5">
+                                    <input type="text" :name="`prizes[${index}][rank]`" x-model="prize.rank" maxlength="60" placeholder="Rang (ex. 1er prix)"
+                                        class="block w-full rounded-lg border-0 bg-white py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10">
+                                    <input type="text" :name="`prizes[${index}][reward]`" x-model="prize.reward" maxlength="255" placeholder="Ex. 500 000 XOF + clip vidéo"
+                                        class="block w-full rounded-lg border-0 bg-white py-2 text-sm text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-white dark:ring-white/10">
+                                </div>
+                                <button type="button" x-on:click="prizes.splice(index, 1)" x-show="prizes.length > 1" class="mt-1.5 rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" title="Retirer">
+                                    <x-ui.icon name="trash" variant="m" class="size-4" />
+                                </button>
+                            </div>
+                        </template>
+                        <button type="button" x-on:click="prizes.push({ rank: `${prizes.length + 1}e prix`, reward: '' })" x-show="prizes.length < 20"
+                            class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 dark:border-white/15 dark:text-slate-300">
+                            <x-ui.icon name="plus" variant="m" class="size-4" /> Ajouter une récompense
+                        </button>
+                        @error('prizes')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
                     </fieldset>
                 </x-ui.card>
 
@@ -545,4 +589,6 @@
             </form>
         </x-ui.modal>
     @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::backOffice($competition->id)]" />
 </x-layouts.app>

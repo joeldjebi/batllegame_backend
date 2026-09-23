@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A battle between two participants. Named BattleMatch because "match" is a PHP keyword.
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'phase_id', 'group_id', 'stage_id', 'bracket', 'round', 'bracket_position',
     'next_match_id', 'next_match_slot', 'loser_next_match_id', 'loser_next_match_slot',
-    'scheduled_at', 'submission_deadline', 'voting_opens_at', 'voting_closes_at',
+    'scheduled_at', 'submission_deadline', 'voting_opens_at', 'voting_closes_at', 'deliberation_ends_at',
 ])]
 class BattleMatch extends Model
 {
@@ -52,6 +53,7 @@ class BattleMatch extends Model
             'submission_deadline' => 'datetime',
             'voting_opens_at' => 'datetime',
             'voting_closes_at' => 'datetime',
+            'deliberation_ends_at' => 'datetime',
             'closed_at' => 'datetime',
             'is_forfeit' => 'boolean',
         ];
@@ -215,10 +217,38 @@ class BattleMatch extends Model
         return $this->group_id !== null;
     }
 
+    /**
+     * Public vote window (the jury may keep scoring during the deliberation).
+     */
     public function isVotingOpen(): bool
     {
         return $this->status === MatchStatus::Voting
             && ($this->voting_opens_at === null || $this->voting_opens_at->isPast())
             && ($this->voting_closes_at === null || $this->voting_closes_at->isFuture());
+    }
+
+    /**
+     * Last moment for jury scores: end of the deliberation, else the end of the vote.
+     */
+    public function juryDeadline(): ?Carbon
+    {
+        return $this->deliberation_ends_at ?? $this->voting_closes_at;
+    }
+
+    public function acceptsJuryScores(): bool
+    {
+        return $this->status === MatchStatus::Voting
+            && ($this->voting_opens_at === null || $this->voting_opens_at->isPast())
+            && ($this->juryDeadline() === null || $this->juryDeadline()->isFuture());
+    }
+
+    /**
+     * Public vote closed, jury still deliberating.
+     */
+    public function isDeliberating(): bool
+    {
+        return $this->status === MatchStatus::Voting
+            && $this->voting_closes_at?->isPast()
+            && $this->deliberation_ends_at?->isFuture() === true;
     }
 }

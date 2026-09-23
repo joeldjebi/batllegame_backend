@@ -27,7 +27,7 @@
                     {{ $tab['label'] }}
                     @isset($tab['count'])
                         <span :class="tab === @js($name) ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'"
-                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums">{{ $tab['count'] }}</span>
+                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"><span data-live="tab-count-{{ $name }}">{{ $tab['count'] }}</span></span>
                     @endisset
                 </button>
             @endforeach

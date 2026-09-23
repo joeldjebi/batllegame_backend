@@ -17,13 +17,26 @@ class PreselectionRequest extends FormRequest
         return [
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
+            'vote_ends_at' => ['nullable', 'date', 'after_or_equal:ends_at'],
+            'deliberation_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
             'rules' => ['nullable', 'array'],
         ];
     }
 
+    /**
+     * Validated data with the timeline defaults: the vote ends with the submissions,
+     * no extra deliberation time.
+     *
+     * @return array<string, mixed>
+     */
+    public function preselectionData(): array
+    {
+        return [...$this->validated(), 'deliberation_hours' => (int) $this->validated('deliberation_hours', 0)];
+    }
+
     public function attributes(): array
     {
-        return ['starts_at' => 'début de la présélection', 'ends_at' => 'fin de la présélection'];
+        return ['starts_at' => 'début de la présélection', 'ends_at' => 'fin des envois', 'vote_ends_at' => 'fin du vote', 'deliberation_hours' => 'durée de délibération'];
     }
 
     /**

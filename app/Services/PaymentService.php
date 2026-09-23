@@ -24,7 +24,11 @@ class PaymentService
             $participant = Participant::query()->lockForUpdate()->findOrFail($participant->id);
             $competition = $participant->competition;
 
-            if ($participant->status !== ParticipantStatus::PaymentPending || ! $competition->requiresPayment()) {
+            // A registration made before the fee was set (still « inscrit ») must pay too.
+            $due = $participant->status === ParticipantStatus::PaymentPending
+                || ($participant->status === ParticipantStatus::Registered && ! $participant->hasPaid());
+
+            if (! $due || ! $competition->requiresPayment()) {
                 throw CompetitionFlowException::nothingToPay();
             }
 
@@ -43,7 +47,7 @@ class PaymentService
                 'failure_reason' => $succeeds ? null : 'Paiement refusé (simulation).',
             ])->save();
 
-            if ($succeeds) {
+            if ($succeeds && $participant->status === ParticipantStatus::PaymentPending) {
                 $participant->update(['status' => $competition->participantStatusAfterRegistration()]);
             }
 

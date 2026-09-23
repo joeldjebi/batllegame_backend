@@ -23,7 +23,7 @@ class PaymentController extends Controller
     {
         $participant = $this->participantOf($request, $competition);
 
-        if ($participant->status !== ParticipantStatus::PaymentPending) {
+        if ($participant->hasPaid() || ! in_array($participant->status, [ParticipantStatus::PaymentPending, ParticipantStatus::Registered], true)) {
             return redirect()->route('artist.dashboard');
         }
 

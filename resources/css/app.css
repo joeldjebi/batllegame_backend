@@ -176,3 +176,33 @@
         border-top: 1px dashed rgb(148 163 184 / 0.6);
     }
 }
+
+@layer components {
+    /* --- Rich text (organizer descriptions) ----------------------------------- */
+    .rich-text > * + * { margin-top: 0.75em; }
+    .rich-text h1 { font-size: 1.125rem; font-weight: 700; color: var(--color-slate-900); }
+    .rich-text strong, .rich-text b { font-weight: 600; color: var(--color-slate-900); }
+    .dark .rich-text h1, .dark .rich-text strong, .dark .rich-text b { color: var(--color-white); }
+    .rich-text a { color: var(--color-brand-600); text-decoration: underline; text-underline-offset: 2px; }
+    .rich-text ul { list-style: disc; padding-left: 1.25rem; }
+    .rich-text ol { list-style: decimal; padding-left: 1.25rem; }
+    .rich-text li + li { margin-top: 0.25em; }
+    .rich-text blockquote { border-left: 3px solid var(--color-brand-500); padding-left: 0.875rem; font-style: italic; }
+    .rich-text pre { border-radius: 0.5rem; background: var(--color-slate-100); padding: 0.75rem; font-size: 0.8125rem; white-space: pre-wrap; }
+    .dark .rich-text pre { background: rgb(255 255 255 / 0.05); }
+
+}
+
+/* --- Trix editor chrome (unlayered: must beat trix.css, which is unlayered too) --- */
+trix-toolbar.trix-toolbar, trix-toolbar { margin-bottom: -1px; border: 1px solid var(--color-slate-200); border-bottom: 0; border-radius: 0.75rem 0.75rem 0 0; background: var(--color-slate-50); padding: 0.5rem; }
+trix-toolbar .trix-button-row { flex-wrap: wrap; gap: 0.375rem; overflow: visible; justify-content: flex-start; }
+trix-toolbar .trix-button-group { margin: 0 !important; border: 1px solid var(--color-slate-200); border-radius: 0.625rem; overflow: hidden; background: var(--color-white); }
+trix-toolbar .trix-button-group--file-tools, trix-toolbar .trix-button-group-spacer, trix-toolbar .trix-button--icon-attach { display: none !important; }
+trix-toolbar .trix-button { border: 0; border-left: 1px solid var(--color-slate-200); height: 2.25rem; }
+trix-toolbar .trix-button:first-child { border-left: 0; }
+trix-toolbar .trix-button.trix-active { background: var(--color-brand-100); }
+trix-editor.rich-editor { border: 0; border-radius: 0 0 0.75rem 0.75rem; min-height: 10rem; max-height: 32rem; overflow-y: auto; }
+trix-editor.rich-editor:empty:not(:focus)::before { color: var(--color-slate-400); }
+.dark trix-toolbar { border-color: rgb(255 255 255 / 0.1); background: rgb(255 255 255 / 0.03); }
+.dark trix-toolbar .trix-button-group { border-color: rgb(255 255 255 / 0.1); background: var(--color-slate-200); }
+@media (max-width: 640px) { trix-toolbar .trix-button-group--history-tools { display: none; } }

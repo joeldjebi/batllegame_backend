@@ -53,6 +53,7 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                 Route::patch('members/{member}', [OrganizerMemberController::class, 'update'])->name('members.update');
                 Route::delete('members/{member}', [OrganizerMemberController::class, 'destroy'])->name('members.destroy');
 
+                Route::get('competitions', [CompetitionController::class, 'index'])->name('competitions.index');
                 Route::post('competitions', [CompetitionController::class, 'store'])->name('competitions.store');
 
                 Route::prefix('competitions/{competition}')->name('competitions.')->group(function () {
@@ -60,6 +61,7 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                     Route::put('/', [CompetitionController::class, 'update'])->name('update');
                     Route::patch('status', [CompetitionController::class, 'updateStatus'])->name('status');
                     Route::delete('/', [CompetitionController::class, 'destroy'])->name('destroy');
+                    Route::post('duplicate', [CompetitionController::class, 'duplicate'])->name('duplicate');
 
                     Route::post('phases', [PhaseController::class, 'store'])->name('phases.store');
                     Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');

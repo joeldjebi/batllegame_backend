@@ -8,8 +8,10 @@ use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
 use App\Enums\ParticipantStatus;
 use App\Models\Concerns\HasUniqueSlug;
+use App\Support\RichText;
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * organizer_id and created_by are set explicitly by the application, never mass assigned.
  */
-#[Fillable(['name', 'slug', 'discipline', 'mode', 'status', 'registration_ends_at', 'max_participants', 'entry_fee', 'currency', 'settings'])]
+#[Fillable(['name', 'slug', 'description', 'prizes', 'discipline', 'mode', 'status', 'registration_ends_at', 'max_participants', 'entry_fee', 'currency', 'settings'])]
 class Competition extends Model
 {
     /** @use HasFactory<CompetitionFactory> */
@@ -46,7 +48,28 @@ class Competition extends Model
             'max_participants' => 'integer',
             'entry_fee' => 'integer',
             'settings' => CompetitionSettings::class,
+            'prizes' => 'array',
         ];
+    }
+
+    /**
+     * Organizer rich text, always stored sanitized.
+     *
+     * @return Attribute<?string, ?string>
+     */
+    protected function description(): Attribute
+    {
+        return Attribute::make(set: fn (?string $value) => RichText::sanitize($value));
+    }
+
+    /**
+     * Rewards in display order, empty rows removed.
+     *
+     * @return list<array{rank: string, reward: string}>
+     */
+    public function prizeList(): array
+    {
+        return array_values(array_filter((array) $this->prizes, fn ($p) => filled($p['reward'] ?? null)));
     }
 
     /**

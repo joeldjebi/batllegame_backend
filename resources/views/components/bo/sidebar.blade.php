@@ -44,7 +44,7 @@
                         </a>
                         @if ($isCurrent)
                             <div class="mt-1 ml-5 space-y-0.5 border-l border-slate-200 pl-3 dark:border-white/10">
-                                <a href="{{ route('organizers.show', $navOrganizer) }}#competitions" class="block rounded-lg px-2 py-1.5 text-[13px] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Compétitions</a>
+                                <a href="{{ route('organizers.competitions.index', $navOrganizer) }}" @class(['block rounded-lg px-2 py-1.5 text-[13px]', 'bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-200' => request()->routeIs('organizers.competitions.index'), 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white' => ! request()->routeIs('organizers.competitions.index')])>Compétitions</a>
                                 @if ($currentCompetition)
                                     <a href="{{ route('organizers.competitions.show', [$navOrganizer, $currentCompetition]) }}" class="flex items-center gap-1.5 rounded-lg bg-brand-50 px-2 py-1.5 text-[13px] font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
                                         <x-ui.icon name="trophy" variant="m" class="size-3.5" /><span class="truncate">{{ $currentCompetition->name }}</span>

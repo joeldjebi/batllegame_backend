@@ -63,7 +63,8 @@ class CompetitionController extends Controller
             'matches' => $matches->map(fn (BattleMatch $match) => [
                 ...(new MatchResource($match))->resolve($request),
                 'scored_participants' => $scored->get($match->id, collect())->pluck('participant_id'),
-                'to_score' => $match->status === MatchStatus::Voting && $match->phase->rules->usesJury(),
+                'to_score' => $match->acceptsJuryScores() && $match->phase->rules->usesJury(),
+                'deliberation_ends_at' => $match->deliberation_ends_at,
             ]),
         ]);
     }

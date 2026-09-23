@@ -25,7 +25,9 @@ class StageController extends Controller
             'submission_deadline' => ['nullable', 'date'],
             'voting_opens_at' => ['nullable', 'date', 'after_or_equal:submission_deadline'],
             'voting_closes_at' => ['nullable', 'date', 'after:voting_opens_at', 'after:submission_deadline', 'after:now'],
+            'deliberation_minutes' => ['nullable', 'integer', 'min:0', 'max:10080'],
         ]);
+        $validated['deliberation_minutes'] = (int) ($validated['deliberation_minutes'] ?? 0);
 
         $this->stages->schedule($stage, $validated);
 

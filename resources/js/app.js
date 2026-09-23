@@ -2,10 +2,17 @@ import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import focus from '@alpinejs/focus';
 import intersect from '@alpinejs/intersect';
+import { setupRealtime } from './realtime';
 
 Alpine.plugin(collapse);
 Alpine.plugin(focus);
 Alpine.plugin(intersect);
+
+// Rich text editor, loaded only on pages that use <x-ui.rich-editor>. File attachments are disabled.
+if (document.querySelector('trix-editor')) {
+    Promise.all([import('trix'), import('trix/dist/trix.css')]);
+    document.addEventListener('trix-file-accept', (event) => event.preventDefault());
+}
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -134,7 +141,7 @@ Alpine.data('countdown', (iso) => ({
         if (s === 0) return 'Terminé';
         const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
         const pad = (n) => String(n).padStart(2, '0');
-        return d > 0 ? `${d} j ${pad(h)} h ${pad(m)} min` : `${pad(h)} h ${pad(m)} min ${pad(sec)} s`;
+        return d > 0 ? `${d} j ${pad(h)} h ${pad(m)} min ${pad(sec)} s` : `${pad(h)} h ${pad(m)} min ${pad(sec)} s`;
     },
 }));
 
@@ -161,4 +168,5 @@ Alpine.data('dropzone', (maxMb) => ({
 }));
 
 window.Alpine = Alpine;
+setupRealtime(Alpine);
 Alpine.start();

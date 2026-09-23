@@ -93,6 +93,11 @@ class PreselectionSubmission extends Model implements ReviewableMedia
         return $this->preselection->rules->mediaMaxDuration;
     }
 
+    public function submissionWindow(): array
+    {
+        return [$this->preselection?->starts_at, $this->preselection?->ends_at];
+    }
+
     public function requiresReview(): bool
     {
         return $this->competition->settings->submissionsRequireApproval;

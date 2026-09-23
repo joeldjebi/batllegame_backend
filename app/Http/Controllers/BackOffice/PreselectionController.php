@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\BackOffice;
 
 use App\Enums\PerformanceStatus;
+use App\Exceptions\CompetitionFlowException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BackOffice\PreselectionRequest;
 use App\Models\Competition;
@@ -27,7 +28,7 @@ class PreselectionController extends Controller
     {
         $this->authorize('update', $competition);
 
-        $preselection = $this->preselections->configure($competition, $request->validated());
+        $preselection = $this->preselections->configure($competition, $request->preselectionData());
 
         return back()->with('status', $preselection->wasRecentlyCreated
             ? 'Présélection créée : les artistes inscrits pourront soumettre leur prestation pendant la période.'
@@ -45,6 +46,11 @@ class PreselectionController extends Controller
 
         if ($entry->status === PerformanceStatus::Processing) {
             throw ValidationException::withMessages(['decision' => 'Le média est encore en cours de traitement.']);
+        }
+
+        // Only paid artists compete (their entry may predate a refund or a payment fix).
+        if ($validated['decision'] === 'approve' && ! $entry->participant->hasPaid()) {
+            throw CompetitionFlowException::entryUnpaid();
         }
 
         $validated['decision'] === 'approve'

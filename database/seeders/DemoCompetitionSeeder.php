@@ -154,7 +154,7 @@ class DemoCompetitionSeeder extends Seeder
 
         $stages = app(StageService::class);
         $first = $phase->stages()->first();
-        $stages->schedule($first, ['submission_deadline' => now()->addDays(2), 'voting_closes_at' => now()->addDays(4)]);
+        $stages->schedule($first, ['submission_deadline' => now()->addDays(2), 'voting_closes_at' => now()->addDays(4), 'deliberation_minutes' => 1440]);
         $stages->openSubmissions($first);
     }
 
@@ -172,16 +172,20 @@ class DemoCompetitionSeeder extends Seeder
         app(PreselectionService::class)->configure($competition, [
             'starts_at' => now()->subHour(),
             'ends_at' => now()->addDays(5),
+            'vote_ends_at' => now()->addDays(6),
+            'deliberation_hours' => 24,
             'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 4, 'media_types' => ['video', 'audio'], 'media_max_duration' => 180, 'media_max_size_mb' => 100],
         ]);
 
-        // Existing demo registrations count as paid (simulated payment record); they can now submit.
-        $competition->participants()->where('status', ParticipantStatus::Validated)->update(['status' => ParticipantStatus::Registered]);
+        // Demo registrations count as paid (simulated payment record); they can now submit.
+        // Real accounts registered on the same competition are left untouched: they must pay.
+        $competition->participants()->whereIn('user_id', $this->demoArtistIds())
+            ->where('status', ParticipantStatus::Validated)->update(['status' => ParticipantStatus::Registered]);
         $this->recordDemoPayments($competition);
     }
 
     /**
-     * Simulated paid payment for every registered artist of a paid competition.
+     * Simulated paid payment for every registered demo artist of a paid competition.
      */
     public function recordDemoPayments(Competition $competition): void
     {
@@ -190,6 +194,7 @@ class DemoCompetitionSeeder extends Seeder
         }
 
         $competition->participants()
+            ->whereIn('user_id', $this->demoArtistIds())
             ->where('status', ParticipantStatus::Registered)
             ->whereDoesntHave('payments', fn ($q) => $q->where('status', PaymentStatus::Paid))
             ->get()
@@ -205,6 +210,20 @@ class DemoCompetitionSeeder extends Seeder
             });
     }
 
+    /**
+     * Ids of the artists created by this seeder (never a real account).
+     *
+     * @return list<int>
+     */
+    private function demoArtistIds(): array
+    {
+        $country = Country::query()->where('iso2', 'CI')->firstOrFail();
+        $phones = collect(array_keys(self::ARTISTS))
+            ->map(fn (int $i) => $country->toE164('07'.str_pad((string) (10000000 + $i), 8, '0', STR_PAD_LEFT)));
+
+        return User::query()->whereIn('phone', $phones)->pluck('id')->all();
+    }
+
     private function password(): string
     {
         static $hash = null;
@@ -212,11 +231,32 @@ class DemoCompetitionSeeder extends Seeder
         return $hash ??= Hash::make('password');
     }
 
+    /**
+     * Demo description and rewards (also used to backfill existing demo competitions).
+     *
+     * @return array{description: string, prizes: list<array{rank: string, reward: string}>}
+     */
+    public static function presentation(string $name, Discipline $discipline): array
+    {
+        return [
+            'description' => "<h1>{$name}</h1><div><strong>La scène {$discipline->label()} qui révèle les talents d'Abidjan.</strong> Des passages chronométrés, un jury de professionnels et <em>le vote du public</em> à chaque étape.</div>"
+                .'<ul><li>Inscription en ligne, prestation vidéo ou audio</li><li>Présélection : likes du public et note du jury</li><li>Battles en direct jusqu\'à la grande finale</li></ul>'
+                .'<blockquote>Fair-play obligatoire : tout contenu offensant entraîne la disqualification.</blockquote>',
+            'prizes' => [
+                ['rank' => '1er prix', 'reward' => '1 000 000 XOF + enregistrement d\'un single en studio'],
+                ['rank' => '2e prix', 'reward' => '500 000 XOF'],
+                ['rank' => '3e prix', 'reward' => '250 000 XOF'],
+                ['rank' => 'Prix du public', 'reward' => 'Tournage d\'un clip vidéo'],
+            ],
+        ];
+    }
+
     private function competition(Organizer $organizer, string $name, Discipline $discipline, CompetitionMode $mode, CompetitionStatus $status, int $max, int $fee = 0): Competition
     {
         $competition = new Competition([
             'name' => $name, 'slug' => Competition::uniqueSlug($name), 'discipline' => $discipline, 'mode' => $mode,
             'status' => $status, 'max_participants' => $max, 'entry_fee' => $fee, 'registration_ends_at' => now()->addWeeks(2),
+            ...self::presentation($name, $discipline),
         ]);
         $competition->organizer()->associate($organizer);
         $competition->creator()->associate($organizer->users()->first());

@@ -242,7 +242,7 @@
         </section>
 
         {{-- Live votes --}}
-        <section id="direct" class="scroll-mt-20 bg-slate-50 py-24 dark:bg-white/[0.02]">
+        <section id="direct" data-live="landing-live" class="scroll-mt-20 bg-slate-50 py-24 dark:bg-white/[0.02]">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="reveal flex flex-wrap items-end justify-between gap-4" x-data x-intersect.once="$el.classList.add('is-visible')">
                     <div>
@@ -283,7 +283,7 @@
         </section>
 
         {{-- Competitions --}}
-        <section id="competitions" class="scroll-mt-20 py-24">
+        <section id="competitions" data-live="landing-competitions" class="scroll-mt-20 py-24">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="reveal" x-data x-intersect.once="$el.classList.add('is-visible')">
                     <h2 class="font-display text-4xl font-extrabold tracking-tight">Compétitions en cours</h2>
@@ -482,5 +482,13 @@
             <span>© {{ date('Y') }} Battle Game</span>
         </div>
     </footer>
+
+    <x-realtime :channels="[\App\Realtime\Channel::LIVE]" />
+
+    {{-- Signed-in members and judges keep their mobile tab bar, « Accueil » selected. --}}
+    @if ($member || auth('jury')->check())
+        <div class="h-20 sm:hidden"></div>
+        <x-portal.bottom-nav :portal="$member ? 'artist' : 'jury'" />
+    @endif
 </body>
 </html>

@@ -48,7 +48,7 @@ class ParticipationController extends Controller
             'media.max' => "Le fichier dépasse la taille maximale de {$rules->mediaMaxSizeMb} Mo.",
         ]);
 
-        $submissions->submit($participant, $stage, $request->file('media'));
+        $submissions->submit($participant, $stage, $request->file('media'), SubmissionService::clientModifiedAt($request));
 
         return back()->with('status', 'Votre prestation a bien été envoyée.');
     }

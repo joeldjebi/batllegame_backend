@@ -51,7 +51,7 @@ class SubmissionController extends Controller
             'media.max' => "Le fichier dépasse la taille maximale de {$rules->mediaMaxSizeMb} Mo.",
         ]);
 
-        $performance = $submissions->submit($participant, $stage, $request->file('media'));
+        $performance = $submissions->submit($participant, $stage, $request->file('media'), SubmissionService::clientModifiedAt($request));
 
         return response()->json([
             'message' => 'Soumission reçue.',

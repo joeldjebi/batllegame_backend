@@ -17,7 +17,7 @@ countries ─< users ─< organizer_members >─ organizers ─< competitions
                                                                    └─ next_match_id/slot, loser_next_match_id/slot (self)
 performances (competition_id, stage_id, match_id?, participant_id, turn, media_*, source, status, reviewed_*)
 payments (competition_id, participant_id, user_id, amount, currency, method, provider=simulation, reference, status, paid_at)
-preselections (competition_id unique, starts_at, ends_at, rules jsonb, published_at)
+preselections (competition_id unique, starts_at, ends_at, vote_ends_at, deliberation_hours, rules jsonb, published_at)
   ├─< preselection_submissions (participant unique, media_*, status, likes_count/jury_score/like_score/final_score/rank/selected — derived)
   │     ├─< preselection_likes (user unique per preselection)
   │     └─< preselection_scores (judge, criterion)
@@ -29,12 +29,12 @@ preselections (competition_id unique, starts_at, ends_at, rules jsonb, published
 | `countries` | `iso2`/`iso3` unique, `dial_code`, `phone_min_length`/`phone_max_length`, `is_active` (only CI active by default) |
 | `organizers` | `slug` unique (route key), `status`, `verified_at`, `plan` |
 | `organizer_members` | unique(`organizer_id`,`user_id`), `role` |
-| `competitions` | `organizer_id` (restrict), `created_by` (null on delete), `slug` **globally** unique, `mode`, `status`, `settings` jsonb, `entry_fee` int + `currency`, soft deletes |
+| `competitions` | `organizer_id` (restrict), `created_by` (null on delete), `slug` **globally** unique, `mode`, `status`, `settings` jsonb, `entry_fee` int + `currency`, `description` text (sanitized HTML), `prizes` jsonb `[{rank, reward}]` in rank order, soft deletes |
 | `phases` | unique(`competition_id`,`position`), `type`, `mode` nullable (inherit), `qualifiers_per_group`, `rules` jsonb, `started_at` (freezes rules) |
-| `stages` | unique(`phase_id`,`number`), `name`, `status`, `submission_deadline`, `voting_opens_at`, `voting_closes_at`, `forfeits_applied_at` |
+| `stages` | unique(`phase_id`,`number`), `name`, `status`, `submission_deadline`, `voting_opens_at`, `voting_closes_at`, `deliberation_minutes`, `forfeits_applied_at` |
 | `participants` | unique(`competition_id`,`user_id`), `stage_name`, `seed` |
 | `group_participants` | unique(`group_id`,`participant_id`), `points`,`wins`,`draws`,`losses`,`score_diff`,`rank` — **derived** |
-| `matches` | `bracket` (null for groups), `round`, `bracket_position`, next/loser links, `status`, `winner_id` (null = draw or void), `is_forfeit`, `vote_code`, voting window |
+| `matches` | `bracket` (null for groups), `round`, `bracket_position`, next/loser links, `status`, `winner_id` (null = draw or void), `is_forfeit`, `vote_code`, voting window, `deliberation_ends_at` (jury deadline) |
 | `match_participants` | unique(`match_id`,`slot`), scores **derived** |
 | `jury_scores` | unique(`match_id`,`judge_id`,`participant_id`,`criterion_id`) |
 | `public_votes` | unique(`match_id`,`user_id`), index (`match_id`,`device_id`) |
@@ -56,7 +56,7 @@ participations/votes/judge roles, on judges/criteria already used in `jury_score
 - `Phase`: `rules` (PhaseRules), `effectiveMode()`, `isFrozen()`, `markAsStarted()`, `nextPhase()`, `stages()`.
 - `Stage`: `playableMatches()`, `participantIds()`, `participantFor(User)`, `isOnline()`, `acceptsSubmissions()`, `isDeadlinePassed()`.
 - `Participant::currentStage()`, `User::roleIn()`, `hasOrganizerPermission()`, `isJudgeOf()`, `isParticipantOf()`, `isPlatformAdmin()`.
-- `Competition`: `settings` (CompetitionSettings), `stages()` (hasManyThrough phases), `performances()`, `isRegistrationOpen()`, `uniqueSlug()`.
+- `Competition`: `settings` (CompetitionSettings), `stages()` (hasManyThrough phases), `performances()`, `isRegistrationOpen()`, `uniqueSlug()`, `prizeList()` (non-empty rewards, in order).
 - Pivots with ids: `OrganizerMember` (`membership`), `GroupParticipant` (`standing`), `MatchParticipant` (`slot`).
 
 ## Enums (case = value)

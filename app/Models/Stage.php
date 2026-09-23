@@ -10,12 +10,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Matches played at the same time within a phase (the whole phase for groups,
  * one bracket round for elimination). One submission per participant and stage.
  */
-#[Fillable(['number', 'name', 'submission_deadline', 'voting_opens_at', 'voting_closes_at'])]
+#[Fillable(['number', 'name', 'submission_deadline', 'voting_opens_at', 'voting_closes_at', 'deliberation_minutes'])]
 class Stage extends Model
 {
     /**
@@ -33,6 +34,7 @@ class Stage extends Model
             'submission_deadline' => 'datetime',
             'voting_opens_at' => 'datetime',
             'voting_closes_at' => 'datetime',
+            'deliberation_minutes' => 'integer',
             'forfeits_applied_at' => 'datetime',
         ];
     }
@@ -107,6 +109,14 @@ class Stage extends Model
     public function isOnline(): bool
     {
         return $this->phase->effectiveMode() === CompetitionMode::Online;
+    }
+
+    /**
+     * End of the jury deliberation for a vote closing at $votingClosesAt (null = manual close).
+     */
+    public function deliberationEndFor(?Carbon $votingClosesAt): ?Carbon
+    {
+        return $votingClosesAt && $this->deliberation_minutes > 0 ? $votingClosesAt->copy()->addMinutes($this->deliberation_minutes) : null;
     }
 
     public function isDeadlinePassed(): bool

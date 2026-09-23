@@ -23,7 +23,7 @@ registration / logout for all three.
 ## Route names (most used)
 
 - Back-office: `organizers.show|update`, `organizers.members.store|update|destroy`,
-  `organizers.competitions.store|show|update|status|destroy`,
+  `organizers.competitions.index|store|show|update|status|destroy|duplicate` (index: `q`, `status`, `discipline`, `mode`, `sort` = recent|name|registration|participants, 12 per page),
   `organizers.competitions.phases.store|update|destroy|start`,
   `organizers.competitions.stages.update|open-submissions|open-voting`,
   `organizers.competitions.matches.update|open-voting|close|captations.store`,

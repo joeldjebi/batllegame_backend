@@ -107,6 +107,14 @@ class Performance extends Model implements ReviewableMedia
         return $this->stage->phase->rules->mediaMaxDuration;
     }
 
+    /**
+     * From the start of the phase to the submission deadline of the stage.
+     */
+    public function submissionWindow(): array
+    {
+        return [$this->stage?->phase?->started_at, $this->stage?->submission_deadline];
+    }
+
     public function requiresReview(): bool
     {
         return $this->stage->phase->competition->settings->submissionsRequireApproval;

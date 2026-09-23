@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneVerificationController;
 use App\Http\Controllers\Api\PreselectionController;
 use App\Http\Controllers\Api\PublicVoteController;
+use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\SubmissionController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('countries', [CountryController::class, 'index'])->name('api.countries.index');
+
+// Socket.IO: server URL + signed token for the private channels of the user.
+Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');
 
 Route::prefix('auth')->name('api.auth.')->group(function () {
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:6,1')->name('register');

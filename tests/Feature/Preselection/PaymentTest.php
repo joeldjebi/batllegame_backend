@@ -10,6 +10,7 @@ use App\Models\Country;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\PaymentService;
+use App\Services\PreselectionService;
 use App\Services\RegistrationService;
 
 beforeEach(function () {
@@ -83,4 +84,24 @@ it('pays through the API', function () {
         ->assertCreated()
         ->assertJsonPath('data.status', 'payee')
         ->assertJsonPath('data.participant_status', 'valide');
+});
+
+it('treats a registration made before the fee as unpaid: pitch instead of upload, and it can pay', function () {
+    app(PreselectionService::class)->configure($this->competition, [
+        'starts_at' => now()->subHour(), 'ends_at' => now()->addDays(3),
+        'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 2],
+    ]);
+    $participant = $this->competition->participants()->create(['user_id' => $this->artist->id, 'stage_name' => 'MC Legacy', 'status' => ParticipantStatus::Registered]);
+
+    $this->actingAs($this->artist, 'member')->get(route('artist.dashboard'))
+        ->assertOk()
+        ->assertSee('Plus qu', false)
+        ->assertDontSee('Envoyer ma prestation');
+
+    $this->actingAs($this->artist, 'member')->get(route('artist.competitions.payment', $this->competition))->assertOk();
+
+    app(PaymentService::class)->simulate($participant, PaymentMethod::Wave);
+
+    expect($participant->fresh()->hasPaid())->toBeTrue()
+        ->and($participant->fresh()->status)->toBe(ParticipantStatus::Registered);
 });

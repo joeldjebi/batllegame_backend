@@ -1,7 +1,7 @@
 @props(['name', 'title' => null, 'description' => null, 'icon' => null, 'maxWidth' => 'lg', 'show' => false, 'danger' => false])
 
 @php
-    $widths = ['sm' => 'sm:max-w-sm', 'md' => 'sm:max-w-md', 'lg' => 'sm:max-w-lg', 'xl' => 'sm:max-w-xl', '2xl' => 'sm:max-w-2xl'];
+    $widths = ['sm' => 'sm:max-w-sm', 'md' => 'sm:max-w-md', 'lg' => 'sm:max-w-lg', 'xl' => 'sm:max-w-xl', '2xl' => 'sm:max-w-2xl', '3xl' => 'sm:max-w-3xl', '4xl' => 'sm:max-w-4xl', '5xl' => 'sm:max-w-5xl'];
 @endphp
 
 {{-- Open with $dispatch('open-modal', 'name'); reopens itself on validation errors when show is true. --}}
@@ -14,6 +14,7 @@
     x-on:open-modal.window="if ($event.detail === @js($name)) open = true"
     x-on:close-modal.window="if ($event.detail === @js($name)) open = false"
     x-on:keydown.escape.window="open = false"
+    x-effect="if (! open) $el.querySelectorAll('video, audio').forEach((media) => media.pause())"
     x-show="open" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
     <div x-show="open" x-transition.opacity class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" x-on:click="open = false"></div>
 

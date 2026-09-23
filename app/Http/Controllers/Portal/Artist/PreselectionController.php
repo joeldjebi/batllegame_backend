@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal\Artist;
 use App\Http\Controllers\Controller;
 use App\Models\Competition;
 use App\Services\PreselectionService;
+use App\Services\SubmissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,7 @@ class PreselectionController extends Controller
             'media.max' => "Le fichier dépasse la taille maximale de {$rules->mediaMaxSizeMb} Mo.",
         ]);
 
-        $preselections->submit($participant, $request->file('media'));
+        $preselections->submit($participant, $request->file('media'), SubmissionService::clientModifiedAt($request));
 
         return back()->with('status', 'Votre prestation de présélection a bien été envoyée.');
     }

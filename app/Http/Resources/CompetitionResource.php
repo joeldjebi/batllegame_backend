@@ -20,6 +20,9 @@ class CompetitionResource extends JsonResource
             'id' => $this->id,
             'slug' => $this->slug,
             'name' => $this->name,
+            // Sanitized HTML (bold, italic, headings, lists, quotes, links).
+            'description' => $this->description,
+            'prizes' => $this->prizeList(),
             'discipline' => $this->discipline,
             'mode' => $this->mode,
             'status' => $this->status,

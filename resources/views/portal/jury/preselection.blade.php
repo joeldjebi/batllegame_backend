@@ -1,18 +1,29 @@
 <x-layouts.portal :title="'Présélection · '.$competition->name">
     @php($state = $preselection->state())
-    @php($canScore = in_array($state, [\App\Enums\PreselectionState::Open, \App\Enums\PreselectionState::Closed], true))
+    @php($canScore = $preselection->acceptsScores())
     <x-ui.page-header title="Présélection" :breadcrumbs="['Mes compétitions' => route('jury.dashboard'), $competition->name => route('jury.competitions.show', $competition), 'Présélection' => null]">
         <x-slot:description>
             <x-ui.badge :value="$state" />
-            <span>{{ $entries->count() }} prestation(s) · jury {{ $preselection->rules->juryWeight }} % du score</span>
+            <span>{{ $entries->count() }} prestation(s) · jury {{ $preselection->effectiveWeights()['jury'] }} % du score</span>
         </x-slot:description>
     </x-ui.page-header>
 
-    @unless ($canScore)
-        <div class="mb-6 flex items-start gap-3 rounded-2xl bg-slate-100 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
-            <x-ui.icon name="lock-closed" class="size-5 shrink-0" /> {{ $state === \App\Enums\PreselectionState::Published ? 'La sélection est publiée : les notes sont en lecture seule.' : 'La présélection n\'a pas encore commencé.' }}
+    @if ($canScore)
+        <div @class(['mb-6 flex flex-wrap items-center gap-2 rounded-2xl p-4 text-sm ring-1', 'bg-brand-50 text-brand-800 ring-brand-600/20 dark:bg-brand-500/10 dark:text-brand-200' => $state !== \App\Enums\PreselectionState::Deliberation, 'bg-amber-50 text-amber-900 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200' => $state === \App\Enums\PreselectionState::Deliberation])
+            x-data="countdown('{{ $preselection->deliberationEndsAt()->toIso8601String() }}')">
+            <x-ui.icon name="scale" class="size-5 shrink-0" />
+            {{ $state === \App\Enums\PreselectionState::Deliberation ? 'Délibération en cours : dernières notes avant clôture dans' : 'Vos notes sont modifiables jusqu\'à la fin de la délibération, dans' }}
+            <strong class="font-display tabular-nums" x-text="label">{{ $preselection->deliberationEndsAt()->diffForHumans(syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}</strong>
         </div>
-    @endunless
+    @else
+        <div class="mb-6 flex items-start gap-3 rounded-2xl bg-slate-100 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+            <x-ui.icon name="lock-closed" class="size-5 shrink-0" /> {{ match ($state) {
+                \App\Enums\PreselectionState::Published => 'La sélection est publiée : les notes sont en lecture seule.',
+                \App\Enums\PreselectionState::Closed => 'La délibération est close : les notes sont en lecture seule.',
+                default => 'La présélection n\'a pas encore commencé.',
+            } }}
+        </div>
+    @endif
 
     @if ($entries->isEmpty())
         <x-ui.empty icon="film" title="Aucune prestation à noter" description="Les prestations validées par l'organisateur apparaîtront ici." />
@@ -47,4 +58,6 @@
             @endforeach
         </div>
     @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::jury($competition->id), \App\Realtime\Channel::user(auth('jury')->id())]" />
 </x-layouts.portal>

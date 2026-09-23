@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Enums\JudgeStatus;
-use App\Enums\PreselectionState;
 use App\Models\PreselectionSubmission;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -19,8 +18,12 @@ class PreselectionSubmissionPolicy
             return Response::deny('Vous devez vérifier votre numéro de téléphone pour liker.');
         }
 
-        if ($entry->competition->organizer->isSuspended() || ! $entry->preselection->isOpen()) {
-            return Response::deny("La présélection n'est pas ouverte.");
+        if ($entry->competition->organizer->isSuspended() || ! $entry->preselection->publicVotingEnabled()) {
+            return Response::deny("Le vote du public n'est pas activé pour cette compétition.");
+        }
+
+        if (! $entry->preselection->acceptsLikes()) {
+            return Response::deny('Le vote du public est clos.');
         }
 
         if (! $entry->isPublished()) {
@@ -49,10 +52,8 @@ class PreselectionSubmissionPolicy
             return Response::denyAsNotFound();
         }
 
-        $state = $entry->preselection->state();
-
-        if ($entry->competition->organizer->isSuspended() || ! in_array($state, [PreselectionState::Open, PreselectionState::Closed], true)) {
-            return Response::deny("La notation de la présélection n'est pas ouverte.");
+        if ($entry->competition->organizer->isSuspended() || ! $entry->preselection->acceptsScores()) {
+            return Response::deny('La délibération du jury est close.');
         }
 
         return $entry->isPublished() ? Response::allow() : Response::denyAsNotFound();

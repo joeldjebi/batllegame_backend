@@ -55,6 +55,7 @@
             </nav>
 
             <div class="ml-auto flex items-center gap-2">
+                <x-realtime-status class="[&:not([hidden])]:inline-flex" />
                 <x-ui.dropdown width="w-40">
                     <x-slot:trigger>
                         <button type="button" class="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10" title="Thème">
@@ -99,32 +100,10 @@
     </header>
 
     <main class="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-6 sm:py-8">
-        <div class="animate-slide-up">{{ $slot }}</div>
+        <div class="animate-slide-up" data-live="page">{{ $slot }}</div>
     </main>
 
-    {{-- Mobile bottom navigation --}}
-    @php
-        $tabs = match ($portal->key) {
-            'jury' => [['jury.dashboard', 'Compétitions', 'trophy'], ['jury.password.edit', 'Compte', 'user-circle']],
-            'artist' => [['artist.dashboard', 'Mon espace', 'microphone'], ['fan.dashboard', 'Voter', 'hand-thumb-up'], ['home', 'Accueil', 'home']],
-            'fan' => [['fan.dashboard', 'Compétitions', 'trophy'], ['artist.dashboard', 'Artiste', 'microphone'], ['home', 'Accueil', 'home']],
-        };
-    @endphp
-    <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden dark:border-white/10 dark:bg-slate-950/95" aria-label="Navigation">
-        <div class="grid" style="grid-template-columns: repeat({{ count($tabs) }}, minmax(0, 1fr))">
-            @foreach ($tabs as [$route, $label, $icon])
-                @php($active = request()->routeIs($route) || (request()->routeIs(Str::before($route, '.').'.*') && Str::before($route, '.') === $portal->key && $route === $portal->home))
-                <a href="{{ route($route) }}" @class([
-                    'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition',
-                    'text-brand-600 dark:text-brand-300' => $active,
-                    'text-slate-500 dark:text-slate-400' => ! $active,
-                ])>
-                    <span @class(['grid h-8 w-14 place-items-center rounded-full transition', 'bg-brand-50 dark:bg-brand-500/15' => $active])><x-ui.icon :name="$icon" :variant="$active ? 's' : 'o'" class="size-5" /></span>
-                    {{ $label }}
-                </a>
-            @endforeach
-        </div>
-    </nav>
+    <x-portal.bottom-nav :portal="$portal->key" />
 
     <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 p-4 sm:bottom-0 sm:items-end sm:p-6">
         <template x-for="toast in toasts" :key="toast.id">
@@ -139,6 +118,7 @@
         </template>
     </div>
 
-    @stack('modals')
+    {{-- Live region too: modals of rows added by a realtime refresh must exist. --}}
+    <div data-live="modals">@stack('modals')</div>
 </body>
 </html>

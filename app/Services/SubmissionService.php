@@ -13,7 +13,9 @@ use App\Models\Performance;
 use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -26,13 +28,13 @@ class SubmissionService
     /**
      * One submission per participant and stage: a new upload replaces the previous one.
      */
-    public function submit(Participant $participant, Stage $stage, UploadedFile $file): Performance
+    public function submit(Participant $participant, Stage $stage, UploadedFile $file, ?Carbon $clientModifiedAt = null): Performance
     {
         if (! $participant->hasPaid()) {
             throw CompetitionFlowException::paymentRequired();
         }
 
-        return DB::transaction(function () use ($participant, $stage, $file): Performance {
+        return DB::transaction(function () use ($participant, $stage, $file, $clientModifiedAt): Performance {
             $performance = Performance::query()->firstOrNew([
                 'stage_id' => $stage->id,
                 'participant_id' => $participant->id,
@@ -45,12 +47,48 @@ class SubmissionService
                 'source' => PerformanceSource::Submission,
                 'status' => PerformanceStatus::Processing,
             ]);
-            $performance->forceFill(['reviewed_by' => null, 'reviewed_at' => null, 'rejection_reason' => null])->save();
+            $performance->forceFill([
+                'reviewed_by' => null, 'reviewed_at' => null, 'rejection_reason' => null,
+                ...self::freshProvenance($clientModifiedAt),
+            ])->save();
 
             ProcessSubmission::dispatch($performance)->afterCommit();
 
             return $performance;
         });
+    }
+
+    /**
+     * File date reported by the browser / app (File.lastModified, in ms or ISO 8601).
+     * Kept only when plausible; it is an indication, the device can change it.
+     */
+    public static function clientModifiedAt(Request $request): ?Carbon
+    {
+        $value = $request->input('client_modified_at');
+
+        $date = match (true) {
+            is_numeric($value) => Carbon::createFromTimestampMsUTC((int) $value),
+            is_string($value) && $value !== '' => rescue(fn () => Carbon::parse($value)->utc(), null, false),
+            default => null,
+        };
+
+        return $date && $date->year >= 2000 && $date->lessThanOrEqualTo(now()->addDay()) ? $date : null;
+    }
+
+    /**
+     * Provenance columns reset on every new upload (ProcessSubmission reads them again).
+     *
+     * @return array<string, mixed>
+     */
+    public static function freshProvenance(?Carbon $clientModifiedAt): array
+    {
+        return [
+            'recorded_at' => null,
+            'media_origin' => null,
+            // The row is reused when an artist replaces the media: keep the date of this upload.
+            'media_metadata' => ['uploaded_at' => now()->toIso8601String()],
+            'client_modified_at' => $clientModifiedAt,
+        ];
     }
 
     /**

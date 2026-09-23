@@ -26,4 +26,6 @@
             @endforeach
         </div>
     @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::user(auth('jury')->id()), ...$assignments->map(fn ($a) => \App\Realtime\Channel::jury($a->competition_id))->all()]" />
 </x-layouts.portal>

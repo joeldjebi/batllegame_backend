@@ -7,6 +7,7 @@
         </x-slot:description>
     </x-ui.page-header>
 
+    <div data-live="dashboard">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.stat label="Compétitions" :value="$stats['competitions']" icon="trophy" :hint="$organizers->count().' organisateur(s)'" />
         <x-ui.stat label="En cours" :value="$stats['live']" icon="fire" tone="red" :hint="$stats['voting'].' match(s) en vote en ce moment'" />
@@ -52,5 +53,7 @@
             </div>
         </x-ui.card>
     </div>
+    </div>
 
+    <x-realtime :channels="$organizers->map(fn ($o) => \App\Realtime\Channel::organizer($o->id))->all()" />
 </x-layouts.app>

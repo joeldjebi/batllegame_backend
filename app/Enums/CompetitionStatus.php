@@ -17,6 +17,34 @@ enum CompetitionStatus: string
     case Finished = 'terminee';
     case Cancelled = 'annulee';
 
+    /**
+     * Allowed lifecycle transitions.
+     *
+     * @return list<self>
+     */
+    public function nextStatuses(): array
+    {
+        return match ($this) {
+            self::Draft => [self::Registration, self::Cancelled],
+            self::Registration => [self::InProgress, self::Cancelled],
+            self::InProgress => [self::Finished, self::Cancelled],
+            self::Finished, self::Cancelled => [],
+        };
+    }
+
+    public function canTransitionTo(self $status): bool
+    {
+        return in_array($status, $this->nextStatuses(), true);
+    }
+
+    /**
+     * Visible to the public (mobile app).
+     */
+    public function isPublic(): bool
+    {
+        return $this !== self::Draft;
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\JudgeStatus;
+use App\Enums\OrganizerPermission;
 use App\Enums\OrganizerRole;
 use App\Enums\PlatformRole;
 use Database\Factories\UserFactory;
@@ -120,5 +122,25 @@ class User extends Authenticatable
     public function isMemberOf(Organizer|int $organizer): bool
     {
         return $this->roleIn($organizer) !== null;
+    }
+
+    public function hasOrganizerPermission(Organizer|int $organizer, OrganizerPermission $permission): bool
+    {
+        return $this->roleIn($organizer)?->grants($permission) ?? false;
+    }
+
+    public function isJudgeOf(Competition|int $competition, bool $acceptedOnly = true): bool
+    {
+        return $this->judgeAssignments()
+            ->where('competition_id', $competition instanceof Competition ? $competition->getKey() : $competition)
+            ->when($acceptedOnly, fn ($query) => $query->where('status', JudgeStatus::Accepted))
+            ->exists();
+    }
+
+    public function isParticipantOf(Competition|int $competition): bool
+    {
+        return $this->participations()
+            ->where('competition_id', $competition instanceof Competition ? $competition->getKey() : $competition)
+            ->exists();
     }
 }

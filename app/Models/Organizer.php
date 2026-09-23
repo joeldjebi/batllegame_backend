@@ -4,19 +4,22 @@ namespace App\Models;
 
 use App\Enums\OrganizerPlan;
 use App\Enums\OrganizerStatus;
+use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\OrganizerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\RouteKey;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // status, verified_at and plan are managed by the platform admin only, hence not fillable.
+#[RouteKey('slug')]
 #[Fillable(['name', 'slug', 'logo_path', 'description', 'city'])]
 class Organizer extends Model
 {
     /** @use HasFactory<OrganizerFactory> */
-    use HasFactory;
+    use HasFactory, HasUniqueSlug;
 
     /**
      * Mirrors the column defaults so enum-based helpers work before a refresh.

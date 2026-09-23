@@ -6,6 +6,7 @@ use App\Data\CompetitionSettings;
 use App\Enums\CompetitionMode;
 use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
+use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Competition extends Model
 {
     /** @use HasFactory<CompetitionFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasUniqueSlug, SoftDeletes;
 
     /**
      * Mirrors the column defaults so enum-based helpers work before a refresh.

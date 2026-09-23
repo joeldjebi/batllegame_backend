@@ -1,7 +1,13 @@
 <?php
 
-it('returns a successful response', function () {
-    $response = $this->get('/');
+use App\Models\Country;
 
-    $response->assertStatus(200);
+it('redirects guests to the login page', function () {
+    $this->get('/')->assertRedirect(route('login'));
+});
+
+it('renders the login page with the active dial codes', function () {
+    Country::factory()->ivoryCoast();
+
+    $this->get(route('login'))->assertOk()->assertSee('+225');
 });

@@ -1,7 +1,76 @@
 <?php
 
+use App\Enums\PlatformRole;
+use App\Http\Controllers\Admin\OrganizerController as AdminOrganizerController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BackOffice\CompetitionController;
+use App\Http\Controllers\BackOffice\CriterionController;
+use App\Http\Controllers\BackOffice\DashboardController;
+use App\Http\Controllers\BackOffice\JudgeController;
+use App\Http\Controllers\BackOffice\OrganizerController;
+use App\Http\Controllers\BackOffice\OrganizerMemberController;
+use App\Http\Controllers\BackOffice\ParticipantController;
+use App\Http\Controllers\BackOffice\PhaseController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+/*
+| Back-office (Blade) for organizers.
+|
+| Every child resource is nested under its organizer and competition with
+| scopeBindings(): a {competition} is looked up through $organizer->competitions(),
+| a {phase} through $competition->phases(), etc. A child is never loaded by id alone.
+*/
+
+Route::middleware('guest')->group(function () {
+    Route::get('login', [LoginController::class, 'create'])->name('login');
+    Route::post('login', [LoginController::class, 'store'])->middleware('throttle:6,1');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::get('/', DashboardController::class)->name('dashboard');
+
+    Route::post('organizers', [OrganizerController::class, 'store'])->name('organizers.store');
+
+    Route::scopeBindings()
+        ->prefix('organizers/{organizer}')
+        ->name('organizers.')
+        ->group(function () {
+            Route::get('/', [OrganizerController::class, 'show'])->name('show');
+            Route::put('/', [OrganizerController::class, 'update'])->name('update');
+
+            Route::post('members', [OrganizerMemberController::class, 'store'])->name('members.store');
+            Route::patch('members/{member}', [OrganizerMemberController::class, 'update'])->name('members.update');
+            Route::delete('members/{member}', [OrganizerMemberController::class, 'destroy'])->name('members.destroy');
+
+            Route::post('competitions', [CompetitionController::class, 'store'])->name('competitions.store');
+
+            Route::prefix('competitions/{competition}')->name('competitions.')->group(function () {
+                Route::get('/', [CompetitionController::class, 'show'])->name('show');
+                Route::put('/', [CompetitionController::class, 'update'])->name('update');
+                Route::patch('status', [CompetitionController::class, 'updateStatus'])->name('status');
+                Route::delete('/', [CompetitionController::class, 'destroy'])->name('destroy');
+
+                Route::post('phases', [PhaseController::class, 'store'])->name('phases.store');
+                Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');
+                Route::delete('phases/{phase}', [PhaseController::class, 'destroy'])->name('phases.destroy');
+
+                Route::post('criteria', [CriterionController::class, 'store'])->name('criteria.store');
+                Route::put('criteria/{criterion}', [CriterionController::class, 'update'])->name('criteria.update');
+                Route::delete('criteria/{criterion}', [CriterionController::class, 'destroy'])->name('criteria.destroy');
+
+                Route::post('judges', [JudgeController::class, 'store'])->name('judges.store');
+                Route::delete('judges/{judge}', [JudgeController::class, 'destroy'])->name('judges.destroy');
+
+                Route::patch('participants/{participant}', [ParticipantController::class, 'update'])->name('participants.update');
+            });
+        });
+
+    Route::middleware('role:'.PlatformRole::Admin->value)
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
+            Route::get('organizers', [AdminOrganizerController::class, 'index'])->name('organizers.index');
+            Route::patch('organizers/{organizer}/status', [AdminOrganizerController::class, 'updateStatus'])->name('organizers.status');
+        });
 });

@@ -20,10 +20,10 @@ class JudgeController extends Controller
     {
         $this->authorize('update', $competition);
 
-        [$judge, $created] = $accounts->assign($competition, $request->country(), (string) $request->input('phone'), $request->validated('name'));
+        [$judge, $password] = $accounts->assign($competition, $request->country(), (string) $request->input('phone'), $request->validated('name'));
 
-        return back()->with('status', $created
-            ? "Compte juré créé pour {$judge->user->name} : ses identifiants lui ont été envoyés par SMS."
+        return back()->with('status', $password
+            ? "Compte juré créé pour {$judge->user->name}. Mot de passe provisoire : {$password} (envoyé par SMS, à changer à la première connexion sur /jury)."
             : "{$judge->user->name} a été ajouté au jury et prévenu par SMS.");
     }
 

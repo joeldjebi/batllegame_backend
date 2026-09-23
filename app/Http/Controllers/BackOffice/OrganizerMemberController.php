@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\BackOffice\InviteMemberRequest;
 use App\Models\Organizer;
 use App\Models\OrganizerMember;
+use App\Services\BackOfficeAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,19 +18,31 @@ use Illuminate\Validation\ValidationException;
  */
 class OrganizerMemberController extends Controller
 {
-    public function store(InviteMemberRequest $request, Organizer $organizer): RedirectResponse
+    public function store(InviteMemberRequest $request, Organizer $organizer, BackOfficeAccountService $accounts): RedirectResponse
     {
         $this->authorize('manageMembers', $organizer);
 
-        $user = $request->invitedUser();
+        [$user, $password] = $accounts->findOrCreate(
+            $request->validated('email'),
+            $request->validated('name'),
+            $request->country(),
+            $request->validated('phone'),
+            $organizer->name,
+        );
 
-        if ($user->isMemberOf($organizer)) {
-            throw ValidationException::withMessages(['email' => 'Cet utilisateur est déjà membre.']);
+        if ($user->isPlatformAdmin()) {
+            throw ValidationException::withMessages(['email' => 'Ce compte ne peut pas être membre d\'un organisateur.']);
         }
 
-        $organizer->users()->attach($user, ['role' => $request->enum('role', OrganizerRole::class) ?? OrganizerRole::Staff]);
+        if ($user->isMemberOf($organizer)) {
+            throw ValidationException::withMessages(['email' => 'Cette personne est déjà membre.']);
+        }
 
-        return back()->with('status', 'Membre ajouté.');
+        $organizer->users()->attach($user, ['role' => $request->enum('role', OrganizerRole::class)]);
+
+        return back()->with('status', $password
+            ? "Compte créé pour {$user->name}. Mot de passe provisoire : {$password} (envoyé par SMS, à changer à la première connexion)."
+            : "{$user->name} a été ajouté à l'équipe.");
     }
 
     public function update(Request $request, Organizer $organizer, OrganizerMember $member): RedirectResponse

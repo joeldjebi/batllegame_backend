@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrganizerRole;
 use App\Enums\OrganizerStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreOrganizerRequest;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\PublicVote;
+use App\Services\BackOfficeAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -36,6 +41,41 @@ class OrganizerController extends Controller
             'counts' => Organizer::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'competitionsCount' => Competition::query()->count(),
         ]);
+    }
+
+    /**
+     * Only the platform creates organizers, with their owner account.
+     */
+    public function store(StoreOrganizerRequest $request, BackOfficeAccountService $accounts): RedirectResponse
+    {
+        $this->authorize('moderate', Organizer::class);
+
+        [$organizer, $owner, $password] = DB::transaction(function () use ($request, $accounts): array {
+            $organizer = new Organizer($request->safe()->only(['name', 'city', 'description']));
+            $organizer->slug = Organizer::uniqueSlug($organizer->name);
+            $status = OrganizerStatus::from($request->validated('status'));
+            $organizer->forceFill(['status' => $status, 'verified_at' => $status === OrganizerStatus::Verified ? now() : null])->save();
+
+            [$owner, $password] = $accounts->findOrCreate(
+                $request->validated('owner_email'),
+                $request->validated('owner_name'),
+                $request->country(),
+                $request->validated('phone'),
+                $organizer->name,
+            );
+
+            if ($owner->isPlatformAdmin()) {
+                throw ValidationException::withMessages(['owner_email' => 'Le super-admin ne peut pas être propriétaire d\'un organisateur.']);
+            }
+
+            $organizer->users()->attach($owner, ['role' => OrganizerRole::Owner]);
+
+            return [$organizer, $owner, $password];
+        });
+
+        return redirect()->route('admin.organizers.show', $organizer)->with('status', $password
+            ? "Organisateur créé. Compte propriétaire créé pour {$owner->name} : mot de passe provisoire {$password} (envoyé par SMS)."
+            : "Organisateur créé, {$owner->name} en est propriétaire.");
     }
 
     public function show(Organizer $organizer): View

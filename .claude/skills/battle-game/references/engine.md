@@ -74,6 +74,8 @@ Inside one transaction (phase row locked):
 
 ## Shared services (API + portals)
 
+`BackOfficeAccountService::findOrCreate(email, ?name, ?country, ?phone, context)` (existing by email, or a phone-only
+mobile account gets the email, else a new account with a temporary password sent by SMS — returns `[user, ?password]`),
 `VotingService::cast(voter, match, participantId, ?voteCode, ?deviceId, ?ip)` (participant of the match,
 room code, one vote with savepoint, device limit — aborts 409/429), `JuryScoringService::store(judge, match,
 input)` (all criteria, max points), `RegistrationService::register(user, competition, stageName)`,

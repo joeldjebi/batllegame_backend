@@ -4,7 +4,8 @@
 
 | Area | Routes file | Prefix / names | Guard | Login | Middleware |
 |---|---|---|---|---|---|
-| Organizer back-office | `routes/web.php` | `/`, `organizers.*`, `dashboard`, `login` | `web` | email | `auth:web`, `organizer.area` (DenyPlatformAdmins) |
+| Public landing | `routes/web.php` | `/` (`home`, `LandingController`) | — | — | none (reads `auth('member')` for the CTA) |
+| Organizer back-office | `routes/web.php` | `/tableau-de-bord` (`dashboard`), `organizers.*`, `login`, `password.edit|update` | `web` | email | `auth:web`, `organizer.area` (DenyPlatformAdmins), `fresh.password:password.edit` |
 | Super-admin console | `routes/admin.php` | `config('admin.path')`, `admin.*` | `admin` | email | `auth:admin`, `platform.admin`, `admin.idle` |
 | Jury portal | `routes/portals.php` | `/jury`, `jury.*` | `jury` | phone | `auth:jury`, `deny.admins`, `jury.access` |
 | Artist portal | `routes/portals.php` | `/artiste`, `artist.*` | `member` | phone | `auth:member`, `deny.admins` |
@@ -28,7 +29,8 @@ registration / logout for all three.
   `organizers.competitions.matches.update|open-voting|close|captations.store`,
   `organizers.competitions.performances.review`, `organizers.competitions.criteria.*`,
   `organizers.competitions.judges.store|destroy`, `organizers.competitions.participants.update`.
-- Admin: `admin.dashboard`, `admin.organizers.index|show|status`, `admin.competitions.index`,
+- There is **no** `organizers.store` in the back-office: organizers are created by `admin.organizers.store`.
+- Admin: `admin.dashboard`, `admin.organizers.index|store|show|status` (`?creer=1` opens the create panel), `admin.competitions.index`,
   `admin.organizers.competitions.show`, `admin.users.index|show`, `admin.login|logout`.
 - Jury: `jury.dashboard`, `jury.competitions.show`, `jury.competitions.matches.show`,
   `jury.competitions.matches.scores.store`, `jury.password.edit|update`.

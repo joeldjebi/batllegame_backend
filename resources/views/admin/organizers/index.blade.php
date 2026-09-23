@@ -94,4 +94,27 @@
             <x-slot:footer>{{ $organizers->links() }}</x-slot:footer>
         @endif
     </x-ui.card>
+    <x-ui.slide-over name="create-organizer" :show="request()->boolean('creer')" title="Nouvel organisateur" description="L'organisateur et son compte propriétaire. Un compte inexistant est créé avec un mot de passe provisoire envoyé par SMS." icon="building-office-2">
+        <form method="POST" action="{{ route('admin.organizers.store') }}" class="space-y-6">
+            @csrf
+            <input type="hidden" name="_form" value="create-organizer">
+            <div class="space-y-4">
+                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Organisateur</p>
+                <x-ui.input name="name" label="Nom de la structure" required />
+                <x-ui.input name="city" label="Ville" icon="map-pin" />
+                <x-ui.textarea name="description" label="Description" rows="3" />
+                <x-ui.select name="status" label="Statut" :options="['verifie' => 'Vérifié (peut ouvrir des inscriptions)', 'en_attente' => 'En attente de vérification']" />
+            </div>
+            <div class="space-y-4 border-t border-slate-100 pt-5 dark:border-white/10">
+                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Propriétaire</p>
+                <x-ui.input name="owner_email" type="email" label="Email de connexion" icon="envelope" required />
+                <x-ui.input name="owner_name" label="Nom complet" icon="user" hint="Obligatoire si le compte n'existe pas encore." />
+                <x-phone-input label="Téléphone (nouveau compte)" :required="false" />
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
+                <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-organizer')">Annuler</x-ui.button>
+                <x-ui.button type="submit" icon="check">Créer l'organisateur</x-ui.button>
+            </div>
+        </form>
+    </x-ui.slide-over>
 </x-layouts.app>

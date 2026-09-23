@@ -20,6 +20,15 @@ otherwise); update transitions (`nextStatuses()`), policies and views filtering 
 4. UI: button inside `x-ui.confirm` for anything destructive or irreversible.
 5. Test: happy path, forbidden role (staff vs admin), foreign organizer URL → 404.
 
+## Add a form in a modal / slide-over
+Give the modal a unique `name`, put `<input type="hidden" name="_form" value="<name>">` right after `@csrf`
+(it reopens on its own validation errors), open it with `x-on:click="$dispatch('open-modal', '<name>')"`.
+Inside component tag attributes use `'{{ $var }}'`, never `@js($var)`.
+
+## Add a listing or a search
+Filter/sort columns need a composite index in a new migration (`status` + sort column, parent id + sort column);
+"contains" searches use `whereLike()` and, on PostgreSQL, a pg_trgm GIN index.
+
 ## Add a mobile API endpoint
 Route in `routes/api.php` (inside `scopeBindings()`, `auth:sanctum`), reuse the service used by the portal,
 JSON resource in `Http/Resources`, policy via `$this->authorize`, test with `actingAs($user, 'sanctum')`,

@@ -19,7 +19,7 @@
             @csrf
             @if (strtoupper($method) !== 'POST') @method($method) @endif
             {{ $fields ?? '' }}
-            <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', @js($modal))">Annuler</x-ui.button>
+            <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', '{{ $modal }}')">Annuler</x-ui.button>
             <x-ui.button type="submit" :variant="$danger ? 'danger' : 'primary'">{{ $confirm }}</x-ui.button>
         </form>
     </x-ui.modal>

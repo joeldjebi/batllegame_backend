@@ -14,7 +14,7 @@ comportements (une violation d'unicité annule toute la transaction PostgreSQL).
 | Dossier | Couvre |
 |---|---|
 | `tests/Feature/Models` | DTO, casts, règles figées, `competition_id` dénormalisé |
-| `tests/Feature/BackOffice` | Cloisonnement entre organisateurs, rôles, pages Blade |
+| `tests/Feature/BackOffice` | Cloisonnement entre organisateurs, rôles, pages Blade, comptes managers, page d'accueil |
 | `tests/Feature/Admin` | Console super-admin, connexion séparée |
 | `tests/Feature/Api` | Authentification, vote, notation, inscription |
 | `tests/Feature/Services` | Bracket (byes, double élimination, reset), scores, poules, qualification |

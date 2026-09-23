@@ -1,7 +1,11 @@
 <?php
 
-it('redirects guests to the login page', function () {
-    $this->get('/')->assertRedirect(route('login'));
+it('shows the public landing page at the root', function () {
+    $this->get('/')->assertOk()->assertSee('Les battles se jouent ici.');
+});
+
+it('redirects guests from the back-office to the organizer login', function () {
+    $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
 
 it('renders the email login page', function () {

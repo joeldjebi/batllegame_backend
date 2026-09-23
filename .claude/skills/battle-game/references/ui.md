@@ -17,6 +17,8 @@ rose (danger), sky (info). Shadows `shadow-soft`, `shadow-lift`. Animations `ani
   `AppServiceProvider`: `$navOrganizers` or `$adminCounts`), topbar (theme, user menu), toasts, `@stack('modals')`.
 - `x-layouts.portal` — jury / artist / public (top navigation from `Portal::current()`).
 - `x-layouts.auth` — split-screen login (organizers, `admin` variant dark).
+- `resources/views/landing.blade.php` — standalone public landing (hero + live battle, live votes, competitions,
+  open registrations, how it works, organizer CTA, footer with every login URL).
 
 ## Components (`resources/views/components`)
 
@@ -32,11 +34,11 @@ rose (danger), sky (info). Shadows `shadow-soft`, `shadow-lift`. Animations `ani
 | `ui.empty` | `icon`, `title`, `description`; slot actions | |
 | `ui.avatar` | `name`, `src`, `size` xs…xl, `square` | initials + solid color |
 | `ui.input` / `ui.select` / `ui.textarea` / `ui.toggle` / `ui.field` | `name` (supports `a[b]`), `label`, `value`, `hint`, `icon`, `suffix`, `options`, `placeholder` | errors and `old()` resolved from the dotted name |
-| `ui.modal` / `ui.slide-over` | `name`, `title`, `description`, `icon`, `show` (reopen on validation errors), `danger`, `maxWidth` | open with `$dispatch('open-modal', 'name')` |
+| `ui.modal` / `ui.slide-over` | `name`, `title`, `description`, `icon`, `show`, `danger`, `maxWidth` | open with `$dispatch('open-modal', 'name')`; auto-reopens when `old('_form') === name` and there are errors |
 | `ui.dropdown` / `ui.dropdown-item` | `align`, `width` / `href`, `icon`, `danger`, `type` | |
 | `ui.confirm` | `action`, `method`, `title`, `message`, `confirm`, `danger`, `icon`; slot `fields` (hidden inputs) | trigger in default slot, dialog pushed to `modals` |
 | `ui.tabs` / `ui.tab-panel` | `tabs` [key => label, icon, count], `default`, `key` / `name` | tab kept in URL hash + localStorage |
-| `phone-input` | `countries`, `label` | dial-code select + national number (`country_id`, `phone`) |
+| `phone-input` | `countries`, `label`, `required` (default true) | dial-code select + national number (`country_id`, `phone`) |
 | `bo.match-card` | `match`, `organizer`, `competition`, `canRun`, `onsite` | scores, winner, forfeit, room code, open vote / close / captation actions |
 | `bo.bracket` | `phase`, `organizer`, `competition`, `canRun` | columns per round and bracket side |
 | `bo.standings` | `group`, `qualifiers` | qualified rows highlighted |

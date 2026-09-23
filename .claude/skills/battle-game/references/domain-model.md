@@ -35,6 +35,12 @@ performances (competition_id, stage_id, match_id?, participant_id, turn, media_*
 | `public_votes` | unique(`match_id`,`user_id`), index (`match_id`,`device_id`) |
 | `performances` | unique(`stage_id`,`participant_id`,`turn`); submission = `stage_id` only, captation = `stage_id` + `match_id` |
 
+Listing indexes (migration `add_listing_indexes`): (`status`,`created_at`) competitions, (`status`,`name`)
+organizers, (`organizer_id`,`role`) members, (`user_id`,`status`) judges, (`stage_id`,`status`) matches and
+performances, (`competition_id`,`updated_at`) matches, (`created_at`) / (`competition_id`,`created_at`) /
+(`user_id`,`created_at`) public_votes, (`created_at`) users… plus pg_trgm GIN indexes on organizers.name,
+competitions.name, users.name/email/phone for `whereLike` searches.
+
 Delete rules: cascade from `competitions` down; restrict on organizers with competitions, on users with
 participations/votes/judge roles, on judges/criteria already used in `jury_scores`.
 

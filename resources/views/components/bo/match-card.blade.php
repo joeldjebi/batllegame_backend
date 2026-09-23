@@ -95,12 +95,13 @@
             <x-ui.modal :name="'captation-'.$match->id" title="Captation vidéo" description="Enregistrement de la prestation sur scène, publié directement dans l'application." icon="video-camera">
                 <form method="POST" action="{{ route('organizers.competitions.matches.captations.store', [$organizer, $competition, $match]) }}" enctype="multipart/form-data" class="space-y-4">
                     @csrf
+                <input type="hidden" name="_form" value="{{ 'captation-'.$match->id }}">
                     <x-ui.select name="participant_id" label="Participant" :options="$matchSlots->filter->participant->mapWithKeys(fn ($s) => [$s->participant_id => $s->participant->stage_name])->all()" />
                     <x-ui.field label="Fichier vidéo ou audio">
                         <input type="file" name="media" accept="video/*,audio/*" required class="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 dark:file:bg-brand-500/10 dark:file:text-brand-300">
                     </x-ui.field>
                     <div class="flex justify-end gap-2 pt-2">
-                        <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', @js('captation-'.$match->id))">Annuler</x-ui.button>
+                        <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', '{{ 'captation-'.$match->id }}')">Annuler</x-ui.button>
                         <x-ui.button type="submit" icon="arrow-up-tray">Envoyer</x-ui.button>
                     </div>
                 </form>

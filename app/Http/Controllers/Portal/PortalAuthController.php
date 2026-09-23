@@ -75,6 +75,9 @@ class PortalAuthController extends Controller
         $request->session()->regenerate();
         $verification->sendCode($user);
 
+        // After the SMS verification, artists land on their own space.
+        $request->session()->put('url.intended', route($portal->home));
+
         return redirect()->route('fan.verification.show')->with('status', 'Compte créé ! Entrez le code reçu par SMS pour pouvoir voter.');
     }
 

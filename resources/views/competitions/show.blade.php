@@ -413,6 +413,7 @@
                     get online() { return (this.mode || this.inherited) === 'en_ligne' },
                 }">
                 @csrf
+                <input type="hidden" name="_form" value="create-phase">
                 <x-ui.field label="Format">
                     <div class="grid gap-2">
                         @foreach (PhaseType::cases() as $type)
@@ -498,6 +499,7 @@
         <x-ui.modal name="invite-judge" title="Ajouter un juré" description="Si le numéro n'a pas encore de compte, il est créé et le juré reçoit un mot de passe provisoire par SMS. Il notera depuis l'application." icon="scale" :show="$errors->hasAny(['phone', 'country_id'])">
             <form method="POST" action="{{ route('organizers.competitions.judges.store', [$organizer, $competition]) }}" class="space-y-4">
                 @csrf
+                <input type="hidden" name="_form" value="invite-judge">
                 <x-ui.input name="name" label="Nom du juré" icon="user" required />
                 <x-phone-input />
                 <div class="flex justify-end gap-2 pt-2">
@@ -510,6 +512,7 @@
         <x-ui.modal name="add-criterion" title="Nouveau critère" icon="adjustments-horizontal" :show="$errors->hasAny(['max_points', 'weight'])">
             <form method="POST" action="{{ route('organizers.competitions.criteria.store', [$organizer, $competition]) }}" class="grid gap-4 sm:grid-cols-2">
                 @csrf
+                <input type="hidden" name="_form" value="add-criterion">
                 <x-ui.input name="name" label="Nom" placeholder="Flow" required class="sm:col-span-2" />
                 <x-ui.input name="max_points" type="number" min="1" max="100" label="Note maximale" value="10" required />
                 <x-ui.input name="weight" type="number" step="0.5" min="0.5" label="Poids" value="1" required hint="Importance relative." />

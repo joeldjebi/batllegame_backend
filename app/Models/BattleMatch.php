@@ -8,7 +8,9 @@ use App\Enums\PerformanceStatus;
 use App\Models\Concerns\InheritsCompetitionId;
 use Database\Factories\BattleMatchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -189,6 +191,18 @@ class BattleMatch extends Model
     public function publicVotes(): HasMany
     {
         return $this->hasMany(PublicVote::class, 'match_id');
+    }
+
+    /**
+     * Matches whose vote is open right now (the scheduler may not have closed expired ones yet).
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function votingNow(Builder $query): void
+    {
+        $query->where('status', MatchStatus::Voting)
+            ->where(fn ($q) => $q->whereNull('voting_closes_at')->orWhere('voting_closes_at', '>', now()));
     }
 
     public function isClosed(): bool

@@ -63,6 +63,10 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
    one's own match, judges do not vote, optional device limit, room code for on-site when enabled.
 6. **Conflicts of interest**: a judge is never a participant of the same competition.
 7. Organizer status gates writes: `en_attente` = drafts only, `suspendu` = read-only (no votes, no scores).
+8. **Only the super-admin creates organizers** (with their owner). Organizers add managers and judges; accounts
+   created by someone else go through `BackOfficeAccountService` / `JudgeAccountService` (temporary password by
+   SMS, shown once in the flash message, `must_change_password` enforced by `fresh.password` / `jury.access`).
+9. Every new listing / filter / sort needs an index (see `docs/architecture.md` › Indexation).
 
 ## Workflow
 
@@ -92,6 +96,13 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
 - `performances`: a submission belongs to a stage (reused in all its matches); a captation also has a
   `match_id`. Use `BattleMatch::publishedPerformances()` to get what voters/judges may see.
 - `@php use …; @endphp` is fine at the top of a view but not inside components' nested blocks — prefer FQCN.
+- **Never put a Blade directive (`@js`, `@if`…) inside the attributes of a component tag** (`<x-ui.button x-on:click="…@js($x)…">`):
+  it is not compiled, reaches Alpine verbatim and breaks the page's JS. Use `'{{ $x }}'` there. A test asserts
+  `assertDontSee('@js(', false)` on the competition page.
+- Every form inside `x-ui.modal` / `x-ui.slide-over` carries `<input type="hidden" name="_form" value="<modal name>">`:
+  the modal reopens on its own validation errors (whatever the failing field).
+- Use `BattleMatch::votingNow()` (status vote **and** window not expired) for anything shown as « en direct »;
+  the scheduler may not have closed expired matches yet.
 - Do not name a Blade loop variable `$slot`/`$slots` inside components (reserved).
 - Local machine: Node 18 by default (use `/opt/homebrew/bin` Node 22), no ffmpeg (duration check skipped),
   PHP upload limit 2 MB, SMS written to `storage/logs/laravel.log`, login throttling is 6/min per IP.

@@ -26,6 +26,7 @@ Route::middleware(['auth:admin', 'platform.admin', 'admin.idle'])->group(functio
     Route::get('/', DashboardController::class)->name('dashboard');
 
     Route::get('organizers', [OrganizerController::class, 'index'])->name('organizers.index');
+    Route::post('organizers', [OrganizerController::class, 'store'])->name('organizers.store');
     Route::get('organizers/{organizer}', [OrganizerController::class, 'show'])->name('organizers.show');
     Route::patch('organizers/{organizer}/status', [OrganizerController::class, 'updateStatus'])->name('organizers.status');
 

@@ -3,19 +3,17 @@
 namespace App\Http\Requests\BackOffice;
 
 use App\Enums\OrganizerRole;
-use App\Models\User;
+use App\Models\Country;
+use App\Rules\NationalPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 
 /**
- * Add an organizer member by email: members log in to the back-office with it.
+ * Add an organizer member (manager): an existing back-office account by email,
+ * or a new account (name + phone) created on the fly.
  */
 class InviteMemberRequest extends FormRequest
 {
-    private ?User $invitedUser = null;
-
     /**
      * @return array<string, mixed>
      */
@@ -23,29 +21,16 @@ class InviteMemberRequest extends FormRequest
     {
         return [
             'email' => ['required', 'string', 'email', 'max:255'],
+            'name' => ['nullable', 'string', 'max:100'],
+            'country_id' => ['nullable', 'integer', Rule::exists('countries', 'id')->where('is_active', true)],
+            'phone' => ['nullable', 'string', 'max:20', new NationalPhoneNumber($this->country())],
             // Owners are never invited.
-            'role' => ['sometimes', Rule::enum(OrganizerRole::class)->except([OrganizerRole::Owner])],
+            'role' => ['required', Rule::enum(OrganizerRole::class)->except([OrganizerRole::Owner])],
         ];
     }
 
-    /**
-     * @return array<int, callable>
-     */
-    public function after(): array
+    public function country(): ?Country
     {
-        return [
-            function (Validator $validator): void {
-                if ($validator->errors()->isEmpty() && $this->invitedUser() === null) {
-                    $validator->errors()->add('email', "Aucun compte n'existe avec cet email.");
-                }
-            },
-        ];
-    }
-
-    public function invitedUser(): ?User
-    {
-        return $this->invitedUser ??= User::query()
-            ->where('email', Str::lower(trim((string) $this->input('email'))))
-            ->first();
+        return $this->filled('country_id') ? Country::query()->active()->find($this->integer('country_id')) : null;
     }
 }

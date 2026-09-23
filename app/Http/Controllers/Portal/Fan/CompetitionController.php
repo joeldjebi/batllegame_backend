@@ -23,7 +23,7 @@ class CompetitionController extends Controller
                 ->with('organizer')
                 ->withCount([
                     'participants',
-                    'matches as voting_matches_count' => fn ($q) => $q->where('status', MatchStatus::Voting),
+                    'matches as voting_matches_count' => fn ($q) => $q->votingNow(),
                 ])
                 ->orderByRaw("case status when 'en_cours' then 0 when 'inscriptions' then 1 else 2 end")
                 ->latest()
@@ -45,7 +45,7 @@ class CompetitionController extends Controller
 
         return view('portal.fan.competition', [
             'competition' => $competition->load('organizer'),
-            'voting' => $matches->where('status', MatchStatus::Voting)->values(),
+            'voting' => $matches->filter->isVotingOpen()->values(),
             'results' => $matches->where('status', MatchStatus::Closed)->take(12)->values(),
             'myVotes' => $user ? PublicVote::query()->where('user_id', $user->id)->whereIn('match_id', $matches->modelKeys())->pluck('participant_id', 'match_id') : collect(),
             'user' => $user,

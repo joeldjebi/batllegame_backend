@@ -16,7 +16,14 @@ dans son propre match, un juré ne vote pas avec le public.
 
 ## Organisateurs
 
-- Créés `en_attente` ; seuls les organisateurs **vérifiés** peuvent ouvrir des inscriptions.
+- **Seul le super-admin crée les organisateurs**, avec leur compte propriétaire (console → Organisateurs →
+  « Nouvel organisateur »). Un organisateur ne peut pas en créer un autre.
+- Statut à la création : `verifie` ou `en_attente` ; seuls les organisateurs **vérifiés** peuvent ouvrir des inscriptions.
+- Les **managers** (admin, staff) sont ajoutés par le propriétaire : compte existant retrouvé par email
+  (ou par téléphone s'il s'agit d'un compte mobile sans email), sinon compte créé.
+- **Mot de passe provisoire** : tout compte créé par un tiers (propriétaire, manager, juré) reçoit un mot de
+  passe provisoire par SMS, affiché une fois à la personne qui l'a créé, et doit le changer à la première
+  connexion (`/mot-de-passe` au back-office, `/jury/mot-de-passe` au jury).
 - `suspendu` : tout reste lisible, aucune écriture, aucun vote, aucune notation.
 - Un organisateur garde toujours au moins un owner.
 

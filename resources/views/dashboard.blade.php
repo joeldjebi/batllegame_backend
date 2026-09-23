@@ -5,9 +5,6 @@
             <span class="text-slate-300 dark:text-slate-600">•</span>
             <span>Voici l'activité de vos organisateurs.</span>
         </x-slot:description>
-        <x-slot:actions>
-            <x-ui.button variant="primary" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-organizer')">Nouvel organisateur</x-ui.button>
-        </x-slot:actions>
     </x-ui.page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -49,28 +46,11 @@
                     </a>
                 @empty
                     <div class="p-3">
-                        <x-ui.empty icon="building-office-2" title="Aucun organisateur" description="Créez votre structure (label, association, salle…) pour commencer.">
-                            <x-ui.button size="sm" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-organizer')">Créer</x-ui.button>
-                        </x-ui.empty>
+                        <x-ui.empty icon="building-office-2" title="Aucun organisateur" description="Les organisateurs sont créés par la plateforme Battle Game. Contactez-nous pour ouvrir votre espace, ou demandez à un organisateur de vous ajouter à son équipe." />
                     </div>
                 @endforelse
             </div>
         </x-ui.card>
     </div>
 
-    <x-ui.modal name="create-organizer" title="Nouvel organisateur" description="Il sera vérifié par la plateforme avant de pouvoir ouvrir des inscriptions." icon="building-office-2" :show="$errors->hasAny(['name', 'city', 'logo'])">
-        <form method="POST" action="{{ route('organizers.store') }}" enctype="multipart/form-data" class="space-y-4">
-            @csrf
-            <x-ui.input name="name" label="Nom de la structure" placeholder="Ex. Abidjan Battle League" required />
-            <x-ui.input name="city" label="Ville" icon="map-pin" placeholder="Abidjan" />
-            <x-ui.textarea name="description" label="Description" rows="3" />
-            <x-ui.field label="Logo" hint="PNG ou JPG, 2 Mo maximum.">
-                <input type="file" name="logo" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-brand-500/10 dark:file:text-brand-300">
-            </x-ui.field>
-            <div class="flex justify-end gap-2 pt-2">
-                <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-organizer')">Annuler</x-ui.button>
-                <x-ui.button type="submit" icon="check">Créer l'organisateur</x-ui.button>
-            </div>
-        </form>
-    </x-ui.modal>
 </x-layouts.app>

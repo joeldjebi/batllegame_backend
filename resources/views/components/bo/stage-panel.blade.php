@@ -35,7 +35,7 @@
 
         @if ($canRun && $stage->status !== StageStatus::Closed)
             <div class="flex flex-wrap gap-2">
-                <x-ui.button size="sm" variant="secondary" icon="calendar-days" x-data x-on:click="$dispatch('open-modal', @js($modal))">Calendrier</x-ui.button>
+                <x-ui.button size="sm" variant="secondary" icon="calendar-days" x-data x-on:click="$dispatch('open-modal', '{{ $modal }}')">Calendrier</x-ui.button>
                 @if ($stage->status === StageStatus::Pending && ! $ready)
                     <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-500"><x-ui.icon name="clock" variant="m" class="size-4" /> En attente de l'étape précédente</span>
                 @endif
@@ -120,7 +120,8 @@
     @push('modals')
         <x-ui.modal :name="$modal" :title="'Calendrier · '.$stage->name" icon="calendar-days" :description="$online ? 'Sans soumission à la date limite, le participant perd par forfait.' : 'En présentiel, vous pouvez aussi ouvrir le vote match par match, en direct.'">
             <form method="POST" action="{{ route('organizers.competitions.stages.update', [$organizer, $competition, $stage]) }}" class="space-y-4">
-                @csrf @method('PUT')
+                @csrf
+                <input type="hidden" name="_form" value="{{ $modal }}"> @method('PUT')
                 @if ($online)
                     <x-ui.input name="submission_deadline" type="datetime-local" label="Date limite de soumission" :value="$stage->submission_deadline" required />
                 @endif
@@ -129,7 +130,7 @@
                     <x-ui.input name="voting_closes_at" type="datetime-local" label="Clôture du vote" :value="$stage->voting_closes_at" hint="Vide = clôture manuelle." />
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', @js($modal))">Annuler</x-ui.button>
+                    <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', '{{ $modal }}')">Annuler</x-ui.button>
                     <x-ui.button type="submit" icon="check">Enregistrer</x-ui.button>
                 </div>
             </form>

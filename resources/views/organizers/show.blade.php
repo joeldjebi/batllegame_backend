@@ -93,7 +93,7 @@
             <x-ui.card title="Équipe" description="Owner : tout · Admin : configure les compétitions · Staff : gère les inscriptions et les matchs" icon="user-group">
                 @if ($canManageMembers)
                     <x-slot:actions>
-                        <x-ui.button size="sm" icon="user-plus" x-data x-on:click="$dispatch('open-modal', 'add-member')">Ajouter un membre</x-ui.button>
+                        <x-ui.button size="sm" icon="user-plus" x-data x-on:click="$dispatch('open-modal', 'add-member')">Ajouter un manager</x-ui.button>
                     </x-slot:actions>
                 @endif
                 <x-ui.table>
@@ -166,6 +166,7 @@
             :show="$errors->hasAny(['name', 'discipline', 'mode', 'registration_ends_at', 'max_participants', 'entry_fee'])">
             <form method="POST" action="{{ route('organizers.competitions.store', $organizer) }}" class="space-y-6">
                 @csrf
+                <input type="hidden" name="_form" value="create-competition">
                 <x-ui.input name="name" label="Nom de la compétition" placeholder="Ex. Abidjan Rap Contest 2026" required />
 
                 <x-ui.field label="Discipline">
@@ -209,11 +210,16 @@
     @endif
 
     @if ($canManageMembers)
-        <x-ui.modal name="add-member" title="Ajouter un membre" description="La personne doit déjà avoir un compte back-office avec cet email." icon="user-plus" :show="$errors->has('email')">
+        <x-ui.modal name="add-member" title="Ajouter un manager" description="Si l'email n'a pas encore de compte, il est créé : la personne reçoit un mot de passe provisoire par SMS, à changer à sa première connexion." icon="user-plus" max-width="xl">
             <form method="POST" action="{{ route('organizers.members.store', $organizer) }}" class="space-y-4">
                 @csrf
-                <x-ui.input name="email" type="email" label="Email" icon="envelope" required />
-                <x-ui.select name="role" label="Rôle" :options="['staff' => 'Staff — inscriptions et matchs', 'admin' => 'Administrateur — configure les compétitions']" />
+                <input type="hidden" name="_form" value="add-member">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input name="name" label="Nom complet" icon="user" hint="Obligatoire pour un nouveau compte." />
+                    <x-ui.input name="email" type="email" label="Email de connexion" icon="envelope" required />
+                </div>
+                <x-phone-input label="Téléphone (nouveau compte)" :required="false" />
+                <x-ui.select name="role" label="Rôle" :options="['staff' => 'Staff — inscriptions, matchs et soumissions', 'admin' => 'Administrateur — configure les compétitions et le jury']" />
                 <div class="flex justify-end gap-2 pt-2">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'add-member')">Annuler</x-ui.button>
                     <x-ui.button type="submit" icon="user-plus">Ajouter</x-ui.button>

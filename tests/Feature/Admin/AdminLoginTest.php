@@ -117,6 +117,6 @@ it('adds an organizer member by email', function () {
     expect($staff->roleIn($organizer))->toBe(OrganizerRole::Staff);
 
     $this->actingAs($this->organizer)
-        ->post(route('organizers.members.store', $organizer), ['email' => 'unknown@example.com'])
-        ->assertSessionHasErrors('email');
+        ->post(route('organizers.members.store', $organizer), ['email' => 'unknown@example.com', 'role' => 'staff'])
+        ->assertSessionHasErrors('name');
 });

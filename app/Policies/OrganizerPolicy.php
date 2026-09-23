@@ -30,7 +30,7 @@ class OrganizerPolicy
     /**
      * Verify or suspend an organizer: platform admins only (granted by before()).
      */
-    public function moderate(User $user, Organizer $organizer): bool
+    public function moderate(User $user, Organizer|string $organizer): bool
     {
         return false;
     }

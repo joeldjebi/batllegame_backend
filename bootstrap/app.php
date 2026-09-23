@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureJudgeAccess;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsurePhoneIsVerified;
 use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\RequireFreshPassword;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.changed' => EnsurePasswordChanged::class,
             'deny.admins' => DenyPlatformAdmins::class,
             'jury.access' => EnsureJudgeAccess::class,
+            'fresh.password' => RequireFreshPassword::class,
         ]);
 
         // Each area sends guests to its own login page.

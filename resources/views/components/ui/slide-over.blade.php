@@ -1,7 +1,12 @@
 @props(['name', 'title', 'description' => null, 'icon' => null, 'show' => false])
 
 {{-- Right-hand panel for longer forms. Open with $dispatch('open-modal', 'name'). --}}
-<div x-data="{ open: @js((bool) $show) }"
+@php
+    // Reopen on validation errors of the form it contains (hidden input _form = modal name).
+    $open = $show || ($errors->any() && old('_form') === $name);
+@endphp
+
+<div x-data="{ open: @js($open) }"
     x-on:open-modal.window="if ($event.detail === @js($name)) open = true"
     x-on:close-modal.window="if ($event.detail === @js($name)) open = false"
     x-on:keydown.escape.window="open = false"

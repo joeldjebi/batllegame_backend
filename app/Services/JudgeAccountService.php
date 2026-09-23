@@ -21,7 +21,7 @@ class JudgeAccountService
     public function __construct(private SmsSender $sms) {}
 
     /**
-     * @return array{0: Judge, 1: bool} The judge and whether an account was created.
+     * @return array{0: Judge, 1: ?string} The judge and the temporary password when an account was created.
      */
     public function assign(Competition $competition, Country $country, string $nationalPhone, string $name): array
     {
@@ -53,6 +53,6 @@ class JudgeAccountService
             ? "Battle Game : vous êtes juré de « {$competition->name} ». Connectez-vous à l'application avec votre numéro et le mot de passe provisoire {$password} (à changer à la première connexion)."
             : "Battle Game : vous êtes juré de « {$competition->name} ». Retrouvez la compétition dans l'espace juré de l'application.");
 
-        return [$judge, $password !== null];
+        return [$judge, $password];
     }
 }

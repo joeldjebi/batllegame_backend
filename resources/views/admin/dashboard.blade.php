@@ -19,6 +19,7 @@
             <span>État global de la plateforme Battle Game.</span>
         </x-slot:description>
         <x-slot:actions>
+            <x-ui.button variant="secondary" :href="route('admin.organizers.index', ['creer' => 1])" icon="plus">Nouvel organisateur</x-ui.button>
             @if ($organizerCounts[OrganizerStatus::Pending->value] ?? 0)
                 <x-ui.button :href="route('admin.organizers.index', ['status' => 'en_attente'])" icon="clock">
                     {{ $organizerCounts[OrganizerStatus::Pending->value] }} organisateur(s) à vérifier

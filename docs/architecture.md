@@ -32,12 +32,12 @@ app/
 │   │                     GroupStandingsCalculator, QualificationService, MatchScoreCalculator,
 │   │                     MatchCloser, StageBuilder, StageService, PhaseProgress
 │   ├── VotingService, JuryScoringService, RegistrationService, SubmissionService (partagés API + web)
-│   ├── JudgeAccountService, PhoneVerificationService
+│   ├── JudgeAccountService, BackOfficeAccountService (comptes créés par un tiers), PhoneVerificationService
 │   ├── Media/            MediaInspector (ffprobe)
 │   └── Sms/              SmsSender (LogSmsSender en local)
 └── Support/Portal        Définition des 3 portails web
 routes/
-├── web.php               Back-office organisateur
+├── web.php               Page d'accueil (/) et back-office organisateur (/tableau-de-bord…)
 ├── admin.php             Console super-admin (préfixe config('admin.path'))
 ├── portals.php           /jury, /artiste, /vote
 ├── api.php               API mobile
@@ -62,6 +62,7 @@ portail artiste ne donne pas accès au back-office, et inversement.
 - `EnsureJudgeAccess` (`jury.access`) : mot de passe provisoire à changer, juré affecté à au moins une compétition.
 - `EnsurePasswordChanged` (`password.changed`) : même règle côté API.
 - `EnsurePhoneIsVerified` (`phone.verified`) : vote API.
+- `RequireFreshPassword` (`fresh.password:<route>`) : back-office, redirige vers le changement du mot de passe provisoire.
 - Le rôle spatie `platform-admin` est stocké sur le guard **`web`** (`PlatformRole::GUARD`) :
   toujours passer ce guard aux vérifications de rôle.
 
@@ -95,6 +96,16 @@ MatchCloser::close / forfeit ──► MatchClosed (après commit)
 
 Les scores stockés (`match_participants.*_score`, `group_participants`) sont dénormalisés et
 **recalculables** depuis `jury_scores` et `public_votes` (`php artisan scores:recompute {slug}`).
+
+## Indexation
+
+Chaque liste, tableau de bord et recherche s'appuie sur un index (migration `add_listing_indexes`) :
+statut + date pour les compétitions et organisateurs, `stage_id + status` pour les matchs et soumissions,
+`competition_id + created_at` / `user_id + created_at` pour les votes, `user_id + status` pour les jurés…
+Sur PostgreSQL, l'extension **pg_trgm** et des index GIN trigrammes accélèrent les recherches « contient »
+(`whereLike`) sur les noms d'organisateurs et de compétitions, et sur le nom / email / téléphone des
+utilisateurs (ignorés si l'extension ne peut pas être activée). Toute nouvelle requête de liste doit avoir
+son index.
 
 ## Données JSON typées
 

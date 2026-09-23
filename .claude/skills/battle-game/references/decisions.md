@@ -4,7 +4,12 @@
 - Web accounts (super-admin, organizers) log in with **email + password**; judges, artists and the public
   with **phone + password** (dial codes from active `countries`, Côte d'Ivoire by default).
 - The super-admin has **separate login URL and guard**; refused everywhere else; read-only global view
-  (organizers, competitions, users) plus verify / suspend.
+  (organizers, competitions, users) plus verify / suspend, and **he alone creates organizers** (with their owner).
+- Organizers **create their managers** (new accounts with a temporary password) and their judges; an organizer
+  can never create another organizer.
+- Public landing page at `/` to follow competitions and let fans / artists sign up or log in; the organizer
+  back-office dashboard lives at `/tableau-de-bord`.
+- Data must display fast: every listing / search is indexed.
 - Organizer roles: staff = registrations + matches + submissions; admin = + configuration; owner = + members + delete.
 - Suspended organizer: readable, no writes, no votes. Pending organizer: drafts only.
 - Judges are **created by the organizer** per competition (SMS with a temporary password to change);
@@ -34,5 +39,5 @@
 - Real SMS provider; payment of entry fees (`entry_fee` is informative only).
 - Flutter app (API ready: `docs/api.md`); push notifications; real-time (Reverb) for live votes.
 - S3 storage + ffmpeg in production; video transcoding/streaming.
-- Organizer self-service onboarding for back-office accounts (today: seeded / added by email).
+- Email delivery of temporary passwords (today SMS + flash message).
 - Public results pages / rankings export; audit log of organizer actions.

@@ -69,7 +69,8 @@ class PreselectionService
             throw CompetitionFlowException::preselectionClosed();
         }
 
-        if ($participant->status !== ParticipantStatus::Registered) {
+        // Paid competitions: never accept a performance before the fee is paid.
+        if ($participant->status !== ParticipantStatus::Registered || ! $participant->hasPaid()) {
             throw CompetitionFlowException::preselectionNotEligible();
         }
 

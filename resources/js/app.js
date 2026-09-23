@@ -114,5 +114,51 @@ Alpine.data('toaster', (initial = []) => ({
     },
 }));
 
+// Live countdown to an ISO date: x-data="countdown('2026-09-30T18:00:00+00:00')" x-text="label".
+Alpine.data('countdown', (iso) => ({
+    now: Date.now(),
+    init() {
+        this.timer = setInterval(() => (this.now = Date.now()), 1000);
+    },
+    destroy() {
+        clearInterval(this.timer);
+    },
+    get remaining() {
+        return Math.max(0, new Date(iso).getTime() - this.now);
+    },
+    get urgent() {
+        return this.remaining < 24 * 3600 * 1000;
+    },
+    get label() {
+        const s = Math.floor(this.remaining / 1000);
+        if (s === 0) return 'Terminé';
+        const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        return d > 0 ? `${d} j ${pad(h)} h ${pad(m)} min` : `${pad(h)} h ${pad(m)} min ${pad(sec)} s`;
+    },
+}));
+
+// File picker with drag & drop and a client-side size check (the server validates again).
+Alpine.data('dropzone', (maxMb) => ({
+    file: null,
+    error: null,
+    dragging: false,
+    pick(files) {
+        const file = files?.[0];
+        if (!file) return;
+        this.error = file.size > maxMb * 1024 * 1024 ? `Fichier trop lourd : ${maxMb} Mo maximum.` : null;
+        this.file = this.error ? null : file;
+        if (this.error) this.$refs.input.value = '';
+        else {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            this.$refs.input.files = transfer.files;
+        }
+    },
+    get size() {
+        return this.file ? (this.file.size / 1048576).toFixed(1).replace('.', ',') + ' Mo' : '';
+    },
+}));
+
 window.Alpine = Alpine;
 Alpine.start();

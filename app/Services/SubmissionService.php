@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\MediaType;
 use App\Enums\PerformanceSource;
 use App\Enums\PerformanceStatus;
+use App\Exceptions\CompetitionFlowException;
 use App\Jobs\ProcessSubmission;
 use App\Models\BattleMatch;
 use App\Models\Participant;
@@ -27,6 +28,10 @@ class SubmissionService
      */
     public function submit(Participant $participant, Stage $stage, UploadedFile $file): Performance
     {
+        if (! $participant->hasPaid()) {
+            throw CompetitionFlowException::paymentRequired();
+        }
+
         return DB::transaction(function () use ($participant, $stage, $file): Performance {
             $performance = Performance::query()->firstOrNew([
                 'stage_id' => $stage->id,

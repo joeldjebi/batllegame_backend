@@ -33,6 +33,9 @@ dans son propre match, un juré ne vote pas avec le public.
   une validation manuelle est prévue).
 - Compétition **payante** (`entry_fee` > 0) : l'inscription reste en **« paiement en attente »** tant que les frais
   ne sont pas payés ; l'artiste n'est pas encore artiste de la compétition.
+- **Aucun envoi sans paiement** : tant que les frais ne sont pas payés, l'espace artiste n'affiche aucun bouton
+  d'envoi mais un encart incitatif (bénéfices, prix, compte à rebours, bouton « Je confirme ») ; le serveur refuse
+  aussi toute soumission (`Participant::hasPaid()`), à la présélection comme aux étapes.
 - **Paiement simulé** (aucun prestataire branché) : l'artiste choisit Orange Money, MTN MoMo, Moov Money, Wave ou
   carte et le résultat à simuler (accepté / refusé). Chaque tentative est enregistrée dans `payments`
   (montant, moyen, référence `BG-…`, statut). Un paiement accepté fait passer l'artiste « inscrit » (ou « validé »).

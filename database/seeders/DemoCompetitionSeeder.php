@@ -8,12 +8,16 @@ use App\Enums\Discipline;
 use App\Enums\JudgeStatus;
 use App\Enums\MatchStatus;
 use App\Enums\ParticipantStatus;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
 use App\Enums\PhaseType;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Country;
 use App\Models\JuryScore;
 use App\Models\Organizer;
+use App\Models\Participant;
+use App\Models\Payment;
 use App\Models\Phase;
 use App\Models\PublicVote;
 use App\Models\User;
@@ -171,8 +175,34 @@ class DemoCompetitionSeeder extends Seeder
             'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 4, 'media_types' => ['video', 'audio'], 'media_max_duration' => 180, 'media_max_size_mb' => 100],
         ]);
 
-        // Existing demo registrations count as paid; they can now submit.
+        // Existing demo registrations count as paid (simulated payment record); they can now submit.
         $competition->participants()->where('status', ParticipantStatus::Validated)->update(['status' => ParticipantStatus::Registered]);
+        $this->recordDemoPayments($competition);
+    }
+
+    /**
+     * Simulated paid payment for every registered artist of a paid competition.
+     */
+    public function recordDemoPayments(Competition $competition): void
+    {
+        if (! $competition->requiresPayment()) {
+            return;
+        }
+
+        $competition->participants()
+            ->where('status', ParticipantStatus::Registered)
+            ->whereDoesntHave('payments', fn ($q) => $q->where('status', PaymentStatus::Paid))
+            ->get()
+            ->each(function (Participant $participant) use ($competition): void {
+                $payment = new Payment;
+                $payment->forceFill([
+                    'competition_id' => $competition->id, 'participant_id' => $participant->id, 'user_id' => $participant->user_id,
+                    'amount' => $competition->entry_fee, 'currency' => $competition->currency,
+                    'method' => PaymentMethod::OrangeMoney, 'provider' => 'simulation',
+                    'reference' => 'BG-DEMO'.str_pad((string) $participant->id, 5, '0', STR_PAD_LEFT),
+                    'status' => PaymentStatus::Paid, 'paid_at' => now(),
+                ])->save();
+            });
     }
 
     private function password(): string

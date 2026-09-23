@@ -3,6 +3,7 @@
 use App\Enums\CompetitionStatus;
 use App\Enums\JudgeStatus;
 use App\Enums\ParticipantStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\PerformanceStatus;
 use App\Enums\PhaseType;
 use App\Enums\PreselectionState;
@@ -12,6 +13,7 @@ use App\Models\Participant;
 use App\Models\Phase;
 use App\Models\User;
 use App\Services\Competition\PhaseLauncher;
+use App\Services\PaymentService;
 use App\Services\PreselectionService;
 use App\Services\RegistrationService;
 use Illuminate\Support\Facades\Storage;
@@ -206,7 +208,7 @@ it('shows the pre-selection to the public, the artists and the judges', function
     $this->actingAs($fan, 'member')->post(route('fan.competitions.preselection.like', [$competition, $entry]))->assertSessionHasNoErrors();
     expect($entry->fresh()->likes_count)->toBe(1);
 
-    $this->actingAs($artists[1]->user, 'member')->get(route('artist.dashboard'))->assertOk()->assertSee('Envoyer ma prestation de présélection');
+    $this->actingAs($artists[1]->user, 'member')->get(route('artist.dashboard'))->assertOk()->assertSee('À faire maintenant')->assertSee('Envoyer ma prestation');
 
     $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection', $competition))->assertOk()->assertSee('Flow');
 
@@ -222,4 +224,41 @@ it('freezes the rules once the pre-selection has started but keeps dates editabl
     expect($competition->preselection->fresh())
         ->rules->selectionSize->toBe(4)
         ->ends_at->equalTo($newEnd)->toBeTrue();
+});
+
+it('shows the payment pitch instead of any upload while the fee is unpaid', function () {
+    ['competition' => $competition] = competitionWithPreselection(0, fee: 5000);
+    $artist = User::factory()->create();
+    Participant::factory()->for($competition)->create(['user_id' => $artist->id, 'status' => ParticipantStatus::PaymentPending]);
+
+    $this->actingAs($artist, 'member')->get(route('artist.dashboard'))
+        ->assertOk()
+        ->assertSee("Plus qu'un pas pour monter sur scène", false)
+        ->assertSee(route('artist.competitions.payment', $competition))
+        ->assertDontSee(route('artist.competitions.preselection.submit', $competition))
+        ->assertDontSee('name="media"', false);
+});
+
+it('refuses a submission from an artist who has not paid, whatever the status', function () {
+    ['competition' => $competition] = competitionWithPreselection(0, fee: 5000);
+    $artist = Participant::factory()->for($competition)->create(['status' => ParticipantStatus::Registered]);
+
+    expect(fn () => preselectionEntry($artist))->toThrow(CompetitionFlowException::class, 'frais payés');
+
+    $artist->update(['status' => ParticipantStatus::PaymentPending]);
+    app(PaymentService::class)->simulate($artist, PaymentMethod::Wave);
+    expect(preselectionEntry($artist->fresh())->status)->toBe(PerformanceStatus::Approved);
+});
+
+it('unlocks the upload once the fee is paid', function () {
+    ['competition' => $competition] = competitionWithPreselection(0, fee: 5000);
+    $artist = User::factory()->create();
+    $participant = Participant::factory()->for($competition)->create(['user_id' => $artist->id, 'status' => ParticipantStatus::PaymentPending]);
+
+    app(PaymentService::class)->simulate($participant, PaymentMethod::OrangeMoney);
+
+    $this->actingAs($artist, 'member')->get(route('artist.dashboard'))
+        ->assertOk()
+        ->assertSee(route('artist.competitions.preselection.submit', $competition))
+        ->assertDontSee("Plus qu'un pas pour monter sur scène", false);
 });

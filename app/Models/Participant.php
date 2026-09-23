@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ParticipantStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\StageStatus;
 use Database\Factories\ParticipantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -108,6 +109,20 @@ class Participant extends Model
             ->with('phase.competition')
             ->orderBy('phase_id')->orderBy('number')
             ->first();
+    }
+
+    /**
+     * Registration fee settled (always true for free competitions).
+     */
+    public function hasPaid(): bool
+    {
+        if (! $this->competition->requiresPayment()) {
+            return true;
+        }
+
+        return $this->relationLoaded('payments')
+            ? $this->payments->contains('status', PaymentStatus::Paid)
+            : $this->payments()->where('status', PaymentStatus::Paid)->exists();
     }
 
     /**

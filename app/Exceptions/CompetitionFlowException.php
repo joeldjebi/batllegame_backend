@@ -151,4 +151,9 @@ class CompetitionFlowException extends DomainException
     {
         return new self("Publiez d'abord la sélection de la présélection.");
     }
+
+    public static function paymentRequired(): self
+    {
+        return new self("Réglez d'abord vos frais d'inscription pour envoyer votre prestation.");
+    }
 }

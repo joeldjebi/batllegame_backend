@@ -25,6 +25,14 @@ Plugins: `@alpinejs/intersect`, `collapse`, `focus`. Utilities in `app.css` (all
 - Alpine data: `counter(target)` (`x-intersect.once="start()"`, `x-text="formatted"`), `rotator(words, ms)`.
 - Still solid colors only: shapes are solid circles, rings and SVG grid lines — no gradient, no blur blob.
 
+## Portals (mobile-first)
+The artist / public / jury portals are used mostly on phones: `x-layouts.portal` has a fixed **bottom tab bar**
+on small screens (safe-area aware, `pb-28` on main). Artist space = hero, **action center** (sorted: payment first,
+then closest deadline), journey cards with `x-portal.stepper`, horizontal snap carousel of open competitions.
+Components: `x-portal.payment-pitch` (marketing CTA shown instead of any upload while unpaid),
+`x-portal.dropzone` (touch-friendly file picker, drag & drop, client size check, submit disabled until a file is
+picked), `x-portal.stepper`. Alpine: `countdown(iso)` (`label`, `urgent`), `dropzone(maxMb)`. Test on 390 px width.
+
 ## Layouts
 - `x-layouts.app` — back-office and admin console (sidebar `bo.sidebar`, fed by a view composer in
   `AppServiceProvider`: `$navOrganizers` or `$adminCounts`), topbar (theme, user menu), toasts, `@stack('modals')`.

@@ -18,7 +18,8 @@
 <html lang="fr" class="h-full scroll-smooth">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#6d28d9">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ? $title.' · ' : '' }}{{ $portal->title }} · Battle Game</title>
     <script>
@@ -97,11 +98,35 @@
         </div>
     </header>
 
-    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <main class="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-6 sm:py-8">
         <div class="animate-slide-up">{{ $slot }}</div>
     </main>
 
-    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 p-4 sm:items-end sm:p-6">
+    {{-- Mobile bottom navigation --}}
+    @php
+        $tabs = match ($portal->key) {
+            'jury' => [['jury.dashboard', 'Compétitions', 'trophy'], ['jury.password.edit', 'Compte', 'user-circle']],
+            'artist' => [['artist.dashboard', 'Mon espace', 'microphone'], ['fan.dashboard', 'Voter', 'hand-thumb-up'], ['home', 'Accueil', 'home']],
+            'fan' => [['fan.dashboard', 'Compétitions', 'trophy'], ['artist.dashboard', 'Artiste', 'microphone'], ['home', 'Accueil', 'home']],
+        };
+    @endphp
+    <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden dark:border-white/10 dark:bg-slate-950/95" aria-label="Navigation">
+        <div class="grid" style="grid-template-columns: repeat({{ count($tabs) }}, minmax(0, 1fr))">
+            @foreach ($tabs as [$route, $label, $icon])
+                @php($active = request()->routeIs($route) || (request()->routeIs(Str::before($route, '.').'.*') && Str::before($route, '.') === $portal->key && $route === $portal->home))
+                <a href="{{ route($route) }}" @class([
+                    'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition',
+                    'text-brand-600 dark:text-brand-300' => $active,
+                    'text-slate-500 dark:text-slate-400' => ! $active,
+                ])>
+                    <span @class(['grid h-8 w-14 place-items-center rounded-full transition', 'bg-brand-50 dark:bg-brand-500/15' => $active])><x-ui.icon :name="$icon" :variant="$active ? 's' : 'o'" class="size-5" /></span>
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </nav>
+
+    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 p-4 sm:bottom-0 sm:items-end sm:p-6">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible" x-transition.opacity class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-900/10 dark:bg-slate-800 dark:ring-white/10">
                 <span :class="toast.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'" class="grid size-8 shrink-0 place-items-center rounded-full">

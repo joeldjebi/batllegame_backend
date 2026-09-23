@@ -84,6 +84,8 @@ Inside one transaction (phase row locked):
   likes relative to the top entry, weights, ties: jury, likes, participant id), `publish()` (closed, everything reviewed,
   jury complete if weighted → top N `Validated` + `selected`, others `NotSelected`).
 - `PhaseLauncher` refuses to start a phase while a pre-selection is not published.
+- `Participant::hasPaid()` (free competition or a paid `Payment`) gates **every** upload: `PreselectionService::submit()`
+  and `SubmissionService::submit()` refuse unpaid artists; the artist dashboard never renders an upload form for them.
 - `ProcessSubmission` handles any `Contracts\ReviewableMedia` (performances and pre-selection entries).
 - Policies: `PreselectionSubmissionPolicy::like` (verified phone, open, published entry, not own, not judge) and `::score`.
 

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminIdleTimeout;
 use App\Http\Middleware\DenyPlatformAdmins;
+use App\Http\Middleware\EnsureJudgeAccess;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsurePhoneIsVerified;
 use App\Http\Middleware\EnsurePlatformAdmin;
@@ -22,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix(config('admin.path'))
                 ->name('admin.')
                 ->group(base_path('routes/admin.php'));
+
+            Route::middleware('web')->group(base_path('routes/portals.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -31,15 +34,25 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.idle' => AdminIdleTimeout::class,
             'organizer.area' => DenyPlatformAdmins::class,
             'password.changed' => EnsurePasswordChanged::class,
+            'deny.admins' => DenyPlatformAdmins::class,
+            'jury.access' => EnsureJudgeAccess::class,
         ]);
 
         // Each area sends guests to its own login page.
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->routeIs('admin.*')
-            ? route('admin.login')
-            : route('login'));
-        $middleware->redirectUsersTo(fn (Request $request) => $request->routeIs('admin.*')
-            ? route('admin.dashboard')
-            : route('dashboard'));
+        $middleware->redirectGuestsTo(fn (Request $request) => route(match (true) {
+            $request->routeIs('admin.*') => 'admin.login',
+            $request->routeIs('jury.*') => 'jury.login',
+            $request->routeIs('artist.*') => 'artist.login',
+            $request->routeIs('fan.*') => 'fan.login',
+            default => 'login',
+        }));
+        $middleware->redirectUsersTo(fn (Request $request) => route(match (true) {
+            $request->routeIs('admin.*') => 'admin.dashboard',
+            $request->routeIs('jury.*') => 'jury.dashboard',
+            $request->routeIs('artist.*') => 'artist.dashboard',
+            $request->routeIs('fan.*') => 'fan.dashboard',
+            default => 'dashboard',
+        }));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

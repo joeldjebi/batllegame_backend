@@ -8,18 +8,24 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Keeps platform admins out of the organizer back-office session: they must
- * go through the admin area and its own guard.
+ * Keeps platform admins out of every area but their console: they must go
+ * through the admin login and its own guard.
  */
 class DenyPlatformAdmins
 {
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user()?->isPlatformAdmin()) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
+            // The guard authenticated by the route middleware is the default one here.
+            Auth::guard()->logout();
+            $request->session()->regenerateToken();
 
-            return redirect()->route('login');
+            return redirect()->guest(route(match (true) {
+                $request->routeIs('jury.*') => 'jury.login',
+                $request->routeIs('artist.*') => 'artist.login',
+                $request->routeIs('fan.*') => 'fan.login',
+                default => 'login',
+            }));
         }
 
         return $next($request);

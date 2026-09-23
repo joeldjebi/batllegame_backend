@@ -51,7 +51,7 @@ class UserFactory extends Factory
     public function platformAdmin(): static
     {
         return $this->afterCreating(function (User $user): void {
-            $user->assignRole(Role::findOrCreate(PlatformRole::Admin->value, 'web'));
+            $user->assignRole(Role::findOrCreate(PlatformRole::Admin->value, PlatformRole::GUARD));
         });
     }
 }

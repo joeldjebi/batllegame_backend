@@ -90,6 +90,14 @@ it('lists and details user accounts', function () {
         ->assertSee('Rap Contest 2026');
 });
 
+it('filters super-admin accounts on the admin guard', function () {
+    $this->actingAs($this->admin, 'admin')
+        ->get(route('admin.users.index', ['type' => 'admin']))
+        ->assertOk()
+        ->assertSee('sa@example.com')
+        ->assertDontSee('owner@example.com');
+});
+
 it('keeps every admin page closed to organizer sessions', function () {
     foreach ([
         route('admin.dashboard'),

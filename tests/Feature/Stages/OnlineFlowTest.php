@@ -203,11 +203,11 @@ it('lets the organizer review submissions from the back-office', function () {
     submitAs($p[0], $stage);
     $performance = Performance::query()->sole();
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'web')
         ->patch(route('organizers.competitions.performances.review', [$organizer, $competition, $performance]), ['decision' => 'reject'])
         ->assertSessionHasErrors('reason');
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'web')
         ->patch(route('organizers.competitions.performances.review', [$organizer, $competition, $performance]), ['decision' => 'reject', 'reason' => 'Son inaudible'])
         ->assertSessionHasNoErrors();
 
@@ -215,11 +215,11 @@ it('lets the organizer review submissions from the back-office', function () {
 
     // A performance of another competition is never reachable through this one.
     ['competition' => $other, 'organizer' => $otherOrganizer] = startedCompetition(CompetitionMode::Online, 2);
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'web')
         ->patch("/organizers/{$organizer->slug}/competitions/{$other->id}/performances/{$performance->id}", ['decision' => 'approve'])
         ->assertNotFound();
 
-    $this->actingAs($owner)->get(route('organizers.competitions.show', [$organizer, $competition]))->assertOk()->assertSee('Son inaudible');
+    $this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))->assertOk()->assertSee('Son inaudible');
 });
 
 it('runs a complete online elimination stage by stage', function () {

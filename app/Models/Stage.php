@@ -89,6 +89,19 @@ class Stage extends Model
     }
 
     /**
+     * The participant of this user playing a match of this stage, if any.
+     */
+    public function participantFor(User $user): ?Participant
+    {
+        $participant = Participant::query()
+            ->where('competition_id', $this->phase->competition_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        return $participant && in_array($participant->id, $this->participantIds(), true) ? $participant : null;
+    }
+
+    /**
      * Online stages collect submissions; on-site stages are played live.
      */
     public function isOnline(): bool

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ParticipantStatus;
+use App\Enums\StageStatus;
 use Database\Factories\ParticipantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -76,6 +77,20 @@ class Participant extends Model
     public function performances(): HasMany
     {
         return $this->hasMany(Performance::class);
+    }
+
+    /**
+     * The earliest stage (not closed) where this participant has a match.
+     */
+    public function currentStage(): ?Stage
+    {
+        return Stage::query()
+            ->where('status', '!=', StageStatus::Closed)
+            ->whereHas('matches.slots', fn ($q) => $q->where('participant_id', $this->id))
+            ->whereHas('phase', fn ($q) => $q->where('competition_id', $this->competition_id))
+            ->with('phase.competition')
+            ->orderBy('phase_id')->orderBy('number')
+            ->first();
     }
 
     /**

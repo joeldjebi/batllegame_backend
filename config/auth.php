@@ -48,6 +48,18 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Web portals (until the mobile app ships): judges on their own guard,
+        // artists and the public share one (same phone-based account).
+        'jury' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        'member' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

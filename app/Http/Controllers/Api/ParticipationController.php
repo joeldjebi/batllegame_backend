@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\StageStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StageResource;
 use App\Models\Participant;
-use App\Models\Stage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,7 +23,7 @@ class ParticipationController extends Controller
 
         return response()->json([
             'data' => $participations->map(function (Participant $participant) {
-                $stage = $this->currentStage($participant);
+                $stage = $participant->currentStage();
                 $submission = $stage?->performances()->where('participant_id', $participant->id)->first();
 
                 return [
@@ -48,19 +46,5 @@ class ParticipationController extends Controller
                 ];
             }),
         ]);
-    }
-
-    /**
-     * The latest stage (not closed) where this participant has a match to play.
-     */
-    private function currentStage(Participant $participant): ?Stage
-    {
-        return Stage::query()
-            ->where('status', '!=', StageStatus::Closed)
-            ->whereHas('matches.slots', fn ($q) => $q->where('participant_id', $participant->id))
-            ->whereHas('phase', fn ($q) => $q->where('competition_id', $participant->competition_id))
-            ->with('phase.competition')
-            ->orderBy('phase_id')->orderBy('number')
-            ->first();
     }
 }

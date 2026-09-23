@@ -17,7 +17,7 @@ class RoleSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         foreach (PlatformRole::cases() as $role) {
-            Role::findOrCreate($role->value, 'web');
+            Role::findOrCreate($role->value, PlatformRole::GUARD);
         }
     }
 }

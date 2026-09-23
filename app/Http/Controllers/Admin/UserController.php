@@ -25,7 +25,7 @@ class UserController extends Controller
                 ->withCount(['organizerMemberships', 'participations', 'judgeAssignments', 'publicVotes'])
                 ->when($type === 'backoffice', fn ($q) => $q->whereHas('organizerMemberships'))
                 ->when($type === 'mobile', fn ($q) => $q->whereDoesntHave('organizerMemberships')->whereDoesntHave('roles'))
-                ->when($type === 'admin', fn ($q) => $q->role(PlatformRole::Admin->value))
+                ->when($type === 'admin', fn ($q) => $q->role(PlatformRole::Admin->value, PlatformRole::GUARD))
                 ->when($request->query('q'), fn ($q, $search) => $q->where(fn ($q) => $q
                     ->whereLike('name', "%{$search}%")
                     ->orWhereLike('email', "%{$search}%")

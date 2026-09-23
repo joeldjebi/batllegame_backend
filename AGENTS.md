@@ -1,47 +1,11 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# Battle Game — guide pour les agents
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+Backend Laravel 13 de Battle Game (compétitions de music battle) : back-office organisateur,
+console super-admin, portails web jury / artiste / public, API mobile.
 
-## Prerequisites
-
-Verify that PHP and Composer are available:
-
-```sh
-php -v
-composer -V
-```
-
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
-
-macOS:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
-
-Windows PowerShell:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
-
-Linux:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
-
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
-
-## Agent Setup
-
-Install Laravel Boost from the application root before making application changes:
-
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
-
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+- **Lire d'abord** le skill [`.claude/skills/battle-game/SKILL.md`](.claude/skills/battle-game/SKILL.md)
+  (règles non négociables, carte du moteur, pièges) puis [`docs/README.md`](docs/README.md).
+- Code et commentaires en anglais ; interface, messages, documentation et réponses en français.
+- Tests : `php artisan test` **et** la suite sur PostgreSQL (voir `docs/tests.md`) ; style : `./vendor/bin/pint`.
+- Front : Node 22 (`.nvmrc`), `npm run build`.
+- Ne jamais commiter `.env` ; les identifiants locaux passent par les variables `SEED_*`.

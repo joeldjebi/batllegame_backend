@@ -113,7 +113,7 @@ class User extends Authenticatable
 
     public function isPlatformAdmin(): bool
     {
-        return $this->hasRole(PlatformRole::Admin->value);
+        return $this->hasRole(PlatformRole::Admin->value, PlatformRole::GUARD);
     }
 
     /**

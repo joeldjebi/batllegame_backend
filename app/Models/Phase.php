@@ -84,6 +84,14 @@ class Phase extends Model
     }
 
     /**
+     * @return HasMany<Stage, $this>
+     */
+    public function stages(): HasMany
+    {
+        return $this->hasMany(Stage::class)->orderBy('number');
+    }
+
+    /**
      * @return HasMany<BattleMatch, $this>
      */
     public function matches(): HasMany

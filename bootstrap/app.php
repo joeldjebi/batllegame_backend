@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminIdleTimeout;
 use App\Http\Middleware\DenyPlatformAdmins;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsurePhoneIsVerified;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use Illuminate\Foundation\Application;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.admin' => EnsurePlatformAdmin::class,
             'admin.idle' => AdminIdleTimeout::class,
             'organizer.area' => DenyPlatformAdmins::class,
+            'password.changed' => EnsurePasswordChanged::class,
         ]);
 
         // Each area sends guests to its own login page.

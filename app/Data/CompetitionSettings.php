@@ -18,6 +18,10 @@ final readonly class CompetitionSettings extends JsonData
         // Anti-fraud: max votes from the same device on one match (null = unlimited).
         public ?int $maxVotesPerDevice,
         public string $timezone,
+        // Submissions must be approved by the organizer before voters and judges see them.
+        public bool $submissionsRequireApproval,
+        // On-site phases: a code shown in the room is required to vote (only people present).
+        public bool $onsiteVoteCode,
     ) {}
 
     public static function fromArray(array $data): static
@@ -28,6 +32,8 @@ final readonly class CompetitionSettings extends JsonData
             'show_live_results' => ['sometimes', 'boolean'],
             'max_votes_per_device' => ['sometimes', 'nullable', 'integer', 'between:1,50'],
             'timezone' => ['sometimes', 'timezone:all'],
+            'submissions_require_approval' => ['sometimes', 'boolean'],
+            'onsite_vote_code' => ['sometimes', 'boolean'],
         ])->validate();
 
         return new self(
@@ -36,6 +42,8 @@ final readonly class CompetitionSettings extends JsonData
             showLiveResults: (bool) ($validated['show_live_results'] ?? false),
             maxVotesPerDevice: isset($validated['max_votes_per_device']) ? (int) $validated['max_votes_per_device'] : null,
             timezone: $validated['timezone'] ?? 'Africa/Abidjan',
+            submissionsRequireApproval: (bool) ($validated['submissions_require_approval'] ?? true),
+            onsiteVoteCode: (bool) ($validated['onsite_vote_code'] ?? false),
         );
     }
 
@@ -47,6 +55,8 @@ final readonly class CompetitionSettings extends JsonData
             'show_live_results' => $this->showLiveResults,
             'max_votes_per_device' => $this->maxVotesPerDevice,
             'timezone' => $this->timezone,
+            'submissions_require_approval' => $this->submissionsRequireApproval,
+            'onsite_vote_code' => $this->onsiteVoteCode,
         ];
     }
 }

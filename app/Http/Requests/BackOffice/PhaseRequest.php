@@ -19,7 +19,12 @@ class PhaseRequest extends FormRequest
     {
         return [
             'type' => ['required', Rule::enum(PhaseType::class)],
-            'mode' => ['nullable', Rule::enum(CompetitionMode::class)],
+            // A mixed competition plays each phase either online or on site.
+            'mode' => [
+                Rule::requiredIf($this->route('competition')?->mode === CompetitionMode::Hybrid),
+                'nullable',
+                Rule::enum(CompetitionMode::class)->except([CompetitionMode::Hybrid]),
+            ],
             'qualifiers_per_group' => [
                 Rule::requiredIf($this->input('type') === PhaseType::Groups->value),
                 'nullable', 'integer', 'min:1', 'max:16',

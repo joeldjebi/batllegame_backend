@@ -6,6 +6,7 @@ use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Services\Competition\GroupStandingsCalculator;
 use App\Services\Competition\MatchCloser;
+use App\Services\Competition\StageService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
@@ -44,4 +45,11 @@ Artisan::command('scores:recompute {competition : Competition slug}', function (
     $this->info("Recomputed {$matches->count()} matches of {$competition->name}.");
 })->purpose('Rebuild denormalized scores and standings from jury scores and public votes');
 
+Artisan::command('stages:process', function (StageService $stages) {
+    ['forfeits' => $forfeits, 'opened' => $opened] = $stages->processDue();
+
+    $this->info("{$forfeits} forfait(s) appliqué(s), {$opened} vote(s) d'étape ouvert(s).");
+})->purpose('Apply forfeits at submission deadlines and open the planned stage votes');
+
+Schedule::command('stages:process')->everyMinute()->withoutOverlapping();
 Schedule::command('matches:close-expired')->everyMinute()->withoutOverlapping();

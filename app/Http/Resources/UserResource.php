@@ -21,6 +21,8 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'phone' => $this->phone,
             'phone_verified' => $this->hasVerifiedPhone(),
+            'must_change_password' => (bool) $this->must_change_password,
+            'is_judge' => $this->judgeAssignments()->exists(),
             'email' => $this->email,
             'country' => new CountryResource($this->whenLoaded('country')),
         ];

@@ -19,6 +19,7 @@ use App\Models\PublicVote;
 use App\Models\User;
 use App\Services\Competition\MatchCloser;
 use App\Services\Competition\PhaseLauncher;
+use App\Services\Competition\StageService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -52,6 +53,8 @@ class DemoCompetitionSeeder extends Seeder
     {
         $organizer = Organizer::query()->where('slug', 'organisateur-test')->firstOrFail();
         $country = Country::query()->where('iso2', 'CI')->firstOrFail();
+
+        $this->seedOnlineCompetition($organizer, $country, $launcher);
 
         if ($organizer->competitions()->where('slug', 'abidjan-rap-battle-2026')->exists()) {
             $this->command?->warn('Demo data already present.');
@@ -115,6 +118,38 @@ class DemoCompetitionSeeder extends Seeder
 
         // 3. Draft.
         $this->competition($organizer, 'Freestyle Session Yopougon', Discipline::Freestyle, CompetitionMode::Online, CompetitionStatus::Draft, 32);
+    }
+
+    /**
+     * Online competition with the first stage open for submissions.
+     */
+    private function seedOnlineCompetition(Organizer $organizer, Country $country, PhaseLauncher $launcher): void
+    {
+        if ($organizer->competitions()->where('name', 'Abidjan Talents en ligne')->exists()) {
+            return;
+        }
+
+        $competition = $this->competition($organizer, 'Abidjan Talents en ligne', Discipline::Singing, CompetitionMode::Online, CompetitionStatus::Registration, 8);
+
+        collect(['Awa Voice', 'Dj Kiff', 'Maman Soul', 'Petit Yodé'])->each(function (string $name, int $i) use ($competition, $country): void {
+            $user = User::query()->firstOrCreate(
+                ['phone' => $country->toE164('01'.str_pad((string) (30000000 + $i), 8, '0', STR_PAD_LEFT))],
+                ['name' => $name, 'country_id' => $country->id, 'password' => $this->password(), 'phone_verified_at' => now()],
+            );
+            $competition->participants()->create(['user_id' => $user->id, 'stage_name' => $name, 'seed' => $i + 1, 'status' => ParticipantStatus::Validated]);
+        });
+
+        $phase = new Phase([
+            'type' => PhaseType::SingleElimination, 'position' => 1,
+            'rules' => ['vote_mode' => 'mixte', 'jury_weight' => 50, 'public_weight' => 50, 'media_types' => ['video', 'audio'], 'media_max_duration' => 120, 'media_max_size_mb' => 100],
+        ]);
+        $competition->phases()->save($phase);
+        $launcher->start($phase);
+
+        $stages = app(StageService::class);
+        $first = $phase->stages()->first();
+        $stages->schedule($first, ['submission_deadline' => now()->addDays(2), 'voting_closes_at' => now()->addDays(4)]);
+        $stages->openSubmissions($first);
     }
 
     private function password(): string

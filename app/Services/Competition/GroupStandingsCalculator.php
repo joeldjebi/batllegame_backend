@@ -84,9 +84,10 @@ class GroupStandingsCalculator
 
         foreach ([[$slots[0], $slots[1]], [$slots[1], $slots[0]]] as [$self, $other]) {
             $outcomes[$self->participant_id] = [
-                'result' => match ($match->winner_id) {
-                    null => 'draw',
-                    $self->participant_id => 'win',
+                'result' => match (true) {
+                    // Both forfeited: a loss for each.
+                    $match->winner_id === null => $match->is_forfeit ? 'loss' : 'draw',
+                    $match->winner_id === $self->participant_id => 'win',
                     default => 'loss',
                 },
                 'diff' => (float) $self->final_score - (float) $other->final_score,
@@ -155,9 +156,9 @@ class GroupStandingsCalculator
             }
 
             foreach ($ids as $id) {
-                $points[$id] += match ($match->winner_id) {
-                    null => 1,
-                    $id => 3,
+                $points[$id] += match (true) {
+                    $match->winner_id === null => $match->is_forfeit ? 0 : 1,
+                    $match->winner_id === $id => 3,
                     default => 0,
                 };
             }

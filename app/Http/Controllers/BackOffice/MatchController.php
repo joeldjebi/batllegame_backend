@@ -9,6 +9,7 @@ use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Organizer;
 use App\Services\Competition\MatchCloser;
+use App\Services\Competition\StageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -35,9 +36,14 @@ class MatchController extends Controller
         return back()->with('status', 'Match programmé.');
     }
 
-    public function openVoting(Organizer $organizer, Competition $competition, BattleMatch $match): RedirectResponse
+    /**
+     * On-site: open the vote of a match right after the battle, optionally for a fixed duration.
+     */
+    public function openVoting(Request $request, Organizer $organizer, Competition $competition, BattleMatch $match, StageService $stages): RedirectResponse
     {
         $this->authorize('runMatches', $competition);
+
+        $validated = $request->validate(['duration' => ['nullable', 'integer', 'min:1', 'max:1440']]);
 
         $playable = in_array($match->status, [MatchStatus::Scheduled, MatchStatus::Submissions], true)
             && $match->slots()->whereNotNull('participant_id')->count() === 2;
@@ -46,12 +52,9 @@ class MatchController extends Controller
             throw CompetitionFlowException::matchNotPlayable();
         }
 
-        $match->forceFill([
-            'status' => MatchStatus::Voting,
-            'voting_opens_at' => $match->voting_opens_at ?? now(),
-        ])->save();
+        $match = $stages->openMatchVoting($match, isset($validated['duration']) ? now()->addMinutes((int) $validated['duration']) : null);
 
-        return back()->with('status', 'Vote ouvert.');
+        return back()->with('status', $match->vote_code ? "Vote ouvert : code de salle {$match->vote_code}." : 'Vote ouvert.');
     }
 
     public function close(Request $request, Organizer $organizer, Competition $competition, BattleMatch $match, MatchCloser $closer): RedirectResponse

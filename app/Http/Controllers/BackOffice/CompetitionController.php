@@ -44,6 +44,7 @@ class CompetitionController extends Controller
                 'phases.matches' => fn ($q) => $q->orderBy('group_id')->orderBy('bracket')->orderBy('round')->orderBy('bracket_position'),
                 'phases.matches.slots.participant',
                 'phases.matches.group',
+                'phases.stages.performances.participant',
                 'participants.user',
                 'judges.user',
                 'criteria',

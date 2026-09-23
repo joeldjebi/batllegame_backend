@@ -2,6 +2,7 @@
 
 namespace App\Services\Competition;
 
+use App\Enums\CompetitionMode;
 use App\Enums\CompetitionStatus;
 use App\Enums\ParticipantStatus;
 use App\Enums\PhaseStatus;
@@ -22,6 +23,7 @@ class PhaseLauncher
         private BracketGenerator $brackets,
         private QualificationService $qualification,
         private PhaseProgress $progress,
+        private StageBuilder $stages,
     ) {}
 
     /**
@@ -41,6 +43,11 @@ class PhaseLauncher
                 throw CompetitionFlowException::competitionNotRunning();
             }
 
+            // Each phase is played either online or on site.
+            if ($phase->effectiveMode() === CompetitionMode::Hybrid) {
+                throw CompetitionFlowException::hybridPhaseMode();
+            }
+
             $entrants = $this->entrants($phase);
             $this->ensureEnoughEntrants($phase, $entrants);
 
@@ -54,6 +61,8 @@ class PhaseLauncher
                 PhaseType::Groups => $this->groups->draw($phase, $entrants),
                 PhaseType::SingleElimination, PhaseType::DoubleElimination => $this->brackets->generate($phase, $entrants),
             };
+
+            $this->stages->build($phase);
 
             // A bracket made only of byes may already be decided.
             $this->progress->finishIfComplete($phase);

@@ -18,10 +18,13 @@ class PhaseProgress
     public function __construct(
         private GroupStandingsCalculator $standings,
         private QualificationService $qualification,
+        private StageService $stageService,
     ) {}
 
     public function finishIfComplete(Phase $phase): bool
     {
+        $this->stageService->refreshPhase($phase);
+
         return DB::transaction(function () use ($phase): bool {
             $phase = Phase::query()->lockForUpdate()->findOrFail($phase->id);
 

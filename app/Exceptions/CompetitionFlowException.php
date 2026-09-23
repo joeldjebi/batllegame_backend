@@ -66,4 +66,49 @@ class CompetitionFlowException extends DomainException
     {
         return new self('Le vainqueur désigné ne participe pas à ce match.');
     }
+
+    public static function hybridPhaseMode(): self
+    {
+        return new self('La compétition est mixte : choisissez « En ligne » ou « Présentiel » pour cette phase.');
+    }
+
+    public static function stageClosed(): self
+    {
+        return new self('Cette étape est terminée.');
+    }
+
+    public static function stageNotPending(): self
+    {
+        return new self("Cette étape n'est plus en attente.");
+    }
+
+    public static function stageNotOnline(): self
+    {
+        return new self("Les soumissions n'existent que pour les phases en ligne.");
+    }
+
+    public static function deadlineRequired(): self
+    {
+        return new self('Définissez une date limite de soumission dans le futur.');
+    }
+
+    public static function deadlineNotReached(): self
+    {
+        return new self("La date limite de soumission n'est pas encore passée.");
+    }
+
+    public static function submissionsToReview(int $count): self
+    {
+        return new self("{$count} soumission(s) doivent encore être validées ou rejetées.");
+    }
+
+    public static function stageParticipantsUnknown(): self
+    {
+        return new self("Les participants de cette étape ne sont pas encore tous connus : terminez l'étape précédente.");
+    }
+
+    public static function submissionsClosed(): self
+    {
+        return new self('Les soumissions ne sont pas ouvertes pour cette étape.');
+    }
 }

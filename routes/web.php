@@ -9,7 +9,9 @@ use App\Http\Controllers\BackOffice\MatchController;
 use App\Http\Controllers\BackOffice\OrganizerController;
 use App\Http\Controllers\BackOffice\OrganizerMemberController;
 use App\Http\Controllers\BackOffice\ParticipantController;
+use App\Http\Controllers\BackOffice\PerformanceController;
 use App\Http\Controllers\BackOffice\PhaseController;
+use App\Http\Controllers\BackOffice\StageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -54,6 +56,13 @@ Route::middleware(['auth', 'organizer.area'])->group(function () {
                 Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');
                 Route::delete('phases/{phase}', [PhaseController::class, 'destroy'])->name('phases.destroy');
                 Route::post('phases/{phase}/start', [PhaseController::class, 'start'])->name('phases.start');
+
+                Route::put('stages/{stage}', [StageController::class, 'update'])->name('stages.update');
+                Route::post('stages/{stage}/open-submissions', [StageController::class, 'openSubmissions'])->name('stages.open-submissions');
+                Route::post('stages/{stage}/open-voting', [StageController::class, 'openVoting'])->name('stages.open-voting');
+
+                Route::patch('performances/{performance}', [PerformanceController::class, 'review'])->name('performances.review');
+                Route::post('matches/{match}/captations', [PerformanceController::class, 'captation'])->name('matches.captations.store');
 
                 Route::put('matches/{match}', [MatchController::class, 'update'])->name('matches.update');
                 Route::post('matches/{match}/open-voting', [MatchController::class, 'openVoting'])->name('matches.open-voting');

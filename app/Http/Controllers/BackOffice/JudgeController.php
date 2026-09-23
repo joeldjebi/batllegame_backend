@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\BackOffice;
 
-use App\Enums\JudgeStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\BackOffice\InviteUserRequest;
+use App\Http\Requests\BackOffice\CreateJudgeRequest;
 use App\Models\Competition;
 use App\Models\Judge;
 use App\Models\Organizer;
+use App\Services\JudgeAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -16,23 +16,15 @@ use Illuminate\Validation\ValidationException;
  */
 class JudgeController extends Controller
 {
-    public function store(InviteUserRequest $request, Organizer $organizer, Competition $competition): RedirectResponse
+    public function store(CreateJudgeRequest $request, Organizer $organizer, Competition $competition, JudgeAccountService $accounts): RedirectResponse
     {
         $this->authorize('update', $competition);
 
-        $user = $request->invitedUser();
+        [$judge, $created] = $accounts->assign($competition, $request->country(), (string) $request->input('phone'), $request->validated('name'));
 
-        if ($user->isParticipantOf($competition)) {
-            throw ValidationException::withMessages(['phone' => 'Un participant ne peut pas être membre du jury de la même compétition.']);
-        }
-
-        if ($user->isJudgeOf($competition, acceptedOnly: false)) {
-            throw ValidationException::withMessages(['phone' => 'Cet utilisateur fait déjà partie du jury.']);
-        }
-
-        $competition->judges()->create(['user_id' => $user->id, 'status' => JudgeStatus::Invited]);
-
-        return back()->with('status', 'Juré invité.');
+        return back()->with('status', $created
+            ? "Compte juré créé pour {$judge->user->name} : ses identifiants lui ont été envoyés par SMS."
+            : "{$judge->user->name} a été ajouté au jury et prévenu par SMS.");
     }
 
     public function destroy(Organizer $organizer, Competition $competition, Judge $judge): RedirectResponse

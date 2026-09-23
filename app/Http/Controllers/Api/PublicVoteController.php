@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PublicVoteController extends Controller
 {
@@ -25,6 +26,11 @@ class PublicVoteController extends Controller
             // Only one of the two participants of this match.
             'participant_id' => ['required', 'integer', Rule::in($match->slots()->whereNotNull('participant_id')->pluck('participant_id'))],
         ]);
+
+        // On-site with room code: only people present in the room can vote.
+        if ($match->vote_code !== null && ! hash_equals($match->vote_code, (string) $request->input('vote_code'))) {
+            throw ValidationException::withMessages(['vote_code' => 'Code de salle invalide.']);
+        }
 
         if ($match->publicVotes()->where('user_id', $request->user()->id)->exists()) {
             abort(409, 'Vous avez déjà voté pour ce match.');

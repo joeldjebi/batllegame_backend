@@ -7,17 +7,6 @@
         fn ($a, $b) => array_search($a, ['gagnants', 'perdants', 'grande_finale']) <=> array_search($b, ['gagnants', 'perdants', 'grande_finale'])
     );
 
-    $roundLabel = function (?string $side, int $round, int $last): string {
-        return match (true) {
-            $side === BracketSide::GrandFinal->value => $round === 1 ? 'Grande finale' : 'Finale « reset »',
-            $side === BracketSide::Losers->value => $round === $last ? 'Finale perdants' : 'Tour perdants '.$round,
-            $round === $last => 'Finale',
-            $round === $last - 1 => 'Demi-finales',
-            $round === $last - 2 => 'Quarts de finale',
-            $round === $last - 3 => 'Huitièmes',
-            default => 'Tour '.$round,
-        };
-    };
 @endphp
 
 <div class="space-y-8">
@@ -34,10 +23,10 @@
                 <div class="flex min-w-max gap-10">
                     @foreach ($rounds as $round => $roundMatches)
                         <div class="bracket-round flex w-60 flex-col">
-                            <p class="mb-3 text-center text-[11px] font-semibold tracking-wider text-slate-400 uppercase">{{ $roundLabel($side, $round, $rounds->keys()->max()) }}</p>
+                            <p class="mb-3 text-center text-[11px] font-semibold tracking-wider text-slate-400 uppercase">{{ \App\Services\Competition\RoundLabel::for(BracketSide::tryFrom((string) $side), $round, $rounds->keys()->max()) }}</p>
                             <div class="flex flex-1 flex-col justify-around gap-4">
                                 @foreach ($roundMatches->sortBy('bracket_position') as $match)
-                                    <x-bo.match-card :match="$match" :organizer="$organizer" :competition="$competition" :can-run="$canRun" />
+                                    <x-bo.match-card :match="$match" :organizer="$organizer" :competition="$competition" :can-run="$canRun" :onsite="$phase->effectiveMode() === \App\Enums\CompetitionMode::OnSite" />
                                 @endforeach
                             </div>
                         </div>

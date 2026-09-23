@@ -194,6 +194,9 @@
                             <x-ui.badge tone="gray" :dot="false" icon="clock">{{ $phase->rules->rounds }} × {{ $phase->rules->turnDuration }} s</x-ui.badge>
                             @if ($phase->type === PhaseType::Groups)<x-ui.badge tone="gray" :dot="false" icon="squares-2x2">{{ $phase->rules->groupCount }} poules · top {{ $phase->qualifiers_per_group }}</x-ui.badge>@endif
                             @if ($phase->rules->grandFinalReset)<x-ui.badge tone="gray" :dot="false" icon="arrow-path">Finale reset</x-ui.badge>@endif
+                            @if ($phase->effectiveMode() === CompetitionMode::Online)
+                                <x-ui.badge tone="gray" :dot="false" icon="film">{{ collect($phase->rules->mediaTypes)->map->label()->implode(' / ') }} · {{ gmdate('i:s', $phase->rules->mediaMaxDuration) }} max · {{ $phase->rules->mediaMaxSizeMb }} Mo</x-ui.badge>
+                            @endif
                         </span>
                     </x-slot:description>
                     @if (! $phase->isFrozen() && $canUpdate)
@@ -206,6 +209,14 @@
                                 <x-ui.button size="sm" variant="primary" icon="rocket-launch">Démarrer</x-ui.button>
                             </x-ui.confirm>
                         </x-slot:actions>
+                    @endif
+
+                    @if ($phase->isFrozen() && $phase->stages->isNotEmpty())
+                        <div class="mb-6 space-y-3">
+                            @foreach ($phase->stages as $stage)
+                                <x-bo.stage-panel :stage="$stage" :organizer="$organizer" :competition="$competition" :can-run="$canRun" />
+                            @endforeach
+                        </div>
                     @endif
 
                     @if (! $phase->isFrozen())
@@ -221,7 +232,7 @@
                                     </button>
                                     <div x-show="open" x-collapse x-cloak class="grid gap-3 sm:grid-cols-2">
                                         @foreach ($phase->matches->where('group_id', $group->id)->sortBy(['round', 'bracket_position']) as $match)
-                                            <x-bo.match-card :match="$match" :organizer="$organizer" :competition="$competition" :can-run="$canRun" />
+                                            <x-bo.match-card :match="$match" :organizer="$organizer" :competition="$competition" :can-run="$canRun" :onsite="$phase->effectiveMode() === CompetitionMode::OnSite" />
                                         @endforeach
                                     </div>
                                 </div>
@@ -299,7 +310,7 @@
             <div class="grid gap-6 xl:grid-cols-2">
                 <x-ui.card title="Jury" description="Les jurés notent depuis l'application mobile" icon="scale">
                     @if ($canUpdate)
-                        <x-slot:actions><x-ui.button size="sm" icon="user-plus" x-data x-on:click="$dispatch('open-modal', 'invite-judge')">Inviter</x-ui.button></x-slot:actions>
+                        <x-slot:actions><x-ui.button size="sm" icon="user-plus" x-data x-on:click="$dispatch('open-modal', 'invite-judge')">Ajouter un juré</x-ui.button></x-slot:actions>
                     @endif
                     @forelse ($competition->judges as $judge)
                         <div class="flex items-center gap-3 border-b border-slate-100 py-3 first:pt-0 last:border-0 last:pb-0 dark:border-white/5">
@@ -316,7 +327,7 @@
                             @endif
                         </div>
                     @empty
-                        <x-ui.empty icon="scale" title="Aucun juré" description="Invitez les jurés avec leur numéro de téléphone (compte de l'application)." />
+                        <x-ui.empty icon="scale" title="Aucun juré" description="Créez vos jurés avec leur nom et leur numéro : ils ne verront que cette compétition." />
                     @endforelse
                 </x-ui.card>
 
@@ -368,6 +379,8 @@
                         <x-ui.toggle name="settings[registration_requires_approval]" label="Valider les inscriptions" description="Chaque artiste doit être validé avant de concourir." :checked="$settings->registrationRequiresApproval" />
                         <x-ui.toggle name="settings[public_voting_enabled]" label="Vote du public" description="Les spectateurs votent depuis l'application." :checked="$settings->publicVotingEnabled" />
                         <x-ui.toggle name="settings[show_live_results]" label="Résultats en direct" description="Afficher les scores avant la clôture du vote." :checked="$settings->showLiveResults" />
+                        <x-ui.toggle name="settings[submissions_require_approval]" label="Valider les soumissions" description="En ligne : chaque vidéo ou son est validé avant d'être visible du public et du jury." :checked="$settings->submissionsRequireApproval" />
+                        <x-ui.toggle name="settings[onsite_vote_code]" label="Code de salle en présentiel" description="Seules les personnes présentes (code affiché à l'écran) peuvent voter." :checked="$settings->onsiteVoteCode" />
                         <div class="px-3 pt-2">
                             <x-ui.input name="settings[max_votes_per_device]" type="number" min="1" label="Votes max. par appareil" :value="$settings->maxVotesPerDevice" hint="Anti-fraude. Vide = illimité." />
                         </div>
@@ -391,7 +404,14 @@
         <x-ui.slide-over name="create-phase" title="Nouvelle phase" description="Les règles restent modifiables jusqu'au démarrage de la phase." icon="rectangle-stack"
             :show="$errors->hasAny(['type', 'qualifiers_per_group']) || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'rules.'))">
             <form method="POST" action="{{ route('organizers.competitions.phases.store', [$organizer, $competition]) }}" class="space-y-6"
-                x-data="{ type: @js(old('type', PhaseType::SingleElimination->value)), vote: @js(old('rules.vote_mode', VoteMode::Mixed->value)), jury: {{ (int) old('rules.jury_weight', 50) }} }">
+                x-data="{
+                    type: @js(old('type', PhaseType::SingleElimination->value)),
+                    vote: @js(old('rules.vote_mode', VoteMode::Mixed->value)),
+                    jury: {{ (int) old('rules.jury_weight', 50) }},
+                    mode: @js(old('mode', $competition->mode === CompetitionMode::Hybrid ? CompetitionMode::Online->value : '')),
+                    inherited: @js($competition->mode->value),
+                    get online() { return (this.mode || this.inherited) === 'en_ligne' },
+                }">
                 @csrf
                 <x-ui.field label="Format">
                     <div class="grid gap-2">
@@ -423,7 +443,10 @@
                 </label>
 
                 <div class="grid gap-4 sm:grid-cols-3">
-                    <x-ui.select name="mode" label="Mode" :options="CompetitionMode::options()" placeholder="Hérité ({{ $competition->mode->label() }})" />
+                    <x-ui.select name="mode" label="Mode" x-model="mode"
+                        :options="collect(CompetitionMode::options())->except(CompetitionMode::Hybrid->value)->all()"
+                        :placeholder="$competition->mode === CompetitionMode::Hybrid ? null : 'Hérité ('.$competition->mode->label().')'"
+                        :hint="$competition->mode === CompetitionMode::Hybrid ? 'Compétition mixte : choisissez pour chaque phase.' : null" />
                     <x-ui.input name="rules[rounds]" type="number" min="1" max="10" label="Passages" value="1" />
                     <x-ui.input name="rules[turn_duration]" type="number" min="15" label="Durée d'un passage" value="60" suffix="sec" />
                 </div>
@@ -449,6 +472,22 @@
                     <input type="hidden" name="rules[public_weight]" :value="100 - jury">
                 </div>
 
+                <div x-show="online" x-collapse class="space-y-4 rounded-xl bg-slate-50 p-4 dark:bg-white/[0.03]">
+                    <p class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100"><x-ui.icon name="cloud-arrow-up" class="size-5 text-brand-600" /> Soumissions en ligne</p>
+                    <p class="-mt-2 text-xs text-slate-500">Une soumission par participant et par étape. Sans soumission à la date limite : forfait.</p>
+                    <div class="flex flex-wrap gap-4">
+                        @foreach (\App\Enums\MediaType::cases() as $type)
+                            <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                <input type="checkbox" name="rules[media_types][]" value="{{ $type->value }}" checked class="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"> {{ $type->label() }}
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-ui.input name="rules[media_max_duration]" type="number" min="10" max="1800" label="Durée maximale" value="180" suffix="sec" />
+                        <x-ui.input name="rules[media_max_size_mb]" type="number" min="1" max="2048" label="Taille maximale" value="200" suffix="Mo" />
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-phase')">Annuler</x-ui.button>
                     <x-ui.button type="submit" variant="primary" icon="plus">Ajouter la phase</x-ui.button>
@@ -456,13 +495,14 @@
             </form>
         </x-ui.slide-over>
 
-        <x-ui.modal name="invite-judge" title="Inviter un juré" description="Le juré doit avoir un compte sur l'application mobile." icon="scale" :show="$errors->hasAny(['phone', 'country_id'])">
+        <x-ui.modal name="invite-judge" title="Ajouter un juré" description="Si le numéro n'a pas encore de compte, il est créé et le juré reçoit un mot de passe provisoire par SMS. Il notera depuis l'application." icon="scale" :show="$errors->hasAny(['phone', 'country_id'])">
             <form method="POST" action="{{ route('organizers.competitions.judges.store', [$organizer, $competition]) }}" class="space-y-4">
                 @csrf
+                <x-ui.input name="name" label="Nom du juré" icon="user" required />
                 <x-phone-input />
                 <div class="flex justify-end gap-2 pt-2">
                     <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'invite-judge')">Annuler</x-ui.button>
-                    <x-ui.button type="submit" icon="paper-airplane">Inviter</x-ui.button>
+                    <x-ui.button type="submit" icon="user-plus">Créer le juré</x-ui.button>
                 </div>
             </form>
         </x-ui.modal>

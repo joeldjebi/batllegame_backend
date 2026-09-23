@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Organizer;
+use App\Services\Media\FfprobeMediaInspector;
+use App\Services\Media\MediaInspector;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsSender;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Replace with a real SMS provider binding in production.
         $this->app->bind(SmsSender::class, LogSmsSender::class);
+        $this->app->bind(MediaInspector::class, FfprobeMediaInspector::class);
     }
 
     /**

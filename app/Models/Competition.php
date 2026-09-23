@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -68,6 +69,22 @@ class Competition extends Model
     public function phases(): HasMany
     {
         return $this->hasMany(Phase::class)->orderBy('position');
+    }
+
+    /**
+     * @return HasManyThrough<Stage, Phase, $this>
+     */
+    public function stages(): HasManyThrough
+    {
+        return $this->hasManyThrough(Stage::class, Phase::class);
+    }
+
+    /**
+     * @return HasMany<Performance, $this>
+     */
+    public function performances(): HasMany
+    {
+        return $this->hasMany(Performance::class);
     }
 
     /**

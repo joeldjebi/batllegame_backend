@@ -12,6 +12,7 @@ enum PerformanceStatus: string implements HasBadge
 {
     use EnumHelpers;
 
+    case Processing = 'traitement';
     case Pending = 'en_attente';
     case Approved = 'validee';
     case Rejected = 'rejetee';
@@ -19,7 +20,8 @@ enum PerformanceStatus: string implements HasBadge
     public function label(): string
     {
         return match ($this) {
-            self::Pending => 'En attente',
+            self::Processing => 'En traitement',
+            self::Pending => 'À valider',
             self::Approved => 'Validée',
             self::Rejected => 'Rejetée',
         };
@@ -28,6 +30,7 @@ enum PerformanceStatus: string implements HasBadge
     public function tone(): string
     {
         return match ($this) {
+            self::Processing => 'blue',
             self::Pending => 'amber',
             self::Approved => 'green',
             self::Rejected => 'red',

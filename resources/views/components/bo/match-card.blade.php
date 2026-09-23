@@ -1,4 +1,4 @@
-@props(['match', 'organizer', 'competition', 'canRun' => false, 'compact' => false])
+@props(['match', 'organizer', 'competition', 'canRun' => false, 'onsite' => false])
 
 @php
     use App\Enums\MatchStatus;
@@ -20,6 +20,7 @@
         <span class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
             {{ $match->group ? 'J'.$match->round : 'M'.$match->bracket_position }}
             @if ($isWalkover)<span class="ml-1 normal-case">· exempt</span>@endif
+            @if ($match->is_forfeit)<span class="ml-1 normal-case text-rose-500">· forfait</span>@endif
         </span>
         @unless ($match->status === MatchStatus::Scheduled && ! $playable)
             <x-ui.badge :value="$match->status" class="!px-1.5 !py-0 !text-[10px]" />
@@ -47,13 +48,26 @@
         </div>
     @endforeach
 
+    @if ($match->vote_code && $match->status === MatchStatus::Voting)
+        <div class="flex items-center justify-between border-t border-slate-100 bg-fuchsia-50 px-3 py-2 dark:border-white/5 dark:bg-fuchsia-500/10">
+            <span class="text-[11px] font-semibold tracking-wide text-fuchsia-700 uppercase dark:text-fuchsia-300">Code de salle</span>
+            <span class="font-display text-lg font-bold tracking-[0.3em] text-fuchsia-700 tabular-nums dark:text-fuchsia-200">{{ $match->vote_code }}</span>
+        </div>
+    @endif
+
     @if ($canRun && ($playable || $match->status === MatchStatus::Voting))
         <div class="flex gap-1.5 border-t border-slate-100 p-2 dark:border-white/5">
-            @if ($playable)
-                <form method="POST" action="{{ route('organizers.competitions.matches.open-voting', [$organizer, $competition, $match]) }}" class="flex-1">
+            @if ($playable && $onsite)
+                <form method="POST" action="{{ route('organizers.competitions.matches.open-voting', [$organizer, $competition, $match]) }}" class="flex flex-1 gap-1.5">
                     @csrf
-                    <x-ui.button type="submit" size="xs" variant="soft" icon="play" class="w-full">Ouvrir le vote</x-ui.button>
+                    <select name="duration" title="Durée du vote" class="rounded-lg border-0 bg-slate-50 py-1 pr-7 pl-2 text-xs ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
+                        <option value="">Sans limite</option>
+                        @foreach ([2, 5, 10, 15, 30] as $minutes)<option value="{{ $minutes }}">{{ $minutes }} min</option>@endforeach
+                    </select>
+                    <x-ui.button type="submit" size="xs" variant="soft" icon="play" class="flex-1">Ouvrir le vote</x-ui.button>
                 </form>
+            @elseif ($playable)
+                <span class="flex-1 px-1 py-1 text-xs text-slate-400">Vote ouvert avec l'étape</span>
             @else
                 <x-ui.confirm :action="route('organizers.competitions.matches.close', [$organizer, $competition, $match])" :danger="false" icon="flag"
                     title="Clôturer le match ?" message="Les scores seront calculés et le vainqueur avancera automatiquement. En cas d'égalité parfaite, désignez le vainqueur." confirm="Clôturer">
@@ -69,5 +83,28 @@
                 </x-ui.confirm>
             @endif
         </div>
+    @endif
+
+    @if ($canRun && $onsite && $filled === 2 && $match->status !== MatchStatus::Cancelled)
+        <div class="border-t border-slate-100 px-2 py-1.5 dark:border-white/5">
+            <button type="button" x-data x-on:click="$dispatch('open-modal', @js('captation-'.$match->id))" class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-brand-600 dark:hover:bg-white/5">
+                <x-ui.icon name="video-camera" variant="m" class="size-4" /> Ajouter la captation
+            </button>
+        </div>
+        @push('modals')
+            <x-ui.modal :name="'captation-'.$match->id" title="Captation vidéo" description="Enregistrement de la prestation sur scène, publié directement dans l'application." icon="video-camera">
+                <form method="POST" action="{{ route('organizers.competitions.matches.captations.store', [$organizer, $competition, $match]) }}" enctype="multipart/form-data" class="space-y-4">
+                    @csrf
+                    <x-ui.select name="participant_id" label="Participant" :options="$matchSlots->filter->participant->mapWithKeys(fn ($s) => [$s->participant_id => $s->participant->stage_name])->all()" />
+                    <x-ui.field label="Fichier vidéo ou audio">
+                        <input type="file" name="media" accept="video/*,audio/*" required class="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+                    </x-ui.field>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', @js('captation-'.$match->id))">Annuler</x-ui.button>
+                        <x-ui.button type="submit" icon="arrow-up-tray">Envoyer</x-ui.button>
+                    </div>
+                </form>
+            </x-ui.modal>
+        @endpush
     @endif
 </div>

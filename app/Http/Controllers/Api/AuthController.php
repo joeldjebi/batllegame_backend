@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -49,6 +50,21 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Change the password (mandatory for accounts created with a temporary one).
+     */
+    public function changePassword(Request $request): UserResource
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password:sanctum'],
+            'password' => ['required', 'confirmed', Password::min(8), 'different:current_password'],
+        ]);
+
+        $request->user()->forceFill(['password' => $validated['password'], 'must_change_password' => false])->save();
+
+        return new UserResource($request->user()->load('country'));
     }
 
     public function me(Request $request): UserResource

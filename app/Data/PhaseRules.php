@@ -3,6 +3,7 @@
 namespace App\Data;
 
 use App\Enums\GroupDrawMethod;
+use App\Enums\MediaType;
 use App\Enums\PhaseType;
 use App\Enums\TieBreaker;
 use App\Enums\VoteMode;
@@ -32,6 +33,11 @@ final readonly class PhaseRules extends JsonData
         public ?int $groupCount,
         public GroupDrawMethod $drawMethod,
         public bool $grandFinalReset,
+        /** @var list<MediaType> */
+        public array $mediaTypes,
+        // Online phases: maximum duration (seconds) and size (MB) of a submission.
+        public int $mediaMaxDuration,
+        public int $mediaMaxSizeMb,
     ) {}
 
     public static function fromArray(array $data): static
@@ -51,6 +57,10 @@ final readonly class PhaseRules extends JsonData
             'group_count' => ['sometimes', 'nullable', 'integer', 'between:1,64'],
             'draw_method' => ['sometimes', Rule::enum(GroupDrawMethod::class)],
             'grand_final_reset' => ['sometimes', 'boolean'],
+            'media_types' => ['sometimes', 'array', 'min:1'],
+            'media_types.*' => ['distinct', Rule::enum(MediaType::class)],
+            'media_max_duration' => ['sometimes', 'integer', 'between:10,1800'],
+            'media_max_size_mb' => ['sometimes', 'integer', 'between:1,2048'],
         ])->validate();
 
         $voteMode = VoteMode::from($validated['vote_mode'] ?? VoteMode::Mixed->value);
@@ -88,6 +98,9 @@ final readonly class PhaseRules extends JsonData
             groupCount: isset($validated['group_count']) ? (int) $validated['group_count'] : null,
             drawMethod: GroupDrawMethod::from($validated['draw_method'] ?? GroupDrawMethod::Random->value),
             grandFinalReset: (bool) ($validated['grand_final_reset'] ?? false),
+            mediaTypes: array_map(MediaType::from(...), $validated['media_types'] ?? MediaType::values()),
+            mediaMaxDuration: (int) ($validated['media_max_duration'] ?? 180),
+            mediaMaxSizeMb: (int) ($validated['media_max_size_mb'] ?? 200),
         );
     }
 
@@ -107,6 +120,9 @@ final readonly class PhaseRules extends JsonData
             'group_count' => $this->groupCount,
             'draw_method' => $this->drawMethod->value,
             'grand_final_reset' => $this->grandFinalReset,
+            'media_types' => array_map(fn (MediaType $t) => $t->value, $this->mediaTypes),
+            'media_max_duration' => $this->mediaMaxDuration,
+            'media_max_size_mb' => $this->mediaMaxSizeMb,
         ];
     }
 
@@ -134,6 +150,14 @@ final readonly class PhaseRules extends JsonData
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function acceptedMimeTypes(): array
+    {
+        return array_merge(...array_map(fn (MediaType $t) => $t->mimeTypes(), $this->mediaTypes));
     }
 
     public function usesJury(): bool

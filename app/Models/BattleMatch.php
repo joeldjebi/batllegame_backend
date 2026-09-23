@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Enums\BracketSide;
 use App\Enums\MatchStatus;
+use App\Enums\PerformanceStatus;
 use App\Models\Concerns\InheritsCompetitionId;
 use Database\Factories\BattleMatchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Table('matches')]
 #[Fillable([
-    'phase_id', 'group_id', 'bracket', 'round', 'bracket_position',
+    'phase_id', 'group_id', 'stage_id', 'bracket', 'round', 'bracket_position',
     'next_match_id', 'next_match_slot', 'loser_next_match_id', 'loser_next_match_slot',
     'scheduled_at', 'submission_deadline', 'voting_opens_at', 'voting_closes_at',
 ])]
@@ -49,6 +51,7 @@ class BattleMatch extends Model
             'voting_opens_at' => 'datetime',
             'voting_closes_at' => 'datetime',
             'closed_at' => 'datetime',
+            'is_forfeit' => 'boolean',
         ];
     }
 
@@ -84,6 +87,28 @@ class BattleMatch extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class);
+    }
+
+    /**
+     * @return BelongsTo<Stage, $this>
+     */
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(Stage::class);
+    }
+
+    /**
+     * Published media of this match's participants for its stage.
+     *
+     * @return Collection<int, Performance>
+     */
+    public function publishedPerformances(): Collection
+    {
+        return Performance::query()
+            ->where(fn ($q) => $q->where('match_id', $this->id)->orWhere(fn ($q) => $q->whereNull('match_id')->where('stage_id', $this->stage_id)))
+            ->whereIn('participant_id', $this->slots()->whereNotNull('participant_id')->select('participant_id'))
+            ->where('status', PerformanceStatus::Approved)
+            ->get();
     }
 
     /**

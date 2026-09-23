@@ -3,6 +3,7 @@
 namespace App\Services\Competition;
 
 use App\Enums\MatchStatus;
+use App\Enums\ParticipantStatus;
 use App\Enums\TieBreaker;
 use App\Events\MatchClosed;
 use App\Exceptions\CompetitionFlowException;
@@ -50,6 +51,41 @@ class MatchCloser
                 'winner_id' => $this->decideWinner($match, $scores, $forcedWinnerId),
                 'closed_at' => now(),
             ])->save();
+
+            MatchClosed::dispatch($match);
+
+            return $match;
+        });
+    }
+
+    /**
+     * Decide a match without playing it (missing submission).
+     * $winnerId null = both forfeited: void in elimination (nobody advances),
+     * a double loss in groups.
+     */
+    public function forfeit(BattleMatch $match, ?int $winnerId): BattleMatch
+    {
+        return DB::transaction(function () use ($match, $winnerId): BattleMatch {
+            $match = BattleMatch::query()->lockForUpdate()->findOrFail($match->id);
+
+            if (in_array($match->status, [MatchStatus::Closed, MatchStatus::Cancelled], true)) {
+                return $match;
+            }
+
+            $void = $winnerId === null && ! $match->isGroupMatch();
+
+            $match->forceFill([
+                'status' => $void ? MatchStatus::Cancelled : MatchStatus::Closed,
+                'winner_id' => $winnerId,
+                'is_forfeit' => true,
+                'closed_at' => now(),
+            ])->save();
+
+            if ($void) {
+                Participant::query()
+                    ->whereIn('id', $match->slots()->whereNotNull('participant_id')->select('participant_id'))
+                    ->update(['status' => ParticipantStatus::Withdrawn]);
+            }
 
             MatchClosed::dispatch($match);
 

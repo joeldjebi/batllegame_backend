@@ -19,6 +19,7 @@ class MatchResource extends JsonResource
     {
         // Scores stay hidden until the match is closed, unless live results are enabled.
         $showScores = $this->isClosed() || $this->competition->settings->showLiveResults;
+        $media = $this->publishedPerformances()->groupBy('participant_id');
 
         return [
             'id' => $this->id,
@@ -33,6 +34,10 @@ class MatchResource extends JsonResource
             'voting_opens_at' => $this->voting_opens_at,
             'voting_closes_at' => $this->voting_closes_at,
             'voting_open' => $this->isVotingOpen(),
+            // On-site: the room code displayed on screen must be sent with the vote.
+            'vote_code_required' => $this->vote_code !== null,
+            'is_forfeit' => $this->is_forfeit,
+            'stage' => $this->stage ? ['id' => $this->stage->id, 'name' => $this->stage->name, 'status' => $this->stage->status] : null,
             'winner_id' => $this->winner_id,
             'slots' => $this->whenLoaded('slots', fn () => $this->slots->map(fn (MatchParticipant $slot) => [
                 'slot' => $slot->slot,
@@ -43,6 +48,7 @@ class MatchResource extends JsonResource
                 'jury_score' => $showScores ? $slot->jury_score : null,
                 'public_score' => $showScores ? $slot->public_score : null,
                 'final_score' => $showScores ? $slot->final_score : null,
+                'media' => MediaResource::collection($media->get($slot->participant_id, collect())),
             ])),
         ];
     }

@@ -149,22 +149,23 @@ it('reports phase rules errors under the rules key', function () {
         ->assertSessionHasErrors('rules.jury_weight');
 });
 
-it('gives platform admins access to every organizer without membership', function () {
+it('lets the platform admin moderate organizers from the admin area', function () {
     $admin = User::factory()->platformAdmin()->create();
 
-    $this->actingAs($admin)
-        ->get(route('organizers.competitions.show', [$this->orgB, $this->competitionB]))
-        ->assertOk();
-
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('admin.organizers.status', $this->orgB), ['status' => 'suspendu'])
         ->assertRedirect();
 
     expect($this->orgB->fresh()->isSuspended())->toBeTrue();
 });
 
-it('keeps the admin area closed to organizer owners', function () {
+it('keeps the admin area closed to organizer sessions', function () {
     $this->actingAs($this->ownerA)
+        ->get(route('admin.organizers.index'))
+        ->assertRedirect(route('admin.login'));
+
+    // Even a non-admin user forced into the admin guard is rejected.
+    $this->actingAs($this->ownerA, 'admin')
         ->get(route('admin.organizers.index'))
         ->assertForbidden();
 });
@@ -187,7 +188,7 @@ it('renders every back-office page with data', function () {
     $this->actingAs($this->ownerA)->get(route('dashboard'))->assertOk()->assertSee($this->orgA->name);
     $this->actingAs($this->ownerA)->get(route('organizers.show', $this->orgA))->assertOk()->assertSee($this->competitionA->name);
     $this->actingAs($this->ownerA)->get(route('organizers.competitions.show', [$this->orgA, $this->competitionA]))->assertOk()->assertSee('Poules');
-    $this->actingAs(User::factory()->platformAdmin()->create())->get(route('admin.organizers.index'))->assertOk()->assertSee($this->orgB->name);
+    $this->actingAs(User::factory()->platformAdmin()->create(), 'admin')->get(route('admin.organizers.index'))->assertOk()->assertSee($this->orgB->name);
 });
 
 it('starts a phase and runs its matches from the back-office', function () {

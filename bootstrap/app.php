@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Middleware\AdminIdleTimeout;
+use App\Http\Middleware\DenyPlatformAdmins;
 use App\Http\Middleware\EnsurePhoneIsVerified;
+use App\Http\Middleware\EnsurePlatformAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Spatie\Permission\Middleware\RoleMiddleware;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,12 +16,28 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            Route::middleware('web')
+                ->prefix(config('admin.path'))
+                ->name('admin.')
+                ->group(base_path('routes/admin.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'phone.verified' => EnsurePhoneIsVerified::class,
-            'role' => RoleMiddleware::class,
+            'platform.admin' => EnsurePlatformAdmin::class,
+            'admin.idle' => AdminIdleTimeout::class,
+            'organizer.area' => DenyPlatformAdmins::class,
         ]);
+
+        // Each area sends guests to its own login page.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->routeIs('admin.*')
+            ? route('admin.login')
+            : route('login'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->routeIs('admin.*')
+            ? route('admin.organizers.index')
+            : route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

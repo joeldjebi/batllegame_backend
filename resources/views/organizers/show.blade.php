@@ -36,11 +36,11 @@
 <section>
     <h2>Membres</h2>
     <table>
-        <tr><th>Nom</th><th>Téléphone</th><th>Rôle</th><th></th></tr>
+        <tr><th>Nom</th><th>Email</th><th>Rôle</th><th></th></tr>
         @foreach ($members as $member)
             <tr>
                 <td>{{ $member->user->name }}</td>
-                <td>{{ $member->user->phone }}</td>
+                <td>{{ $member->user->email }}</td>
                 <td>
                     @can('manageMembers', $organizer)
                         <form class="inline" method="POST" action="{{ route('organizers.members.update', [$organizer, $member]) }}">
@@ -62,7 +62,7 @@
     @can('manageMembers', $organizer)
         <form method="POST" action="{{ route('organizers.members.store', $organizer) }}" class="row">
             @csrf
-            <x-phone-input />
+            <label>Email <input type="email" name="email" value="{{ old('email') }}" required></label>
             <label>Rôle <select name="role"><option value="staff">Staff</option><option value="admin">Administrateur</option></select></label>
             <button>Ajouter</button>
         </form>

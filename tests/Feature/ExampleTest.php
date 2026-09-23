@@ -1,13 +1,9 @@
 <?php
 
-use App\Models\Country;
-
 it('redirects guests to the login page', function () {
     $this->get('/')->assertRedirect(route('login'));
 });
 
-it('renders the login page with the active dial codes', function () {
-    Country::factory()->ivoryCoast();
-
-    $this->get(route('login'))->assertOk()->assertSee('+225');
+it('renders the email login page', function () {
+    $this->get(route('login'))->assertOk()->assertSee('name="email"', false)->assertDontSee('name="phone"', false);
 });

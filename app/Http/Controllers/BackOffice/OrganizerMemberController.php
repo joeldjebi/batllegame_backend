@@ -4,7 +4,7 @@ namespace App\Http\Controllers\BackOffice;
 
 use App\Enums\OrganizerRole;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\BackOffice\InviteUserRequest;
+use App\Http\Requests\BackOffice\InviteMemberRequest;
 use App\Models\Organizer;
 use App\Models\OrganizerMember;
 use Illuminate\Http\RedirectResponse;
@@ -17,14 +17,14 @@ use Illuminate\Validation\ValidationException;
  */
 class OrganizerMemberController extends Controller
 {
-    public function store(InviteUserRequest $request, Organizer $organizer): RedirectResponse
+    public function store(InviteMemberRequest $request, Organizer $organizer): RedirectResponse
     {
         $this->authorize('manageMembers', $organizer);
 
         $user = $request->invitedUser();
 
         if ($user->isMemberOf($organizer)) {
-            throw ValidationException::withMessages(['phone' => 'Cet utilisateur est déjà membre.']);
+            throw ValidationException::withMessages(['email' => 'Cet utilisateur est déjà membre.']);
         }
 
         $organizer->users()->attach($user, ['role' => $request->enum('role', OrganizerRole::class) ?? OrganizerRole::Staff]);

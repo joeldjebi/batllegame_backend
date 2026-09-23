@@ -36,7 +36,8 @@ class AuthController extends Controller
         $credentials = $request->credentials();
         $user = User::query()->where('phone', $credentials['phone'])->first();
 
-        if ($user === null || ! Hash::check($credentials['password'], $user->password)) {
+        // Platform admins never get mobile API tokens.
+        if ($user === null || ! Hash::check($credentials['password'], $user->password) || $user->isPlatformAdmin()) {
             throw ValidationException::withMessages(['phone' => 'Numéro ou mot de passe incorrect.']);
         }
 

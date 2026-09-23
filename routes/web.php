@@ -1,7 +1,5 @@
 <?php
 
-use App\Enums\PlatformRole;
-use App\Http\Controllers\Admin\OrganizerController as AdminOrganizerController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BackOffice\CompetitionController;
 use App\Http\Controllers\BackOffice\CriterionController;
@@ -27,7 +25,7 @@ Route::middleware('guest')->group(function () {
     Route::post('login', [LoginController::class, 'store'])->middleware('throttle:6,1');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'organizer.area'])->group(function () {
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
     Route::get('/', DashboardController::class)->name('dashboard');
 
@@ -72,11 +70,4 @@ Route::middleware('auth')->group(function () {
             });
         });
 
-    Route::middleware('role:'.PlatformRole::Admin->value)
-        ->prefix('admin')
-        ->name('admin.')
-        ->group(function () {
-            Route::get('organizers', [AdminOrganizerController::class, 'index'])->name('organizers.index');
-            Route::patch('organizers/{organizer}/status', [AdminOrganizerController::class, 'updateStatus'])->name('organizers.status');
-        });
 });

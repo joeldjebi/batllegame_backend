@@ -28,12 +28,13 @@
 <body>
 @auth
     <header>
-        <a href="{{ route('dashboard') }}">{{ config('app.name') }}</a>
-        @if (auth()->user()->isPlatformAdmin())
-            <a href="{{ route('admin.organizers.index') }}">Administration</a>
+        @if (request()->routeIs('admin.*'))
+            <a href="{{ route('admin.organizers.index') }}">{{ config('app.name') }} · Administration</a>
+        @else
+            <a href="{{ route('dashboard') }}">{{ config('app.name') }}</a>
         @endif
         <span class="muted" style="margin-left:auto">{{ auth()->user()->name }}</span>
-        <form class="inline" method="POST" action="{{ route('logout') }}">@csrf<button class="secondary">Déconnexion</button></form>
+        <form class="inline" method="POST" action="{{ request()->routeIs('admin.*') ? route('admin.logout') : route('logout') }}">@csrf<button class="secondary">Déconnexion</button></form>
     </header>
 @endauth
 <main>

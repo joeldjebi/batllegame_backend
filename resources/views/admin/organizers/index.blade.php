@@ -7,7 +7,7 @@
         <tr><th>Nom</th><th>Ville</th><th>Compétitions</th><th>Statut</th><th></th></tr>
         @foreach ($organizers as $organizer)
             <tr>
-                <td><a href="{{ route('organizers.show', $organizer) }}">{{ $organizer->name }}</a></td>
+                <td><strong>{{ $organizer->name }}</strong> <span class="muted">{{ $organizer->slug }}</span></td>
                 <td>{{ $organizer->city }}</td>
                 <td>{{ $organizer->competitions_count }}</td>
                 <td><span class="badge">{{ $organizer->status->label() }}</span></td>

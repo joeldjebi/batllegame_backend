@@ -2,18 +2,18 @@
 
 namespace App\Http\Requests\BackOffice;
 
-use App\Http\Requests\Concerns\HasPhoneNumber;
+use App\Enums\OrganizerRole;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Find an existing mobile user by phone number (to invite a judge).
+ * Add an organizer member by email: members log in to the back-office with it.
  */
-class InviteUserRequest extends FormRequest
+class InviteMemberRequest extends FormRequest
 {
-    use HasPhoneNumber;
-
     private ?User $invitedUser = null;
 
     /**
@@ -22,7 +22,9 @@ class InviteUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...$this->phoneRules(),
+            'email' => ['required', 'string', 'email', 'max:255'],
+            // Owners are never invited.
+            'role' => ['sometimes', Rule::enum(OrganizerRole::class)->except([OrganizerRole::Owner])],
         ];
     }
 
@@ -34,7 +36,7 @@ class InviteUserRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 if ($validator->errors()->isEmpty() && $this->invitedUser() === null) {
-                    $validator->errors()->add('phone', "Aucun compte n'existe avec ce numéro.");
+                    $validator->errors()->add('email', "Aucun compte n'existe avec cet email.");
                 }
             },
         ];
@@ -42,6 +44,8 @@ class InviteUserRequest extends FormRequest
 
     public function invitedUser(): ?User
     {
-        return $this->invitedUser ??= User::query()->where('phone', $this->e164Phone())->first();
+        return $this->invitedUser ??= User::query()
+            ->where('email', Str::lower(trim((string) $this->input('email'))))
+            ->first();
     }
 }

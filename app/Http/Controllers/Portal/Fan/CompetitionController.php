@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal\Fan;
 
 use App\Enums\CompetitionStatus;
 use App\Enums\MatchStatus;
+use App\Enums\PerformanceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Competition;
 use App\Models\PublicVote;
@@ -43,7 +44,15 @@ class CompetitionController extends Controller
             ->latest('updated_at')
             ->get();
 
+        $preselection = $competition->preselection;
+
         return view('portal.fan.competition', [
+            'preselection' => $preselection,
+            'entries' => $preselection
+                ? $preselection->entries()->where('status', PerformanceStatus::Approved)->with('participant')
+                    ->when($preselection->published_at, fn ($q) => $q->orderBy('rank'), fn ($q) => $q->inRandomOrder())->get()
+                : collect(),
+            'myLike' => $user && $preselection ? $preselection->likes()->where('user_id', $user->id)->value('submission_id') : null,
             'competition' => $competition->load('organizer'),
             'voting' => $matches->filter->isVotingOpen()->values(),
             'results' => $matches->where('status', MatchStatus::Closed)->take(12)->values(),

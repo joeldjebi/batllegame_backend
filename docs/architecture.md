@@ -33,6 +33,7 @@ app/
 │   │                     MatchCloser, StageBuilder, StageService, PhaseProgress
 │   ├── VotingService, JuryScoringService, RegistrationService, SubmissionService (partagés API + web)
 │   ├── JudgeAccountService, BackOfficeAccountService (comptes créés par un tiers), PhoneVerificationService
+│   ├── PaymentService (frais d'inscription, paiement simulé), PreselectionService (soumissions, likes, notes, classement, publication)
 │   ├── Media/            MediaInspector (ffprobe)
 │   └── Sms/              SmsSender (LogSmsSender en local)
 └── Support/Portal        Définition des 3 portails web

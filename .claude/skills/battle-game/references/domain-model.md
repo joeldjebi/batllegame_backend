@@ -16,6 +16,11 @@ countries ─< users ─< organizer_members >─ organizers ─< competitions
                                                                    ├─< public_votes (user, participant, device_id, ip)
                                                                    └─ next_match_id/slot, loser_next_match_id/slot (self)
 performances (competition_id, stage_id, match_id?, participant_id, turn, media_*, source, status, reviewed_*)
+payments (competition_id, participant_id, user_id, amount, currency, method, provider=simulation, reference, status, paid_at)
+preselections (competition_id unique, starts_at, ends_at, rules jsonb, published_at)
+  ├─< preselection_submissions (participant unique, media_*, status, likes_count/jury_score/like_score/final_score/rank/selected — derived)
+  │     ├─< preselection_likes (user unique per preselection)
+  │     └─< preselection_scores (judge, criterion)
 ```
 
 | Table | Key columns / constraints |
@@ -70,7 +75,9 @@ participations/votes/judge roles, on judges/criteria already used in `jury_score
 | StageStatus | Pending=`en_attente`, Submissions=`soumissions`, Voting=`vote`, Closed=`cloture` |
 | MatchStatus | Scheduled=`planifie`, Submissions=`soumissions`, Voting=`vote`, Closed=`cloture`, Cancelled=`annule` |
 | BracketSide | Winners=`gagnants`, Losers=`perdants`, GrandFinal=`grande_finale` |
-| ParticipantStatus | Registered=`inscrit`, Validated=`valide`, Eliminated=`elimine`, Withdrawn=`forfait`, Disqualified=`disqualifie` |
+| ParticipantStatus | PaymentPending=`paiement_en_attente`, Registered=`inscrit`, Validated=`valide`, Eliminated=`elimine`, Withdrawn=`forfait`, Disqualified=`disqualifie`, NotSelected=`non_retenu` |
+| PaymentStatus / PaymentMethod | `en_attente`, `payee`, `echouee` / `orange_money`, `mtn_momo`, `moov_money`, `wave`, `carte` |
+| PreselectionState (derived) | Scheduled=`programmee`, Open=`ouverte`, Closed=`cloturee`, Published=`publiee` |
 | JudgeStatus | Invited=`invite`, Accepted=`accepte`, Declined=`refuse` (judges are created Accepted) |
 | PerformanceSource / Status | `soumission`, `captation` / Processing=`traitement`, Pending=`en_attente`, Approved=`validee`, Rejected=`rejetee` |
 | MediaType | `video`, `audio` (`mimeTypes()`, `fromMime()`) |
@@ -88,6 +95,10 @@ Status enums implement `Contracts\HasBadge` (`label()` French, `tone()` among gr
 `grand_final_reset` (double elim only), `media_types[]`, `media_max_duration` (s), `media_max_size_mb`.
 Weights normalized to 100/0 for single-source modes, must sum to 100 in `mixte`.
 `assertCompatibleWith(PhaseType)` checks type-dependent keys; `acceptedMimeTypes()`, `usesJury()`, `usesPublic()`.
+
+`PreselectionRules` keys: `like_weight` + `jury_weight` (sum 100), `selection_size` (artists retained),
+`media_types[]`, `media_max_duration`, `media_max_size_mb`. `Preselection::state()` derives the state from dates and
+`published_at`; rules frozen once started (`rulesFrozen()`), dates editable until publication.
 
 `CompetitionSettings` keys: `registration_requires_approval`, `public_voting_enabled`, `show_live_results`,
 `max_votes_per_device`, `timezone`, `submissions_require_approval`, `onsite_vote_code`.

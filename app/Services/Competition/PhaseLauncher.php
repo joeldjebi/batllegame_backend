@@ -48,6 +48,11 @@ class PhaseLauncher
                 throw CompetitionFlowException::hybridPhaseMode();
             }
 
+            // With a pre-selection, only the published selection competes.
+            if ($competition->preselection && $competition->preselection->published_at === null) {
+                throw CompetitionFlowException::preselectionNotPublished();
+            }
+
             $entrants = $this->entrants($phase);
             $this->ensureEnoughEntrants($phase, $entrants);
 

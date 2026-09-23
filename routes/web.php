@@ -12,6 +12,7 @@ use App\Http\Controllers\BackOffice\OrganizerMemberController;
 use App\Http\Controllers\BackOffice\ParticipantController;
 use App\Http\Controllers\BackOffice\PerformanceController;
 use App\Http\Controllers\BackOffice\PhaseController;
+use App\Http\Controllers\BackOffice\PreselectionController;
 use App\Http\Controllers\BackOffice\StageController;
 use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,11 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                     Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');
                     Route::delete('phases/{phase}', [PhaseController::class, 'destroy'])->name('phases.destroy');
                     Route::post('phases/{phase}/start', [PhaseController::class, 'start'])->name('phases.start');
+
+                    Route::put('preselection', [PreselectionController::class, 'update'])->name('preselection.update');
+                    Route::post('preselection/rank', [PreselectionController::class, 'rank'])->name('preselection.rank');
+                    Route::post('preselection/publish', [PreselectionController::class, 'publish'])->name('preselection.publish');
+                    Route::patch('preselection/entries/{entry}', [PreselectionController::class, 'review'])->name('preselection.entries.review');
 
                     Route::put('stages/{stage}', [StageController::class, 'update'])->name('stages.update');
                     Route::post('stages/{stage}/open-submissions', [StageController::class, 'openSubmissions'])->name('stages.open-submissions');

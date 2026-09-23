@@ -32,6 +32,11 @@ registration / logout for all three.
 - There is **no** `organizers.store` in the back-office: organizers are created by `admin.organizers.store`.
 - Admin: `admin.dashboard`, `admin.organizers.index|store|show|status` (`?creer=1` opens the create panel), `admin.competitions.index`,
   `admin.organizers.competitions.show`, `admin.users.index|show`, `admin.login|logout`.
+- Pre-selection (back-office): `organizers.competitions.preselection.update|rank|publish`,
+  `organizers.competitions.preselection.entries.review` (`{entry}` via `$competition->entries()`).
+- Payments / pre-selection (portals): `artist.competitions.payment` (GET/POST simulated checkout),
+  `artist.competitions.preselection.submit`, `fan.competitions.preselection.like|unlike`,
+  `jury.competitions.preselection`, `jury.competitions.preselection.scores.store`.
 - Jury: `jury.dashboard`, `jury.competitions.show`, `jury.competitions.matches.show`,
   `jury.competitions.matches.scores.store`, `jury.password.edit|update`.
 - Artist: `artist.dashboard`, `artist.competitions.register`, `artist.competitions.stages.submit`.

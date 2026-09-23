@@ -35,6 +35,17 @@ sont toujours résolues à travers leur compétition.
 | GET | `/competitions/{slug}/stages/{id}/submission` | Ma soumission pour l'étape |
 | POST | `/competitions/{slug}/stages/{id}/submission` | multipart `media` (vidéo ou audio selon les règles de la phase) |
 
+## Paiement et présélection
+
+| Méthode | URL | Notes |
+|---|---|---|
+| POST | `/competitions/{slug}/registrations` | Réponse : `status` (`paiement_en_attente` si frais), `payment_required`, `amount`, `currency` |
+| POST | `/competitions/{slug}/payment` | `method` (`orange_money`, `mtn_momo`, `moov_money`, `wave`, `carte`), `simulate_failure?` → 201 payé / 402 refusé |
+| GET | `/competitions/{slug}/preselection` | État, période, pondérations, nombre retenu, prestations publiées (likes visibles si résultats en direct ou après publication), `my_like` |
+| POST | `/competitions/{slug}/preselection/submission` | multipart `media` (artiste inscrit, période ouverte) |
+| POST / DELETE | `/competitions/{slug}/preselection/entries/{id}/like` · `/competitions/{slug}/preselection/like` | Un like par compétition (déplaçable), numéro vérifié |
+| POST | `/competitions/{slug}/preselection/entries/{id}/scores` | Juré : `scores[{criterion_id, score, comment?}]` |
+
 ## Jury (`password.changed` requis)
 
 | Méthode | URL | Notes |

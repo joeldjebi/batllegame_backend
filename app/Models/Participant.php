@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['user_id', 'stage_name', 'seed', 'status'])]
 class Participant extends Model
@@ -69,6 +70,22 @@ class Participant extends Model
     public function matchSlots(): HasMany
     {
         return $this->hasMany(MatchParticipant::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasOne<PreselectionSubmission, $this>
+     */
+    public function preselectionEntry(): HasOne
+    {
+        return $this->hasOne(PreselectionSubmission::class);
     }
 
     /**

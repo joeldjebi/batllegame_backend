@@ -23,6 +23,9 @@ class RegistrationController extends Controller
             'id' => $participant->id,
             'stage_name' => $participant->stage_name,
             'status' => $participant->status,
+            'payment_required' => $competition->requiresPayment(),
+            'amount' => $competition->entry_fee,
+            'currency' => $competition->currency,
         ], 201);
     }
 }

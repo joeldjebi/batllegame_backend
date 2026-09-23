@@ -46,6 +46,8 @@ class CompetitionController extends Controller
                 'phases.matches.group',
                 'phases.stages.performances.participant',
                 'participants.user',
+                'participants.payments' => fn ($q) => $q->latest(),
+                'preselection.entries.participant',
                 'judges.user',
                 'criteria',
             ]),

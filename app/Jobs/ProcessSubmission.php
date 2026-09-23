@@ -3,15 +3,17 @@
 namespace App\Jobs;
 
 use App\Enums\PerformanceStatus;
-use App\Models\Performance;
+use App\Models\Contracts\ReviewableMedia;
 use App\Services\Media\MediaInspector;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Checks an uploaded submission against the phase rules (real duration via
- * ffprobe), then publishes it or leaves it for the organizer's review.
+ * Checks an uploaded media (stage submission or pre-selection entry) against
+ * its rules (real duration via ffprobe), then publishes it or leaves it for
+ * the organizer's review.
  */
 class ProcessSubmission implements ShouldQueue
 {
@@ -24,34 +26,36 @@ class ProcessSubmission implements ShouldQueue
      */
     private const int DURATION_TOLERANCE = 2;
 
-    public function __construct(public Performance $performance) {}
+    /**
+     * @param  Model&ReviewableMedia  $media
+     */
+    public function __construct(public Model $media) {}
 
     public function handle(MediaInspector $inspector): void
     {
-        $performance = $this->performance->fresh(['stage.phase.competition']);
+        /** @var (Model&ReviewableMedia)|null $media */
+        $media = $this->media->fresh();
 
-        if ($performance === null || $performance->status !== PerformanceStatus::Processing) {
+        if ($media === null || $media->status !== PerformanceStatus::Processing) {
             return;
         }
 
-        $rules = $performance->stage->phase->rules;
-        $duration = $this->withLocalCopy($performance, fn (string $path) => $inspector->duration($path));
+        $maxDuration = $media->maxMediaDuration();
+        $duration = $this->withLocalCopy($media, fn (string $path) => $inspector->duration($path));
 
-        if ($duration !== null && $duration > $rules->mediaMaxDuration + self::DURATION_TOLERANCE) {
-            $performance->forceFill([
+        if ($duration !== null && $duration > $maxDuration + self::DURATION_TOLERANCE) {
+            $media->forceFill([
                 'duration_seconds' => (int) round($duration),
                 'status' => PerformanceStatus::Rejected,
-                'rejection_reason' => sprintf('Durée de %d s : la limite est de %d s.', round($duration), $rules->mediaMaxDuration),
+                'rejection_reason' => sprintf('Durée de %d s : la limite est de %d s.', round($duration), $maxDuration),
             ])->save();
 
             return;
         }
 
-        $performance->forceFill([
+        $media->forceFill([
             'duration_seconds' => $duration !== null ? (int) round($duration) : null,
-            'status' => $performance->stage->phase->competition->settings->submissionsRequireApproval
-                ? PerformanceStatus::Pending
-                : PerformanceStatus::Approved,
+            'status' => $media->requiresReview() ? PerformanceStatus::Pending : PerformanceStatus::Approved,
         ])->save();
     }
 
@@ -63,16 +67,17 @@ class ProcessSubmission implements ShouldQueue
      * @param  callable(string): T  $callback
      * @return T
      */
-    private function withLocalCopy(Performance $performance, callable $callback): mixed
+    private function withLocalCopy(Model $media, callable $callback): mixed
     {
-        $disk = Storage::disk($performance->media_disk ?? config('media.disk'));
+        $diskName = $media->media_disk ?? config('media.disk');
+        $disk = Storage::disk($diskName);
 
-        if (method_exists($disk, 'path') && config("filesystems.disks.{$performance->media_disk}.driver") === 'local') {
-            return $callback($disk->path($performance->media_path));
+        if (config("filesystems.disks.{$diskName}.driver") === 'local') {
+            return $callback($disk->path($media->media_path));
         }
 
         $temp = tempnam(sys_get_temp_dir(), 'media');
-        file_put_contents($temp, $disk->readStream($performance->media_path));
+        file_put_contents($temp, $disk->readStream($media->media_path));
 
         try {
             return $callback($temp);

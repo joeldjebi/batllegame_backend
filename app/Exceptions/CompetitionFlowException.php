@@ -111,4 +111,44 @@ class CompetitionFlowException extends DomainException
     {
         return new self('Les soumissions ne sont pas ouvertes pour cette étape.');
     }
+
+    public static function nothingToPay(): self
+    {
+        return new self("Aucun paiement n'est attendu pour cette inscription.");
+    }
+
+    public static function preselectionClosed(): self
+    {
+        return new self("La présélection n'est pas ouverte.");
+    }
+
+    public static function preselectionNotEligible(): self
+    {
+        return new self('Seuls les artistes inscrits (frais payés) peuvent participer à la présélection.');
+    }
+
+    public static function preselectionPublished(): self
+    {
+        return new self('La sélection a déjà été publiée.');
+    }
+
+    public static function preselectionStillOpen(): self
+    {
+        return new self("La présélection n'est pas terminée.");
+    }
+
+    public static function preselectionEmpty(): self
+    {
+        return new self('Aucune prestation validée : impossible de publier la sélection.');
+    }
+
+    public static function preselectionJuryMissing(): self
+    {
+        return new self('Le jury doit noter toutes les prestations validées avant la publication.');
+    }
+
+    public static function preselectionNotPublished(): self
+    {
+        return new self("Publiez d'abord la sélection de la présélection.");
+    }
 }

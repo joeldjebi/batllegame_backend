@@ -72,6 +72,21 @@ Inside one transaction (phase row locked):
 - `routes/console.php`: `stages:process` and `matches:close-expired` every minute, `scores:recompute {slug}`.
 - Production needs `queue:work` and `schedule:run`; tests use the sync queue.
 
+## Payments and pre-selection
+
+- `RegistrationService`: paid competition → `PaymentPending`, else `Competition::participantStatusAfterRegistration()`
+  (Registered when a pre-selection exists or approval is required, else Validated).
+- `PaymentService::simulate(participant, method, succeeds)` records a `Payment` (provider `simulation`) and, when paid,
+  moves the participant out of `PaymentPending`. Replace this method when a real provider is plugged in.
+- `PreselectionService`: `configure()` (freezes rules once started), `submit()` (Registered artists only, open period,
+  one entry replaced on re-upload, `ProcessSubmission` job), `like()` / `unlike()` (one like per user and pre-selection,
+  moved on a new like, `likes_count` refreshed), `score()` (judge, all criteria), `rank()` (jury normalized on 100 +
+  likes relative to the top entry, weights, ties: jury, likes, participant id), `publish()` (closed, everything reviewed,
+  jury complete if weighted → top N `Validated` + `selected`, others `NotSelected`).
+- `PhaseLauncher` refuses to start a phase while a pre-selection is not published.
+- `ProcessSubmission` handles any `Contracts\ReviewableMedia` (performances and pre-selection entries).
+- Policies: `PreselectionSubmissionPolicy::like` (verified phone, open, published entry, not own, not judge) and `::score`.
+
 ## Shared services (API + portals)
 
 `BackOfficeAccountService::findOrCreate(email, ?name, ?country, ?phone, context)` (existing by email, or a phone-only

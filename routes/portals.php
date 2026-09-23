@@ -2,11 +2,15 @@
 
 use App\Http\Controllers\Portal\Artist\DashboardController as ArtistDashboardController;
 use App\Http\Controllers\Portal\Artist\ParticipationController as ArtistParticipationController;
+use App\Http\Controllers\Portal\Artist\PaymentController as ArtistPaymentController;
+use App\Http\Controllers\Portal\Artist\PreselectionController as ArtistPreselectionController;
 use App\Http\Controllers\Portal\Fan\CompetitionController as FanCompetitionController;
+use App\Http\Controllers\Portal\Fan\PreselectionController as FanPreselectionController;
 use App\Http\Controllers\Portal\Fan\VerificationController;
 use App\Http\Controllers\Portal\Fan\VoteController;
 use App\Http\Controllers\Portal\Jury\CompetitionController as JuryCompetitionController;
 use App\Http\Controllers\Portal\Jury\PasswordController;
+use App\Http\Controllers\Portal\Jury\PreselectionController as JuryPreselectionController;
 use App\Http\Controllers\Portal\PortalAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +47,8 @@ Route::prefix('jury')->name('jury.')->group(function () use ($authRoutes) {
             Route::get('competitions/{competition:slug}', [JuryCompetitionController::class, 'show'])->name('competitions.show');
             Route::get('competitions/{competition:slug}/matches/{match}', [JuryCompetitionController::class, 'match'])->name('competitions.matches.show');
             Route::post('competitions/{competition:slug}/matches/{match}/scores', [JuryCompetitionController::class, 'score'])->name('competitions.matches.scores.store');
+            Route::get('competitions/{competition:slug}/preselection', [JuryPreselectionController::class, 'index'])->name('competitions.preselection');
+            Route::post('competitions/{competition:slug}/preselection/{entry}/scores', [JuryPreselectionController::class, 'score'])->name('competitions.preselection.scores.store');
         });
     });
 });
@@ -58,6 +64,11 @@ Route::prefix('artiste')->name('artist.')->group(function () use ($authRoutes) {
         Route::post('competitions/{competition:slug}/stages/{stage}/soumission', [ArtistParticipationController::class, 'submit'])
             ->middleware('throttle:10,1')
             ->name('competitions.stages.submit');
+        Route::get('competitions/{competition:slug}/paiement', [ArtistPaymentController::class, 'show'])->name('competitions.payment');
+        Route::post('competitions/{competition:slug}/paiement', [ArtistPaymentController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('competitions/{competition:slug}/preselection', [ArtistPreselectionController::class, 'submit'])
+            ->middleware('throttle:10,1')
+            ->name('competitions.preselection.submit');
     });
 });
 
@@ -77,6 +88,10 @@ Route::prefix('vote')->name('fan.')->group(function () use ($authRoutes) {
             Route::post('competitions/{competition:slug}/matches/{match}/votes', [VoteController::class, 'store'])
                 ->middleware('throttle:30,1')
                 ->name('competitions.matches.votes.store');
+            Route::post('competitions/{competition:slug}/preselection/{entry}/like', [FanPreselectionController::class, 'like'])
+                ->middleware('throttle:30,1')
+                ->name('competitions.preselection.like');
+            Route::delete('competitions/{competition:slug}/preselection/like', [FanPreselectionController::class, 'unlike'])->name('competitions.preselection.unlike');
         });
     });
 });

@@ -10,6 +10,11 @@
 - Public landing page at `/` to follow competitions and let fans / artists sign up or log in; the organizer
   back-office dashboard lives at `/tableau-de-bord`.
 - Data must display fast: every listing / search is indexed.
+- Paid competitions: an artist becomes a participant only after paying the fee; payments are **simulated** until a
+  provider exists (Orange Money, MTN MoMo, Moov Money, Wave, card).
+- Optional **pre-selection** per competition: period set by the organizer, one submission per registered artist, public
+  likes (one per user and competition), jury scores, organizer-defined % likes / % jury and number of artists retained;
+  the organizer publishes the selection, then the competition phases start with the selected artists only.
 - Organizer roles: staff = registrations + matches + submissions; admin = + configuration; owner = + members + delete.
 - Suspended organizer: readable, no writes, no votes. Pending organizer: drafts only.
 - Judges are **created by the organizer** per competition (SMS with a temporary password to change);
@@ -37,7 +42,7 @@
   production (`services.phone_verification.fixed_code`, env `PHONE_VERIFICATION_CODE`), random in production.
 
 ## Backlog / not done yet
-- Real SMS provider; payment of entry fees (`entry_fee` is informative only).
+- Real SMS provider; real payment provider (replace `PaymentService::simulate()`), refunds.
 - Flutter app (API ready: `docs/api.md`); push notifications; real-time (Reverb) for live votes.
 - S3 storage + ffmpeg in production; video transcoding/streaming.
 - Email delivery of temporary passwords (today SMS + flash message).

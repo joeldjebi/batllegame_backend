@@ -27,6 +27,34 @@ dans son propre match, un juré ne vote pas avec le public.
 - `suspendu` : tout reste lisible, aucune écriture, aucun vote, aucune notation.
 - Un organisateur garde toujours au moins un owner.
 
+## Inscription et frais
+
+- Compétition **gratuite** : l'artiste est inscrit directement (validé, ou « inscrit » si une présélection ou
+  une validation manuelle est prévue).
+- Compétition **payante** (`entry_fee` > 0) : l'inscription reste en **« paiement en attente »** tant que les frais
+  ne sont pas payés ; l'artiste n'est pas encore artiste de la compétition.
+- **Paiement simulé** (aucun prestataire branché) : l'artiste choisit Orange Money, MTN MoMo, Moov Money, Wave ou
+  carte et le résultat à simuler (accepté / refusé). Chaque tentative est enregistrée dans `payments`
+  (montant, moyen, référence `BG-…`, statut). Un paiement accepté fait passer l'artiste « inscrit » (ou « validé »).
+
+## Présélection
+
+Étape optionnelle, une par compétition, configurée par l'organisateur après les inscriptions :
+
+- **Période** (début, fin) pendant laquelle les artistes inscrits (frais payés) envoient **une** prestation
+  (vidéo ou audio, remplaçable jusqu'à la fin, règles de médias propres à la présélection, validation par
+  l'organisateur si l'option est active).
+- **Likes du public** : un utilisateur au numéro vérifié like **une seule prestation par compétition** pendant la
+  période (il peut déplacer ou retirer son like) ; jamais la sienne ; les jurés ne likent pas.
+- **Jury** : les jurés de la compétition notent chaque prestation selon les critères (sur 100, moyenne des jurés).
+- **Score final** = score jury × % jury + score likes × % likes (définis par l'organisateur, total 100 %).
+  Score likes = likes de la prestation ÷ likes de la plus likée × 100.
+- **Nombre d'artistes retenus** (participants de l'événement) défini par l'organisateur.
+- Après la fin, l'organisateur **publie la sélection** (toutes les prestations traitées, jury complet si le jury
+  compte) : les N premiers passent **« validé »**, les autres **« non retenu »**. Départage : jury, likes, ancienneté.
+- La première phase de la compétition ne peut démarrer qu'après la publication ; seuls les artistes retenus y participent.
+- Les règles de la présélection sont figées dès son début (les dates restent modifiables jusqu'à la publication).
+
 ## Cycle de vie d'une compétition
 
 `brouillon → inscriptions → en_cours → terminee` (ou `annulee` à tout moment avant la fin).

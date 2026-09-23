@@ -19,6 +19,66 @@
         </div>
     @endif
 
+    @if ($preselection && $preselection->state() !== \App\Enums\PreselectionState::Scheduled)
+        @php($pstate = $preselection->state())
+        @php($showLikes = $pstate === \App\Enums\PreselectionState::Published || $competition->settings->showLiveResults)
+        <section class="mb-10">
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="flex items-center gap-2 font-display text-lg font-semibold"><x-ui.icon name="funnel" class="size-5 text-brand-600" /> Présélection <x-ui.badge :value="$pstate" /></h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        @if ($pstate === \App\Enums\PreselectionState::Open)
+                            Likez votre prestation préférée : <strong>un seul like par compétition</strong>, modifiable jusqu'au {{ $preselection->ends_at->translatedFormat('d F à H:i') }}.
+                        @elseif ($pstate === \App\Enums\PreselectionState::Closed)
+                            Les likes sont clos : résultats bientôt.
+                        @else
+                            Les {{ $preselection->rules->selectionSize }} artistes retenus participent à la compétition.
+                        @endif
+                    </p>
+                </div>
+                @if ($myLike && $pstate === \App\Enums\PreselectionState::Open)
+                    <form method="POST" action="{{ route('fan.competitions.preselection.unlike', $competition) }}">@csrf @method('DELETE')<x-ui.button type="submit" size="sm" variant="secondary" icon="x-mark">Retirer mon like</x-ui.button></form>
+                @endif
+            </div>
+
+            @if ($entries->isEmpty())
+                <x-ui.empty icon="film" title="Aucune prestation publiée pour l'instant" />
+            @else
+                <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach ($entries as $entry)
+                        @php($liked = $myLike === $entry->id)
+                        <x-ui.card :padding="false" :class="$liked ? 'ring-2 ring-fuchsia-400' : ''">
+                            <div class="p-4">
+                                <div class="mb-3 flex items-center justify-between gap-2">
+                                    <p class="truncate font-display font-semibold">{{ $entry->participant->stage_name }}</p>
+                                    @if ($pstate === \App\Enums\PreselectionState::Published)
+                                        @if ($entry->selected)<x-ui.badge tone="green" icon="trophy" :dot="false">Retenu · {{ $entry->rank }}e</x-ui.badge>@else<x-ui.badge tone="gray" :dot="false">{{ $entry->rank }}e</x-ui.badge>@endif
+                                    @endif
+                                </div>
+                                <x-bo.media-player :performance="$entry" />
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3 dark:border-white/5">
+                                <span class="inline-flex items-center gap-1.5 text-sm text-slate-500"><x-ui.icon name="heart" variant="s" @class(['size-4', 'text-fuchsia-500' => $liked, 'text-slate-300' => ! $liked]) />{{ $showLikes ? $entry->likes_count.' like(s)' : ($liked ? 'Votre like' : '') }}</span>
+                                @if ($pstate === \App\Enums\PreselectionState::Open)
+                                    @if (! $user)
+                                        <x-ui.button size="sm" variant="secondary" :href="route('fan.login')">Se connecter</x-ui.button>
+                                    @elseif (! $liked)
+                                        <form method="POST" action="{{ route('fan.competitions.preselection.like', [$competition, $entry]) }}">
+                                            @csrf
+                                            <x-ui.button type="submit" size="sm" :variant="$myLike ? 'secondary' : 'primary'" icon="heart">{{ $myLike ? 'Déplacer mon like' : 'J\'aime' }}</x-ui.button>
+                                        </form>
+                                    @else
+                                        <x-ui.badge tone="fuchsia" icon="heart" :dot="false">Votre like</x-ui.badge>
+                                    @endif
+                                @endif
+                            </div>
+                        </x-ui.card>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+    @endif
+
     <h2 class="mb-4 flex items-center gap-2 font-display text-lg font-semibold"><span class="size-2 rounded-full bg-fuchsia-500"></span> Votes en cours</h2>
     @if ($voting->isEmpty())
         <x-ui.empty icon="clock" title="Aucun vote en cours" description="Revenez quand l'organisateur ouvrira le prochain vote." class="mb-10" />

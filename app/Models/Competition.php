@@ -6,6 +6,7 @@ use App\Data\CompetitionSettings;
 use App\Enums\CompetitionMode;
 use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
+use App\Enums\ParticipantStatus;
 use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -85,6 +87,48 @@ class Competition extends Model
     public function performances(): HasMany
     {
         return $this->hasMany(Performance::class);
+    }
+
+    /**
+     * @return HasOne<Preselection, $this>
+     */
+    public function preselection(): HasOne
+    {
+        return $this->hasOne(Preselection::class);
+    }
+
+    /**
+     * Pre-selection entries (route parameter {entry}).
+     *
+     * @return HasMany<PreselectionSubmission, $this>
+     */
+    public function entries(): HasMany
+    {
+        return $this->hasMany(PreselectionSubmission::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Status of a new participant once the registration fee (if any) is paid:
+     * a pre-selection or a manual approval keeps them « inscrit ».
+     */
+    public function participantStatusAfterRegistration(): ParticipantStatus
+    {
+        return $this->preselection()->exists() || $this->settings->registrationRequiresApproval
+            ? ParticipantStatus::Registered
+            : ParticipantStatus::Validated;
+    }
+
+    public function requiresPayment(): bool
+    {
+        return $this->entry_fee > 0;
     }
 
     /**

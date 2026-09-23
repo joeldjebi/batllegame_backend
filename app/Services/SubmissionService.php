@@ -11,6 +11,7 @@ use App\Models\Participant;
 use App\Models\Performance;
 use App\Models\Stage;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -35,7 +36,7 @@ class SubmissionService
 
             $performance->deleteMedia();
             $performance->fill([
-                ...$this->store($file, "submissions/{$participant->competition_id}/stage-{$stage->id}"),
+                ...$this->storeMedia($file, "submissions/{$participant->competition_id}/stage-{$stage->id}"),
                 'source' => PerformanceSource::Submission,
                 'status' => PerformanceStatus::Processing,
             ]);
@@ -55,7 +56,7 @@ class SubmissionService
         $performance = Performance::query()->firstOrNew(['match_id' => $match->id, 'participant_id' => $participant->id, 'turn' => 1]);
         $performance->deleteMedia();
         $performance->fill([
-            ...$this->store($file, "captations/{$match->competition_id}/match-{$match->id}"),
+            ...$this->storeMedia($file, "captations/{$match->competition_id}/match-{$match->id}"),
             'stage_id' => $match->stage_id,
             'source' => PerformanceSource::Capture,
             'status' => PerformanceStatus::Approved,
@@ -65,7 +66,13 @@ class SubmissionService
         return $performance;
     }
 
-    public function approve(Performance $performance, User $reviewer): Performance
+    /**
+     * @template T of Model
+     *
+     * @param  T  $performance  A Performance or a PreselectionSubmission.
+     * @return T
+     */
+    public function approve(Model $performance, User $reviewer): Model
     {
         $performance->forceFill([
             'status' => PerformanceStatus::Approved,
@@ -77,7 +84,13 @@ class SubmissionService
         return $performance;
     }
 
-    public function reject(Performance $performance, User $reviewer, string $reason): Performance
+    /**
+     * @template T of Model
+     *
+     * @param  T  $performance  A Performance or a PreselectionSubmission.
+     * @return T
+     */
+    public function reject(Model $performance, User $reviewer, string $reason): Model
     {
         $performance->forceFill([
             'status' => PerformanceStatus::Rejected,
@@ -90,9 +103,12 @@ class SubmissionService
     }
 
     /**
+     * Store an uploaded media and describe it (columns shared by performances
+     * and pre-selection entries).
+     *
      * @return array<string, mixed>
      */
-    private function store(UploadedFile $file, string $directory): array
+    public function storeMedia(UploadedFile $file, string $directory): array
     {
         $disk = config('media.disk');
         $mime = $file->getMimeType() ?? $file->getClientMimeType();

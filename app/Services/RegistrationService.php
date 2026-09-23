@@ -19,9 +19,10 @@ class RegistrationService
     {
         $participant = new Participant([
             'stage_name' => $stageName,
-            'status' => $competition->settings->registrationRequiresApproval
-                ? ParticipantStatus::Registered
-                : ParticipantStatus::Validated,
+            // Paid competitions: the artist only counts once the fee is paid.
+            'status' => $competition->requiresPayment()
+                ? ParticipantStatus::PaymentPending
+                : $competition->participantStatusAfterRegistration(),
         ]);
         $participant->user()->associate($artist);
 

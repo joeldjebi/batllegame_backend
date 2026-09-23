@@ -29,6 +29,7 @@
         ['Au moins une phase', $competition->phases->isNotEmpty()],
         ['Critères de notation', ! $usesJury || $competition->criteria->isNotEmpty()],
         ['Au moins un juré', ! $usesJury || $competition->judges->isNotEmpty()],
+        ...($competition->preselection ? [['Sélection de la présélection publiée', $competition->preselection->published_at !== null]] : []),
         ['2 participants validés minimum', $validated >= 2],
         ['Organisateur vérifié', $organizer->isVerified()],
     ];
@@ -102,6 +103,7 @@
     <x-ui.tabs key="competition" :tabs="[
         'overview' => ['label' => 'Aperçu', 'icon' => 'home'],
         'phases' => ['label' => 'Phases & matchs', 'icon' => 'trophy', 'count' => $competition->phases->count()],
+        'preselection' => ['label' => 'Présélection', 'icon' => 'funnel', 'count' => $competition->preselection?->entries->count()],
         'participants' => ['label' => 'Participants', 'icon' => 'users', 'count' => $participants->count()],
         'jury' => ['label' => 'Jury & critères', 'icon' => 'scale'],
         'settings' => ['label' => 'Paramètres', 'icon' => 'cog-6-tooth'],
@@ -167,6 +169,10 @@
                         <dl class="space-y-3 text-sm">
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Fin des inscriptions</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $competition->registration_ends_at?->translatedFormat('d M Y, H:i') ?? '—' }}</dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Frais</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $competition->entry_fee ? number_format($competition->entry_fee, 0, ',', ' ').' '.$competition->currency : 'Gratuit' }}</dd></div>
+                            @if ($competition->requiresPayment())
+                                @php($paidPayments = $competition->participants->flatMap->payments->where('status', \App\Enums\PaymentStatus::Paid))
+                                <div class="flex justify-between gap-4"><dt class="text-slate-500">Frais encaissés (simulés)</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ number_format($paidPayments->sum('amount'), 0, ',', ' ') }} {{ $competition->currency }} · {{ $paidPayments->count() }} paiement(s)</dd></div>
+                            @endif
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Vote du public</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $settings->publicVotingEnabled ? 'Activé' : 'Désactivé' }}</dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Résultats en direct</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $settings->showLiveResults ? 'Oui' : 'Après clôture' }}</dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Créée par</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $competition->creator?->name ?? '—' }}</dd></div>
@@ -249,6 +255,11 @@
             @endforelse
         </x-ui.tab-panel>
 
+        {{-- Pre-selection --}}
+        <x-ui.tab-panel name="preselection">
+            <x-bo.preselection-panel :competition="$competition" :organizer="$organizer" :can-update="$canUpdate" :can-run="$canRun" />
+        </x-ui.tab-panel>
+
         {{-- Participants --}}
         <x-ui.tab-panel name="participants">
             <x-ui.card title="Participants" description="Validez les inscriptions et attribuez les têtes de série" icon="users"
@@ -268,7 +279,7 @@
                     <x-ui.empty icon="user-plus" title="Aucune inscription" description="Les artistes s'inscrivent depuis l'application mobile une fois les inscriptions ouvertes." />
                 @else
                     <x-ui.table>
-                        <x-slot:head><th>Artiste</th><th>Compte</th><th>Statut</th><th>Inscrit le</th><th class="!text-right">Seed & statut</th></x-slot:head>
+                        <x-slot:head><th>Artiste</th><th>Compte</th><th>Statut</th><th>Paiement</th><th>Inscrit le</th><th class="!text-right">Seed & statut</th></x-slot:head>
                         @foreach ($participants as $participant)
                             <tr x-show="(! status || status === @js($participant->status->value)) && @js(Str::lower($participant->stage_name.' '.$participant->user->name.' '.$participant->user->phone)).includes(search.toLowerCase())">
                                 <td>
@@ -279,6 +290,17 @@
                                 </td>
                                 <td><p>{{ $participant->user->name }}</p><p class="text-xs text-slate-500">{{ $participant->user->phone }}</p></td>
                                 <td><x-ui.badge :value="$participant->status" /></td>
+                                <td>
+                                    @php($paid = $participant->payments->firstWhere('status', \App\Enums\PaymentStatus::Paid))
+                                    @if ($paid)
+                                        <x-ui.badge tone="green" :dot="false" icon="check">{{ number_format($paid->amount, 0, ',', ' ') }} {{ $paid->currency }}</x-ui.badge>
+                                        <p class="mt-1 text-[11px] text-slate-400">{{ $paid->method->label() }} · {{ $paid->reference }}</p>
+                                    @elseif ($competition->requiresPayment())
+                                        <x-ui.badge tone="amber">En attente</x-ui.badge>
+                                    @else
+                                        <span class="text-xs text-slate-400">Gratuit</span>
+                                    @endif
+                                </td>
                                 <td class="text-slate-500">{{ $participant->created_at->translatedFormat('d M Y') }}</td>
                                 <td>
                                     @if ($canRegistrations)

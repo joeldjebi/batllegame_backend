@@ -20,7 +20,7 @@ class DashboardController extends Controller
 
         $participations = $user->participations()
             ->whereHas('competition')
-            ->with('competition.organizer')
+            ->with(['competition.organizer', 'competition.preselection', 'preselectionEntry'])
             ->latest()
             ->get()
             ->map(function ($participant) {

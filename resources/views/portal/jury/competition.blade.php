@@ -9,6 +9,17 @@
         </x-slot:description>
     </x-ui.page-header>
 
+    @if ($competition->preselection)
+        @php($pstate = $competition->preselection->state())
+        <a href="{{ route('jury.competitions.preselection', $competition) }}" class="mb-6 flex items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 transition hover:ring-brand-300 dark:bg-slate-900/60 dark:ring-white/10">
+            <span class="flex items-center gap-3">
+                <span class="grid size-11 place-items-center rounded-xl bg-brand-600 text-white"><x-ui.icon name="funnel" class="size-5" /></span>
+                <span><span class="block font-semibold">Présélection</span><span class="text-sm text-slate-500">Notez les prestations des artistes candidats</span></span>
+            </span>
+            <x-ui.badge :value="$pstate" />
+        </a>
+    @endif
+
     @if ($matches->isEmpty())
         <x-ui.empty icon="clock" title="Aucun match à noter pour l'instant" description="Les matchs apparaissent ici dès que l'organisateur ouvre le vote." />
     @else

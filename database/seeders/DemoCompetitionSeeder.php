@@ -55,6 +55,7 @@ class DemoCompetitionSeeder extends Seeder
         $country = Country::query()->where('iso2', 'CI')->firstOrFail();
 
         $this->seedOnlineCompetition($organizer, $country, $launcher);
+        $this->seedPreselection($organizer);
 
         if ($organizer->competitions()->where('slug', 'abidjan-rap-battle-2026')->exists()) {
             $this->command?->warn('Demo data already present.');
@@ -150,6 +151,27 @@ class DemoCompetitionSeeder extends Seeder
         $first = $phase->stages()->first();
         $stages->schedule($first, ['submission_deadline' => now()->addDays(2), 'voting_closes_at' => now()->addDays(4)]);
         $stages->openSubmissions($first);
+    }
+
+    /**
+     * Open pre-selection on the paid singing competition (idempotent).
+     */
+    private function seedPreselection(Organizer $organizer): void
+    {
+        $competition = $organizer->competitions()->where('name', "Voix d'Or de Cocody")->first();
+
+        if ($competition === null || $competition->preselection()->exists()) {
+            return;
+        }
+
+        app(\App\Services\PreselectionService::class)->configure($competition, [
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addDays(5),
+            'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 4, 'media_types' => ['video', 'audio'], 'media_max_duration' => 180, 'media_max_size_mb' => 100],
+        ]);
+
+        // Existing demo registrations count as paid; they can now submit.
+        $competition->participants()->where('status', ParticipantStatus::Validated)->update(['status' => ParticipantStatus::Registered]);
     }
 
     private function password(): string

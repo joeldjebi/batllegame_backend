@@ -21,6 +21,11 @@ class ParticipationController extends Controller
         $validated = $request->validate(['stage_name' => ['required', 'string', 'max:100']]);
         $registrations->register($request->user(), $competition, $validated['stage_name']);
 
+        if ($competition->requiresPayment()) {
+            return redirect()->route('artist.competitions.payment', $competition)
+                ->with('status', 'Inscription enregistrée : réglez les frais pour la confirmer.');
+        }
+
         return back()->with('status', "Inscription à « {$competition->name} » enregistrée.");
     }
 

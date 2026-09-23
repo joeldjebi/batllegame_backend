@@ -7,6 +7,7 @@ use App\Http\Controllers\BackOffice\CompetitionController;
 use App\Http\Controllers\BackOffice\CriterionController;
 use App\Http\Controllers\BackOffice\DashboardController;
 use App\Http\Controllers\BackOffice\JudgeController;
+use App\Http\Controllers\BackOffice\MatchController;
 use App\Http\Controllers\BackOffice\OrganizerController;
 use App\Http\Controllers\BackOffice\OrganizerMemberController;
 use App\Http\Controllers\BackOffice\ParticipantController;
@@ -54,6 +55,11 @@ Route::middleware('auth')->group(function () {
                 Route::post('phases', [PhaseController::class, 'store'])->name('phases.store');
                 Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');
                 Route::delete('phases/{phase}', [PhaseController::class, 'destroy'])->name('phases.destroy');
+                Route::post('phases/{phase}/start', [PhaseController::class, 'start'])->name('phases.start');
+
+                Route::put('matches/{match}', [MatchController::class, 'update'])->name('matches.update');
+                Route::post('matches/{match}/open-voting', [MatchController::class, 'openVoting'])->name('matches.open-voting');
+                Route::post('matches/{match}/close', [MatchController::class, 'close'])->name('matches.close');
 
                 Route::post('criteria', [CriterionController::class, 'store'])->name('criteria.store');
                 Route::put('criteria/{criterion}', [CriterionController::class, 'update'])->name('criteria.update');

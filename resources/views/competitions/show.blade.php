@@ -35,6 +35,7 @@
                 <td>
                     @if (! $phase->isFrozen())
                         @can('update', $competition)
+                            <form class="inline" method="POST" action="{{ route('organizers.competitions.phases.start', [$organizer, $competition, $phase]) }}">@csrf<button>Démarrer</button></form>
                             <form class="inline" method="POST" action="{{ route('organizers.competitions.phases.destroy', [$organizer, $competition, $phase]) }}">@csrf @method('DELETE')<button class="danger">Supprimer</button></form>
                         @endcan
                     @endif
@@ -60,6 +61,60 @@
         </form>
     @endcan
 </section>
+
+@foreach ($competition->phases->filter->isFrozen() as $phase)
+<section>
+    <h2>Phase {{ $phase->position }} · {{ $phase->type->label() }} <span class="badge">{{ $phase->status->label() }}</span></h2>
+
+    @foreach ($phase->groups as $group)
+        <h3>{{ $group->name }}</h3>
+        <table>
+            <tr><th>#</th><th>Participant</th><th>Pts</th><th>V</th><th>N</th><th>D</th><th>Diff</th></tr>
+            @foreach ($group->standings as $standing)
+                <tr><td>{{ $standing->rank ?? '—' }}</td><td>{{ $standing->participant->stage_name }}</td><td>{{ $standing->points }}</td><td>{{ $standing->wins }}</td><td>{{ $standing->draws }}</td><td>{{ $standing->losses }}</td><td>{{ $standing->score_diff }}</td></tr>
+            @endforeach
+        </table>
+    @endforeach
+
+    <h3>Matchs</h3>
+    <table>
+        <tr><th>Match</th><th>Participants</th><th>Scores</th><th>Statut</th><th></th></tr>
+        @foreach ($phase->matches as $match)
+            <tr>
+                <td>{{ $match->group?->name ?? $match->bracket?->label() }} · T{{ $match->round }} #{{ $match->bracket_position }}</td>
+                <td>
+                    @foreach ($match->slots as $slot)
+                        <div>@if ($match->winner_id && $slot->participant_id === $match->winner_id)🏆 @endif{{ $slot->participant?->stage_name ?? '—' }}</div>
+                    @endforeach
+                </td>
+                <td>
+                    @foreach ($match->slots as $slot)
+                        <div class="muted">{{ $slot->final_score ?? '—' }} <small>(jury {{ $slot->jury_score ?? '—' }} · public {{ $slot->public_score ?? '—' }})</small></div>
+                    @endforeach
+                </td>
+                <td><span class="badge">{{ $match->status->label() }}</span></td>
+                <td>
+                    @can('runMatches', $competition)
+                        @if (in_array($match->status, [\App\Enums\MatchStatus::Scheduled, \App\Enums\MatchStatus::Submissions], true) && $match->slots->whereNotNull('participant_id')->count() === 2)
+                            <form class="inline" method="POST" action="{{ route('organizers.competitions.matches.open-voting', [$organizer, $competition, $match]) }}">@csrf<button class="secondary">Ouvrir le vote</button></form>
+                        @endif
+                        @if ($match->status === \App\Enums\MatchStatus::Voting)
+                            <form class="inline" method="POST" action="{{ route('organizers.competitions.matches.close', [$organizer, $competition, $match]) }}">
+                                @csrf
+                                <select name="winner_id" title="Uniquement en cas d'égalité parfaite">
+                                    <option value="">Vainqueur auto</option>
+                                    @foreach ($match->slots as $slot)<option value="{{ $slot->participant_id }}">{{ $slot->participant?->stage_name }}</option>@endforeach
+                                </select>
+                                <button>Clôturer</button>
+                            </form>
+                        @endif
+                    @endcan
+                </td>
+            </tr>
+        @endforeach
+    </table>
+</section>
+@endforeach
 
 <section>
     <h2>Critères du jury</h2>

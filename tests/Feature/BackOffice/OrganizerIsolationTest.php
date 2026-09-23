@@ -2,6 +2,7 @@
 
 use App\Enums\CompetitionStatus;
 use App\Enums\OrganizerRole;
+use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Country;
 use App\Models\Criterion;
@@ -9,6 +10,7 @@ use App\Models\Judge;
 use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\Phase;
+use App\Models\PublicVote;
 use App\Models\User;
 
 function memberOf(Organizer $organizer, OrganizerRole $role = OrganizerRole::Owner): User
@@ -186,4 +188,57 @@ it('renders every back-office page with data', function () {
     $this->actingAs($this->ownerA)->get(route('organizers.show', $this->orgA))->assertOk()->assertSee($this->competitionA->name);
     $this->actingAs($this->ownerA)->get(route('organizers.competitions.show', [$this->orgA, $this->competitionA]))->assertOk()->assertSee('Poules');
     $this->actingAs(User::factory()->platformAdmin()->create())->get(route('admin.organizers.index'))->assertOk()->assertSee($this->orgB->name);
+});
+
+it('starts a phase and runs its matches from the back-office', function () {
+    Participant::factory()->for($this->competitionA)->count(4)->create();
+    $phase = Phase::factory()->for($this->competitionA)->create(['rules' => ['vote_mode' => 'public']]);
+    $staff = memberOf($this->orgA, OrganizerRole::Staff);
+
+    $this->actingAs($staff)
+        ->post(route('organizers.competitions.phases.start', [$this->orgA, $this->competitionA, $phase]))
+        ->assertForbidden();
+
+    $this->actingAs($this->ownerA)
+        ->post(route('organizers.competitions.phases.start', [$this->orgA, $this->competitionA, $phase]))
+        ->assertSessionHasNoErrors();
+
+    $match = $phase->matches()->where('round', 1)->first();
+
+    $this->actingAs($staff)
+        ->post(route('organizers.competitions.matches.open-voting', [$this->orgA, $this->competitionA, $match]))
+        ->assertSessionHasNoErrors();
+
+    $vote = new PublicVote(['match_id' => $match->id, 'participant_id' => $match->slots()->value('participant_id')]);
+    $vote->user_id = User::factory()->create()->id;
+    $vote->save();
+
+    $this->actingAs($staff)
+        ->post(route('organizers.competitions.matches.close', [$this->orgA, $this->competitionA, $match]))
+        ->assertSessionHasNoErrors();
+
+    expect($match->fresh()->winner_id)->not->toBeNull()
+        ->and($phase->matches()->where('round', 2)->first()->slots()->whereNotNull('participant_id')->count())->toBe(1);
+
+    $this->actingAs($this->ownerA)
+        ->get(route('organizers.competitions.show', [$this->orgA, $this->competitionA]))
+        ->assertOk()
+        ->assertSee('Clôturé');
+});
+
+it('does not resolve a match of another organizer', function () {
+    $phaseB = Phase::factory()->for($this->competitionB)->create();
+    $matchB = BattleMatch::factory()->create(['phase_id' => $phaseB->id]);
+
+    $this->actingAs($this->ownerA)
+        ->post("/organizers/{$this->orgA->slug}/competitions/{$this->competitionA->id}/matches/{$matchB->id}/close")
+        ->assertNotFound();
+});
+
+it('reports flow errors to the organizer instead of crashing', function () {
+    $phase = Phase::factory()->for($this->competitionA)->create();
+
+    $this->actingAs($this->ownerA)
+        ->post(route('organizers.competitions.phases.start', [$this->orgA, $this->competitionA, $phase]))
+        ->assertSessionHasErrors('flow');
 });

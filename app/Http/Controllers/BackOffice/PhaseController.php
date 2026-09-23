@@ -7,6 +7,7 @@ use App\Http\Requests\BackOffice\PhaseRequest;
 use App\Models\Competition;
 use App\Models\Organizer;
 use App\Models\Phase;
+use App\Services\Competition\PhaseLauncher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -44,6 +45,18 @@ class PhaseController extends Controller
         $phase->delete();
 
         return back()->with('status', 'Phase supprimée.');
+    }
+
+    /**
+     * Freeze the rules and generate the groups or the bracket.
+     */
+    public function start(Organizer $organizer, Competition $competition, Phase $phase, PhaseLauncher $launcher): RedirectResponse
+    {
+        $this->authorize('update', $competition);
+
+        $launcher->start($phase);
+
+        return back()->with('status', 'Phase démarrée : les matchs ont été générés.');
     }
 
     private function ensureNotStarted(Phase $phase): void

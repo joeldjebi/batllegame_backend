@@ -40,7 +40,10 @@ class CompetitionController extends Controller
         return view('competitions.show', [
             'organizer' => $organizer,
             'competition' => $competition->load([
-                'phases.groups',
+                'phases.groups.standings.participant',
+                'phases.matches' => fn ($q) => $q->orderBy('group_id')->orderBy('bracket')->orderBy('round')->orderBy('bracket_position'),
+                'phases.matches.slots.participant',
+                'phases.matches.group',
                 'participants.user',
                 'judges.user',
                 'criteria',

@@ -2,6 +2,7 @@
 
 use App\Enums\CompetitionStatus;
 use App\Enums\OrganizerRole;
+use App\Enums\ParticipantStatus;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Country;
@@ -242,4 +243,16 @@ it('reports flow errors to the organizer instead of crashing', function () {
     $this->actingAs($this->ownerA)
         ->post(route('organizers.competitions.phases.start', [$this->orgA, $this->competitionA, $phase]))
         ->assertSessionHasErrors('flow');
+});
+
+it('keeps an eliminated participant eliminated when only the seed changes', function () {
+    $participant = Participant::factory()->for($this->competitionA)->create(['status' => ParticipantStatus::Eliminated]);
+
+    $this->actingAs($this->ownerA)
+        ->patch(route('organizers.competitions.participants.update', [$this->orgA, $this->competitionA, $participant]), ['seed' => 3, 'status' => ''])
+        ->assertSessionHasNoErrors();
+
+    expect($participant->fresh())
+        ->seed->toBe(3)
+        ->status->toBe(ParticipantStatus::Eliminated);
 });

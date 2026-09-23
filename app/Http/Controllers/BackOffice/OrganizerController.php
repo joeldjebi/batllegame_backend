@@ -42,7 +42,7 @@ class OrganizerController extends Controller
 
         return view('organizers.show', [
             'organizer' => $organizer,
-            'competitions' => $organizer->competitions()->latest()->get(),
+            'competitions' => $organizer->competitions()->withCount('participants')->latest()->get(),
             'members' => $organizer->members()->with('user')->get(),
         ]);
     }

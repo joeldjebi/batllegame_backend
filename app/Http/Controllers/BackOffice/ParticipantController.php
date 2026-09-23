@@ -21,7 +21,8 @@ class ParticipantController extends Controller
         $this->authorize('manageRegistrations', $competition);
 
         $validated = $request->validate([
-            'status' => ['sometimes', Rule::enum(ParticipantStatus::class)->only([
+            // Empty = keep the current status (e.g. eliminated, or not yet validated).
+            'status' => ['sometimes', 'nullable', Rule::enum(ParticipantStatus::class)->only([
                 ParticipantStatus::Validated,
                 ParticipantStatus::Withdrawn,
                 ParticipantStatus::Disqualified,
@@ -29,7 +30,7 @@ class ParticipantController extends Controller
             'seed' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:1024'],
         ]);
 
-        $participant->update($validated);
+        $participant->update(array_filter($validated, fn ($value, $key) => $key !== 'status' || $value !== null, ARRAY_FILTER_USE_BOTH));
 
         return back()->with('status', 'Participant mis à jour.');
     }

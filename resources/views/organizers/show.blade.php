@@ -1,71 +1,225 @@
-@extends('layouts.app')
-@section('title', $organizer->name)
-@section('content')
-<h1>{{ $organizer->name }} <span class="badge">{{ $organizer->status->label() }}</span></h1>
+@php
+    use App\Enums\CompetitionMode;
+    use App\Enums\CompetitionStatus;
+    use App\Enums\Discipline;
+    use App\Enums\OrganizerRole;
 
-<section>
-    <h2>Compétitions</h2>
-    <table>
-        <tr><th>Nom</th><th>Discipline</th><th>Mode</th><th>Statut</th></tr>
-        @forelse ($competitions as $competition)
-            <tr>
-                <td><a href="{{ route('organizers.competitions.show', [$organizer, $competition]) }}">{{ $competition->name }}</a></td>
-                <td>{{ $competition->discipline->label() }}</td>
-                <td>{{ $competition->mode->label() }}</td>
-                <td><span class="badge">{{ $competition->status->label() }}</span></td>
-            </tr>
-        @empty
-            <tr><td colspan="4" class="muted">Aucune compétition.</td></tr>
-        @endforelse
-    </table>
+    $canCreate = auth()->user()->can('create', [\App\Models\Competition::class, $organizer]);
+    $canManageMembers = auth()->user()->can('manageMembers', $organizer);
+    $canEdit = auth()->user()->can('update', $organizer);
+    $byStatus = $competitions->countBy(fn ($c) => $c->status->value);
+@endphp
 
-    @can('create', [\App\Models\Competition::class, $organizer])
-        <form method="POST" action="{{ route('organizers.competitions.store', $organizer) }}" class="row">
-            @csrf
-            <label>Nom <input name="name" required></label>
-            <label>Discipline <select name="discipline">@foreach (\App\Enums\Discipline::options() as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
-            <label>Mode <select name="mode">@foreach (\App\Enums\CompetitionMode::options() as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
-            <label>Fin des inscriptions <input type="datetime-local" name="registration_ends_at"></label>
-            <label>Max participants <input type="number" name="max_participants" min="2"></label>
-            <label>Frais (XOF) <input type="number" name="entry_fee" min="0" value="0"></label>
-            <button>Créer la compétition</button>
-        </form>
-    @endcan
-</section>
+<x-layouts.app :title="$organizer->name">
+    <x-ui.page-header :title="$organizer->name" :breadcrumbs="['Tableau de bord' => route('dashboard'), $organizer->name => null]">
+        <x-slot:leading>
+            <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" size="lg" square />
+        </x-slot:leading>
+        <x-slot:description>
+            <x-ui.badge :value="$organizer->status" />
+            @if ($organizer->city)<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $organizer->city }}</span>@endif
+            <span class="inline-flex items-center gap-1"><x-ui.icon name="user-group" variant="m" class="size-4" />{{ $members->count() }} membre(s)</span>
+        </x-slot:description>
+        <x-slot:actions>
+            @if ($canCreate)
+                <x-ui.button variant="gradient" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Nouvelle compétition</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
-<section>
-    <h2>Membres</h2>
-    <table>
-        <tr><th>Nom</th><th>Email</th><th>Rôle</th><th></th></tr>
-        @foreach ($members as $member)
-            <tr>
-                <td>{{ $member->user->name }}</td>
-                <td>{{ $member->user->email }}</td>
-                <td>
-                    @can('manageMembers', $organizer)
-                        <form class="inline" method="POST" action="{{ route('organizers.members.update', [$organizer, $member]) }}">
-                            @csrf @method('PATCH')
-                            <select name="role" onchange="this.form.submit()">@foreach (\App\Enums\OrganizerRole::options() as $value => $label)<option value="{{ $value }}" @selected($member->role->value === $value)>{{ $label }}</option>@endforeach</select>
-                        </form>
-                    @else
-                        {{ $member->role->label() }}
-                    @endcan
-                </td>
-                <td>
-                    @can('manageMembers', $organizer)
-                        <form class="inline" method="POST" action="{{ route('organizers.members.destroy', [$organizer, $member]) }}">@csrf @method('DELETE')<button class="danger">Retirer</button></form>
-                    @endcan
-                </td>
-            </tr>
-        @endforeach
-    </table>
-    @can('manageMembers', $organizer)
-        <form method="POST" action="{{ route('organizers.members.store', $organizer) }}" class="row">
-            @csrf
-            <label>Email <input type="email" name="email" value="{{ old('email') }}" required></label>
-            <label>Rôle <select name="role"><option value="staff">Staff</option><option value="admin">Administrateur</option></select></label>
-            <button>Ajouter</button>
-        </form>
-    @endcan
-</section>
-@endsection
+    @if ($organizer->status === \App\Enums\OrganizerStatus::Pending)
+        <div class="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <x-ui.icon name="clock" class="size-5 shrink-0" />
+            <p><strong>Vérification en cours.</strong> Vous pouvez préparer vos compétitions en brouillon ; l'ouverture des inscriptions sera possible dès que la plateforme aura vérifié votre organisation.</p>
+        </div>
+    @elseif ($organizer->isSuspended())
+        <div class="mb-6 flex items-start gap-3 rounded-2xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200">
+            <x-ui.icon name="no-symbol" class="size-5 shrink-0" />
+            <p><strong>Organisateur suspendu.</strong> Les compétitions restent consultables mais aucune modification n'est possible.</p>
+        </div>
+    @endif
+
+    <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-ui.stat label="Compétitions" :value="$competitions->count()" icon="trophy" />
+        <x-ui.stat label="Inscriptions ouvertes" :value="$byStatus[CompetitionStatus::Registration->value] ?? 0" icon="user-plus" tone="blue" />
+        <x-ui.stat label="En cours" :value="$byStatus[CompetitionStatus::InProgress->value] ?? 0" icon="fire" tone="red" />
+        <x-ui.stat label="Participants" :value="$competitions->sum('participants_count')" icon="users" tone="green" />
+    </div>
+
+    <x-ui.tabs key="organizer" :tabs="[
+        'competitions' => ['label' => 'Compétitions', 'icon' => 'trophy', 'count' => $competitions->count()],
+        'members' => ['label' => 'Membres', 'icon' => 'user-group', 'count' => $members->count()],
+        'profile' => ['label' => 'Profil', 'icon' => 'identification'],
+    ]">
+        <x-ui.tab-panel name="competitions">
+            @if ($competitions->isEmpty())
+                <x-ui.empty icon="trophy" title="Aucune compétition" description="Créez votre première compétition, ajoutez ses phases puis ouvrez les inscriptions.">
+                    @if ($canCreate)<x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Créer une compétition</x-ui.button>@endif
+                </x-ui.empty>
+            @else
+                <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    @foreach ($competitions as $competition)
+                        @php($max = $competition->max_participants)
+                        <a href="{{ route('organizers.competitions.show', [$organizer, $competition]) }}"
+                            class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5 transition hover:-translate-y-1 hover:shadow-lift hover:ring-brand-300 dark:bg-slate-900/60 dark:ring-white/10 dark:hover:ring-brand-500/40">
+                            <div class="relative h-24 overflow-hidden bg-brand-gradient">
+                                <div class="bg-grid absolute inset-0 opacity-25"></div>
+                                <x-ui.icon :name="$competition->discipline->icon()" class="absolute -right-3 -bottom-4 size-24 text-white/15 transition group-hover:scale-110" />
+                                <div class="absolute top-3 left-3"><x-ui.badge :value="$competition->status" class="!bg-white/90 dark:!bg-slate-900/80" /></div>
+                            </div>
+                            <div class="flex flex-1 flex-col p-5">
+                                <h3 class="font-display text-base font-semibold text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300">{{ $competition->name }}</h3>
+                                <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <span class="inline-flex items-center gap-1"><x-ui.icon :name="$competition->discipline->icon()" variant="m" class="size-3.5" />{{ $competition->discipline->label() }}</span>
+                                    <span class="inline-flex items-center gap-1"><x-ui.icon :name="$competition->mode->icon()" variant="m" class="size-3.5" />{{ $competition->mode->label() }}</span>
+                                    @if ($competition->entry_fee)<span class="inline-flex items-center gap-1"><x-ui.icon name="banknotes" variant="m" class="size-3.5" />{{ number_format($competition->entry_fee, 0, ',', ' ') }} {{ $competition->currency }}</span>@endif
+                                </div>
+                                <div class="mt-auto pt-5">
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-slate-500 dark:text-slate-400">{{ $competition->participants_count }}{{ $max ? ' / '.$max : '' }} inscrits</span>
+                                        @if ($competition->registration_ends_at)<span class="text-slate-400">jusqu'au {{ $competition->registration_ends_at->translatedFormat('d M') }}</span>@endif
+                                    </div>
+                                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                                        <div class="h-full rounded-full bg-brand-gradient" style="width: {{ $max ? min(100, round($competition->participants_count / $max * 100)) : min(100, $competition->participants_count * 5) }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        </x-ui.tab-panel>
+
+        <x-ui.tab-panel name="members">
+            <x-ui.card title="Équipe" description="Owner : tout · Admin : configure les compétitions · Staff : gère les inscriptions et les matchs" icon="user-group">
+                @if ($canManageMembers)
+                    <x-slot:actions>
+                        <x-ui.button size="sm" icon="user-plus" x-data x-on:click="$dispatch('open-modal', 'add-member')">Ajouter un membre</x-ui.button>
+                    </x-slot:actions>
+                @endif
+                <x-ui.table>
+                    <x-slot:head><th>Membre</th><th>Rôle</th><th>Depuis</th><th></th></x-slot:head>
+                    @foreach ($members as $member)
+                        <tr>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <x-ui.avatar :name="$member->user->name" size="sm" />
+                                    <div>
+                                        <p class="font-medium text-slate-900 dark:text-white">{{ $member->user->name }} @if ($member->user->is(auth()->user()))<span class="text-xs text-slate-400">(vous)</span>@endif</p>
+                                        <p class="text-xs text-slate-500">{{ $member->user->email }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if ($canManageMembers)
+                                    <form method="POST" action="{{ route('organizers.members.update', [$organizer, $member]) }}">
+                                        @csrf @method('PATCH')
+                                        <select name="role" onchange="this.form.requestSubmit()" class="rounded-lg border-0 bg-slate-50 py-1.5 pr-8 pl-2.5 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
+                                            @foreach (OrganizerRole::options() as $value => $label)
+                                                <option value="{{ $value }}" @selected($member->role->value === $value)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </form>
+                                @else
+                                    <x-ui.badge :value="$member->role" />
+                                @endif
+                            </td>
+                            <td class="text-slate-500">{{ $member->created_at?->translatedFormat('d M Y') }}</td>
+                            <td class="text-right">
+                                @if ($canManageMembers)
+                                    <x-ui.confirm :action="route('organizers.members.destroy', [$organizer, $member])" method="DELETE"
+                                        title="Retirer {{ $member->user->name }} ?" message="Cette personne n'aura plus accès à l'organisateur." confirm="Retirer">
+                                        <x-ui.button size="sm" variant="ghost" icon="trash" class="!text-rose-600">Retirer</x-ui.button>
+                                    </x-ui.confirm>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </x-ui.table>
+            </x-ui.card>
+        </x-ui.tab-panel>
+
+        <x-ui.tab-panel name="profile">
+            <x-ui.card title="Profil public" description="Affiché aux artistes et au public dans l'application." icon="identification" class="max-w-3xl">
+                <form method="POST" action="{{ route('organizers.update', $organizer) }}" enctype="multipart/form-data" class="grid gap-5 sm:grid-cols-2">
+                    @csrf @method('PUT')
+                    <fieldset @disabled(! $canEdit) class="contents">
+                        <x-ui.input name="name" label="Nom" :value="$organizer->name" required />
+                        <x-ui.input name="city" label="Ville" icon="map-pin" :value="$organizer->city" />
+                        <x-ui.textarea name="description" label="Description" :value="$organizer->description" class="sm:col-span-2" />
+                        <x-ui.field label="Logo" class="sm:col-span-2">
+                            <div class="flex items-center gap-4">
+                                <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" size="lg" square />
+                                <input type="file" name="logo" accept="image/*" class="block text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-brand-500/10 dark:file:text-brand-300">
+                            </div>
+                        </x-ui.field>
+                    </fieldset>
+                    @if ($canEdit)
+                        <div class="flex justify-end sm:col-span-2"><x-ui.button type="submit" icon="check">Enregistrer</x-ui.button></div>
+                    @endif
+                </form>
+            </x-ui.card>
+        </x-ui.tab-panel>
+    </x-ui.tabs>
+
+    @if ($canCreate)
+        <x-ui.slide-over name="create-competition" title="Nouvelle compétition" description="Elle sera créée en brouillon : vous pourrez ajouter les phases, le jury et les critères." icon="trophy"
+            :show="$errors->hasAny(['name', 'discipline', 'mode', 'registration_ends_at', 'max_participants', 'entry_fee'])">
+            <form method="POST" action="{{ route('organizers.competitions.store', $organizer) }}" class="space-y-6">
+                @csrf
+                <x-ui.input name="name" label="Nom de la compétition" placeholder="Ex. Abidjan Rap Contest 2026" required />
+
+                <x-ui.field label="Discipline">
+                    <div class="grid grid-cols-3 gap-2">
+                        @foreach (Discipline::cases() as $discipline)
+                            <label class="cursor-pointer">
+                                <input type="radio" name="discipline" value="{{ $discipline->value }}" class="peer sr-only" @checked(old('discipline', 'rap') === $discipline->value)>
+                                <span class="flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-checked:ring-2 peer-checked:ring-brand-500 hover:bg-slate-50 dark:text-slate-300 dark:ring-white/10 dark:peer-checked:bg-brand-500/10 dark:peer-checked:text-brand-200">
+                                    <x-ui.icon :name="$discipline->icon()" class="size-5" />{{ $discipline->label() }}
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                </x-ui.field>
+
+                <x-ui.field label="Mode">
+                    <div class="grid grid-cols-3 gap-2">
+                        @foreach (CompetitionMode::cases() as $mode)
+                            <label class="cursor-pointer">
+                                <input type="radio" name="mode" value="{{ $mode->value }}" class="peer sr-only" @checked(old('mode', 'presentiel') === $mode->value)>
+                                <span class="flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-checked:ring-2 peer-checked:ring-brand-500 hover:bg-slate-50 dark:text-slate-300 dark:ring-white/10 dark:peer-checked:bg-brand-500/10 dark:peer-checked:text-brand-200">
+                                    <x-ui.icon :name="$mode->icon()" class="size-5" />{{ $mode->label() }}
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                </x-ui.field>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.input name="registration_ends_at" type="datetime-local" label="Fin des inscriptions" />
+                    <x-ui.input name="max_participants" type="number" min="2" label="Participants max." placeholder="32" />
+                    <x-ui.input name="entry_fee" type="number" min="0" label="Frais d'inscription" value="0" suffix="XOF" />
+                </div>
+
+                <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
+                    <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-competition')">Annuler</x-ui.button>
+                    <x-ui.button type="submit" variant="gradient" icon="sparkles">Créer la compétition</x-ui.button>
+                </div>
+            </form>
+        </x-ui.slide-over>
+    @endif
+
+    @if ($canManageMembers)
+        <x-ui.modal name="add-member" title="Ajouter un membre" description="La personne doit déjà avoir un compte back-office avec cet email." icon="user-plus" :show="$errors->has('email')">
+            <form method="POST" action="{{ route('organizers.members.store', $organizer) }}" class="space-y-4">
+                @csrf
+                <x-ui.input name="email" type="email" label="Email" icon="envelope" required />
+                <x-ui.select name="role" label="Rôle" :options="['staff' => 'Staff — inscriptions et matchs', 'admin' => 'Administrateur — configure les compétitions']" />
+                <div class="flex justify-end gap-2 pt-2">
+                    <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'add-member')">Annuler</x-ui.button>
+                    <x-ui.button type="submit" icon="user-plus">Ajouter</x-ui.button>
+                </div>
+            </form>
+        </x-ui.modal>
+    @endif
+</x-layouts.app>

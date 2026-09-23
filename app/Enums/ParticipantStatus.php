@@ -3,11 +3,12 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\EnumHelpers;
+use App\Enums\Contracts\HasBadge;
 
 /**
  * State of a participant within a competition.
  */
-enum ParticipantStatus: string
+enum ParticipantStatus: string implements HasBadge
 {
     use EnumHelpers;
 
@@ -25,6 +26,17 @@ enum ParticipantStatus: string
             self::Eliminated => 'Éliminé',
             self::Withdrawn => 'Forfait',
             self::Disqualified => 'Disqualifié',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Registered => 'amber',
+            self::Validated => 'green',
+            self::Eliminated => 'gray',
+            self::Withdrawn => 'gray',
+            self::Disqualified => 'red',
         };
     }
 }

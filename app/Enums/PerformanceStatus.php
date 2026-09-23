@@ -3,11 +3,12 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\EnumHelpers;
+use App\Enums\Contracts\HasBadge;
 
 /**
  * Moderation state of a performance.
  */
-enum PerformanceStatus: string
+enum PerformanceStatus: string implements HasBadge
 {
     use EnumHelpers;
 
@@ -21,6 +22,15 @@ enum PerformanceStatus: string
             self::Pending => 'En attente',
             self::Approved => 'Validée',
             self::Rejected => 'Rejetée',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Pending => 'amber',
+            self::Approved => 'green',
+            self::Rejected => 'red',
         };
     }
 }

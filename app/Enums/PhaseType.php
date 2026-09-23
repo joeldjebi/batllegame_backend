@@ -23,4 +23,16 @@ enum PhaseType: string
             self::DoubleElimination => 'Double élimination',
         };
     }
+
+    /**
+     * Heroicon name (outline set) used in the back-office.
+     */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Groups => 'squares-2x2',
+            self::SingleElimination => 'trophy',
+            self::DoubleElimination => 'arrow-path-rounded-square',
+        };
+    }
 }

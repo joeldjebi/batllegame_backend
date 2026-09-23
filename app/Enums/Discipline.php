@@ -29,4 +29,19 @@ enum Discipline: string
             self::Other => 'Autre',
         };
     }
+
+    /**
+     * Heroicon name (outline set) used in the back-office.
+     */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Rap => 'microphone',
+            self::Singing => 'musical-note',
+            self::Freestyle => 'bolt',
+            self::Slam => 'chat-bubble-bottom-center-text',
+            self::Beatbox => 'speaker-wave',
+            self::Other => 'sparkles',
+        };
+    }
 }

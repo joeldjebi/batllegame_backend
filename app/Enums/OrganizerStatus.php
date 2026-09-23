@@ -3,11 +3,12 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\EnumHelpers;
+use App\Enums\Contracts\HasBadge;
 
 /**
  * Verification state of an organizer on the platform.
  */
-enum OrganizerStatus: string
+enum OrganizerStatus: string implements HasBadge
 {
     use EnumHelpers;
 
@@ -21,6 +22,15 @@ enum OrganizerStatus: string
             self::Pending => 'En attente',
             self::Verified => 'Vérifié',
             self::Suspended => 'Suspendu',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Pending => 'amber',
+            self::Verified => 'green',
+            self::Suspended => 'red',
         };
     }
 }

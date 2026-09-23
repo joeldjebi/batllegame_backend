@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\OrganizerStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Competition;
 use App\Models\Organizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,12 +19,20 @@ class OrganizerController extends Controller
     public function index(Request $request): View
     {
         $organizers = Organizer::query()
-            ->withCount('competitions')
+            ->withCount(['competitions', 'members'])
+            ->with(['members' => fn ($q) => $q->where('role', 'owner')->with('user:id,name,email')])
             ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->query('q'), fn ($q, $search) => $q->whereLike('name', "%{$search}%"))
+            ->orderByRaw("case status when 'en_attente' then 0 when 'verifie' then 1 else 2 end")
             ->orderBy('name')
-            ->paginate(30);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.organizers.index', ['organizers' => $organizers]);
+        return view('admin.organizers.index', [
+            'organizers' => $organizers,
+            'counts' => Organizer::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+            'competitionsCount' => Competition::query()->count(),
+        ]);
     }
 
     public function updateStatus(Request $request, Organizer $organizer): RedirectResponse

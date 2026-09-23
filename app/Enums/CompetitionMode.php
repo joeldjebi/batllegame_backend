@@ -23,4 +23,16 @@ enum CompetitionMode: string
             self::Hybrid => 'Mixte',
         };
     }
+
+    /**
+     * Heroicon name (outline set) used in the back-office.
+     */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::OnSite => 'map-pin',
+            self::Online => 'globe-alt',
+            self::Hybrid => 'arrows-right-left',
+        };
+    }
 }

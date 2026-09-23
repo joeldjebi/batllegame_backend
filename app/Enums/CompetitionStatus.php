@@ -3,11 +3,12 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\EnumHelpers;
+use App\Enums\Contracts\HasBadge;
 
 /**
  * Lifecycle of a competition.
  */
-enum CompetitionStatus: string
+enum CompetitionStatus: string implements HasBadge
 {
     use EnumHelpers;
 
@@ -53,6 +54,17 @@ enum CompetitionStatus: string
             self::InProgress => 'En cours',
             self::Finished => 'Terminée',
             self::Cancelled => 'Annulée',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Draft => 'gray',
+            self::Registration => 'blue',
+            self::InProgress => 'violet',
+            self::Finished => 'green',
+            self::Cancelled => 'red',
         };
     }
 }

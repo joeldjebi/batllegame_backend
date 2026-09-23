@@ -3,11 +3,12 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\EnumHelpers;
+use App\Enums\Contracts\HasBadge;
 
 /**
  * Role of a user inside an organizer (never used for platform administration).
  */
-enum OrganizerRole: string
+enum OrganizerRole: string implements HasBadge
 {
     use EnumHelpers;
 
@@ -53,6 +54,15 @@ enum OrganizerRole: string
             self::Owner => 'Propriétaire',
             self::Admin => 'Administrateur',
             self::Staff => 'Staff',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Owner => 'violet',
+            self::Admin => 'blue',
+            self::Staff => 'gray',
         };
     }
 }

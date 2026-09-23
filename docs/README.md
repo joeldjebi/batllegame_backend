@@ -58,6 +58,8 @@ uniquement dans le `.env`, jamais dans le dépôt) :
 | Artiste | `/artiste/login` | `SEED_ARTIST_PHONE` |
 | Public | `/vote/login` | `SEED_FAN_PHONE` (numéro déjà vérifié) |
 
+Code de vérification SMS en local : **`123456`** (affiché sur la page de vérification en mode test).
+
 Relancer `LocalAccountsSeeder` après `DemoCompetitionSeeder` pour rattacher le juré et l'artiste aux
 compétitions de démonstration. Comptes de `DemoCompetitionSeeder` (mot de passe `password`) : artistes
 `07 1000000x` (Abidjan Rap Battle) et `01 3000000x` (Abidjan Talents en ligne, soumissions ouvertes),

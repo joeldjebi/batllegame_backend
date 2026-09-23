@@ -21,7 +21,7 @@ class PhoneVerificationService
 
     public function sendCode(User $user): void
     {
-        $code = (string) random_int(100000, 999999);
+        $code = self::fixedCode() ?? (string) random_int(100000, 999999);
 
         Cache::put($this->key($user), ['hash' => Hash::make($code), 'attempts' => 0], now()->addMinutes(self::TTL_MINUTES));
 
@@ -49,6 +49,16 @@ class PhoneVerificationService
 
         Cache::forget($this->key($user));
         $user->markPhoneAsVerified();
+    }
+
+    /**
+     * Fixed code configured for development / tests (never by default in production).
+     */
+    public static function fixedCode(): ?string
+    {
+        $code = config('services.phone_verification.fixed_code');
+
+        return is_string($code) && preg_match('/^\d{6}$/', $code) ? $code : null;
     }
 
     private function key(User $user): string

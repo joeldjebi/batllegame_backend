@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    /*
+    | Phone verification by SMS. A fixed code (123456 by default outside
+    | production) makes local testing possible without an SMS provider. In
+    | production the code is random unless PHONE_VERIFICATION_CODE is set.
+    */
+    'phone_verification' => [
+        'fixed_code' => env('PHONE_VERIFICATION_CODE', env('APP_ENV', 'production') === 'production' ? null : '123456'),
+    ],
+
 ];

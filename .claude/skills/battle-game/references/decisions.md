@@ -33,7 +33,8 @@
   (never committed): super-admin, organizer (emails), judge / artist / fan (phones). `DemoCompetitionSeeder`
   accounts use the password `password`. Ask the owner or read `.env`, never hard-code credentials.
 - Node 18 is the default; use Homebrew Node 22 (`/opt/homebrew/bin`). No ffmpeg locally. PHP upload limit 2 MB.
-- SMS are written to `storage/logs/laravel.log` (`LogSmsSender`).
+- SMS are written to `storage/logs/laravel.log` (`LogSmsSender`). The SMS verification code is **123456** outside
+  production (`services.phone_verification.fixed_code`, env `PHONE_VERIFICATION_CODE`), random in production.
 
 ## Backlog / not done yet
 - Real SMS provider; payment of entry fees (`entry_fee` is informative only).

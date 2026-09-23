@@ -2,6 +2,7 @@
 
 use App\Models\Country;
 use App\Models\User;
+use App\Services\PhoneVerificationService;
 use App\Services\Sms\SmsSender;
 
 beforeEach(function () {
@@ -76,4 +77,24 @@ it('verifies the phone with the code sent by SMS', function () {
     $this->actingAs($user)->postJson('/api/auth/phone/verify', ['code' => $code])->assertOk();
 
     expect($user->fresh()->hasVerifiedPhone())->toBeTrue();
+});
+
+it('uses the fixed verification code 123456 outside production', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user, 'sanctum')->postJson('/api/auth/phone/send-code')->assertAccepted();
+    $this->sms->shouldHaveReceived('send')->with($user->phone, Mockery::pattern('/123456/'));
+
+    $this->actingAs($user, 'sanctum')->postJson('/api/auth/phone/verify', ['code' => '123456'])->assertOk();
+    expect($user->fresh()->hasVerifiedPhone())->toBeTrue();
+});
+
+it('generates a random verification code when no fixed code is configured (production)', function () {
+    config(['services.phone_verification.fixed_code' => null]);
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user, 'sanctum')->postJson('/api/auth/phone/send-code')->assertAccepted();
+
+    $this->sms->shouldHaveReceived('send')->with($user->phone, Mockery::on(fn ($message) => preg_match('/\d{6}/', $message, $m) === 1));
+    expect(PhoneVerificationService::fixedCode())->toBeNull();
 });

@@ -44,6 +44,20 @@ npm run build                   # ou npm run dev
 php artisan serve               # + php artisan queue:work et php artisan schedule:work
 ```
 
-Comptes de démonstration (mot de passe `password`) : les artistes (`07 1000000x`),
-les jurés « Juge Didi B » (`05 20000000`) et « Juge Suspect 95 » (`05 20000001`),
-les artistes en ligne (`01 3000000x`).
+## Comptes de test (local)
+
+Créés par `LocalAccountsSeeder` à partir des variables `SEED_*` du `.env` (identifiants et mots de passe
+uniquement dans le `.env`, jamais dans le dépôt) :
+
+| Espace | URL | Identifiant |
+|---|---|---|
+| Super-admin | `/{ADMIN_PATH}/login` | `SEED_ADMIN_EMAIL` |
+| Organisateur | `/login` | `SEED_ORGANIZER_EMAIL` |
+| Jury | `/jury/login` | `SEED_JUDGE_PHONE` (juré de toutes les compétitions de l'organisateur test) |
+| Artiste | `/artiste/login` | `SEED_ARTIST_PHONE` |
+| Public | `/vote/login` | `SEED_FAN_PHONE` (numéro déjà vérifié) |
+
+Relancer `LocalAccountsSeeder` après `DemoCompetitionSeeder` pour rattacher le juré et l'artiste aux
+compétitions de démonstration. Comptes de `DemoCompetitionSeeder` (mot de passe `password`) : artistes
+`07 1000000x` (Abidjan Rap Battle) et `01 3000000x` (Abidjan Talents en ligne, soumissions ouvertes),
+jurés `05 20000000` et `05 20000001`.

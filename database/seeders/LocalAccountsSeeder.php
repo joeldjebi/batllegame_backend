@@ -2,8 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Enums\CompetitionStatus;
+use App\Enums\JudgeStatus;
 use App\Enums\OrganizerRole;
 use App\Enums\OrganizerStatus;
+use App\Enums\ParticipantStatus;
 use App\Enums\PlatformRole;
 use App\Models\Country;
 use App\Models\Organizer;
@@ -13,9 +16,11 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Local accounts: the platform super-admin and a verified test organizer,
- * both logging in to the web areas with email + password.
- * Credentials come from .env (SEED_*), never from the repository.
+ * Local accounts, credentials from .env (SEED_*), never from the repository:
+ *  - super-admin and test organizer (email + password, web areas);
+ *  - test judge, artist and fan (phone + password, portals /jury, /artiste, /vote).
+ * Run again after DemoCompetitionSeeder to attach the judge and the artist to
+ * the demo competitions.
  */
 class LocalAccountsSeeder extends Seeder
 {
@@ -37,6 +42,45 @@ class LocalAccountsSeeder extends Seeder
         $organizer->forceFill(['status' => OrganizerStatus::Verified, 'verified_at' => $organizer->verified_at ?? now()])->save();
 
         $organizer->users()->syncWithoutDetaching([$owner->id => ['role' => OrganizerRole::Owner]]);
+
+        $this->portalAccounts($country, $organizer);
+    }
+
+    /**
+     * Optional phone accounts for the web portals (skipped when not configured).
+     */
+    private function portalAccounts(Country $country, Organizer $organizer): void
+    {
+        if ($judge = $this->phoneAccount($country, 'SEED_JUDGE', 'Juré Test')) {
+            // Judge of every competition of the test organizer (never where they compete).
+            $organizer->competitions()->whereDoesntHave('participants', fn ($q) => $q->where('user_id', $judge->id))->get()
+                ->each(fn ($competition) => $competition->judges()->firstOrCreate(['user_id' => $judge->id], ['status' => JudgeStatus::Accepted]));
+        }
+
+        if ($artist = $this->phoneAccount($country, 'SEED_ARTIST', 'Artiste Test')) {
+            // Registered to the first competition open for registrations.
+            $open = $organizer->competitions()->where('status', CompetitionStatus::Registration)->whereDoesntHave('judges', fn ($q) => $q->where('user_id', $artist->id))->first();
+            $open?->participants()->firstOrCreate(['user_id' => $artist->id], ['stage_name' => 'Artiste Test', 'status' => ParticipantStatus::Validated]);
+        }
+
+        $this->phoneAccount($country, 'SEED_FAN', 'Public Test');
+    }
+
+    private function phoneAccount(Country $country, string $prefix, string $name): ?User
+    {
+        $phone = env("{$prefix}_PHONE");
+        $password = env("{$prefix}_PASSWORD");
+
+        if (! $phone || ! $password) {
+            return null;
+        }
+
+        $user = User::query()->firstOrNew(['phone' => $country->toE164($phone)]);
+        $user->fill(['name' => $user->name ?? $name, 'country_id' => $country->id, 'password' => $password]);
+        // Ready to use: phone verified (voting), no forced password change.
+        $user->forceFill(['phone_verified_at' => $user->phone_verified_at ?? now(), 'must_change_password' => false])->save();
+
+        return $user;
     }
 
     private function account(Country $country, string $prefix, string $name): User

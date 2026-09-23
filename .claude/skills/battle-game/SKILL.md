@@ -1,81 +1,108 @@
 ---
 name: battle-game
-description: Working on the Battle Game Laravel backend (music battle competitions - organizers back-office, super-admin console, jury/artist/public web portals, mobile REST API, brackets, groups, stages, submissions, scoring). Use for any feature, bug fix, test or review in this repository.
+description: Everything needed to work on the Battle Game Laravel backend (music battle competitions) - organizer back-office, super-admin console, jury/artist/public web portals, mobile REST API, competition engine (groups, single/double elimination brackets, stages, online submissions, on-site live voting, forfeits, jury and public scoring). Use for any feature, bug fix, refactor, test, review or question about this repository.
 ---
 
 # Battle Game backend
 
-Laravel 13 / PHP 8.3 / PostgreSQL / Pest 4 / Blade + Tailwind 4 + Alpine (Vite 8, Node 22).
-Full documentation in `docs/` (French): start with `docs/README.md`, then `docs/architecture.md`
-and `docs/regles-metier.md` before touching the competition engine.
+Music battle competitions (rap, chant, freestyle, slam, beatbox). Organizers run competitions from a
+Blade back-office; artists register and submit performances; the public votes; judges score.
+The Flutter mobile app is not built yet: web portals (`/jury`, `/artiste`, `/vote`) stand in for it and
+share the same services as the REST API.
+
+Stack: Laravel 13, PHP 8.3, PostgreSQL (SQLite in-memory for fast tests), Sanctum, spatie/permission
+(super-admin role only), Pest 4, Blade + Tailwind CSS 4 + Alpine.js (Vite 8, **Node 22**), blade-heroicons,
+laravel-lang (French).
+
+## Load the right reference
+
+| Task | Read |
+|---|---|
+| Tables, relations, enums (all values), DTO keys | [references/domain-model.md](references/domain-model.md) |
+| Guards, areas, route names, policies and who can do what | [references/areas-and-routes.md](references/areas-and-routes.md) |
+| Brackets, groups, stages, submissions, scoring, forfeits, events | [references/engine.md](references/engine.md) |
+| Step-by-step changes (DTO field, enum case, back-office action, API endpoint, portal page, migration) | [references/recipes.md](references/recipes.md) |
+| Views, design rules, component catalog and props | [references/ui.md](references/ui.md) |
+| Test helpers, factories, patterns | [references/testing.md](references/testing.md) |
+| Product decisions of the owner, local environment, accounts, backlog | [references/decisions.md](references/decisions.md) |
+
+Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles-metier`, `api`,
+`exploitation`, `tests`). Keep both the docs and this skill up to date when behavior changes.
 
 ## Conventions
 
-- Code, identifiers and comments in **English**; UI strings, validation messages, docs and
-  replies to the user in **French**.
-- Enums (`app/Enums`) for every status/type: English case names, French values, `label()`,
-  `tone()` (badge color) for statuses. Never compare raw strings when an enum exists.
-- JSON columns are typed DTOs (`app/Data`, `JsonData` + `JsonDataCast`): add fields to
-  `fromArray()` validation, `toArray()` and the constructor together.
-- Match the surrounding style; run `./vendor/bin/pint` before finishing.
-- Solid colors only in the UI (the owner refused gradients). Reuse `components/ui/*` and
-  `components/bo/*`; layouts: `x-layouts.app` (back-office + admin), `x-layouts.portal`
-  (jury/artist/public), `x-layouts.auth`.
+- Code, identifiers, comments in **English**. UI strings, validation/business messages, docs and replies
+  to the owner in **French**.
+- Every status/type is a PHP enum (`app/Enums`): English cases, French values, `label()`; status enums
+  also `tone()` (implement `Contracts\HasBadge`). Compare enums, never raw strings.
+- JSON columns are immutable, validated DTOs (`app/Data`): `PhaseRules`, `CompetitionSettings`.
+- Controllers stay thin: authorize → validate shape → call a service → redirect/resource. Shared business
+  logic lives in services used by both the API and the portals.
+- Business refusals throw `CompetitionFlowException` named constructors (French message; rendered as a 422
+  JSON or a `flow` toast). Validation errors use `ValidationException` with French messages.
+- Blade: reuse `components/ui/*` and `components/bo/*`; **solid colors only — the owner refused gradients**;
+  every screen works in dark mode; French dates via `translatedFormat()`.
+- New migrations only (never edit a pushed one); explicit FK delete rules and indexes.
+- Run `./vendor/bin/pint` before finishing.
 
 ## Non-negotiable rules
 
-1. **Tenant isolation.** `organizer_id` lives only in `competitions` (and `organizer_members`).
-   Child tables carry a denormalized `competition_id` managed by `InheritsCompetitionId`.
-   Nested routes use `scopeBindings()`; never load a child by its id alone. Validate ids
-   received in request bodies against the parent (match slots, competition criteria…).
-   Back-office authorization goes through `CompetitionPolicy` (non-members get **404**).
-2. **Explicit guards.** Areas: `web` (organizers, email), `admin` (super-admin, email,
-   `routes/admin.php` under `config('admin.path')`), `jury` and `member` (portals, phone),
-   `sanctum` (API). Always write `auth:<guard>` / `guest:<guard>`, never bare `auth`.
-   The spatie role `platform-admin` lives on the `web` guard: use `PlatformRole::GUARD`.
-   Platform admins are refused everywhere except their console.
-3. **Business logic lives in services**, shared by the API and the web portals
-   (`VotingService`, `JuryScoringService`, `RegistrationService`, `SubmissionService`,
-   `Services/Competition/*`). Controllers authorize, validate input shape and delegate.
-4. **Phase rules are frozen** once a phase starts (`Phase::FROZEN_ATTRIBUTES`).
-5. **Stored scores are derived** (`match_participants`, `group_participants`) and must stay
-   recomputable from `jury_scores` / `public_votes` (`scores:recompute`).
-6. Voting requires a verified phone; one vote per user and match; a participant never votes
-   in their own match; a judge is never a participant of the same competition.
-7. Business-rule violations throw `CompetitionFlowException` (rendered as 422 JSON or a
-   `flow` form error) with a French message; add a named constructor for new cases.
-
-## Engine map
-
-- Start a phase: `PhaseLauncher` → `GroupDrawService` | `BracketGenerator` → `StageBuilder`.
-- Close a match: `MatchCloser::close()` / `forfeit()` → `MatchClosed` (after commit) →
-  `AdvanceBracket` (→ `BracketAdvancer`, `PhaseProgress`) or `RecalculateGroupStandings` job.
-- Stages: `StageService` (`schedule`, `openSubmissions`, `applyForfeits`, `openVoting`,
-  `openMatchVoting`, `processDue` used by `stages:process`).
-- Submissions: `SubmissionService` + `ProcessSubmission` job (`MediaInspector`/ffprobe).
-- Scores: `MatchScoreCalculator` (jury normalized on 100, public vote share, phase weights).
+1. **Tenant isolation.** `organizer_id` only exists in `competitions` and `organizer_members`. Children carry
+   a denormalized `competition_id` kept consistent by `InheritsCompetitionId` (mismatch = exception).
+   Nested routes use `scopeBindings()`; a child is never loaded by its id alone; ids in request bodies are
+   validated against the parent (`match slots`, `competition criteria`…). Back-office access goes through
+   `CompetitionPolicy` — non-members get a **404**, never a 403.
+2. **Explicit guards on every route**: `web` (organizers, email), `admin` (super-admin, email, secret
+   `ADMIN_PATH`), `jury` (judges, phone), `member` (artists + public, phone), `sanctum` (API). Never write a
+   bare `auth` / `guest`. The spatie role `platform-admin` is stored on the `web` guard: always pass
+   `PlatformRole::GUARD` to role checks. Platform admins are refused everywhere except their console.
+3. **Frozen rules**: a started phase cannot change `type`, `rules`, `qualifiers_per_group`.
+4. **Derived scores**: `match_participants.*_score` and `group_participants` must stay recomputable from
+   `jury_scores` and `public_votes` (`php artisan scores:recompute {slug}`).
+5. **Voting integrity**: verified phone, one vote per user and match (unique index + savepoint), never in
+   one's own match, judges do not vote, optional device limit, room code for on-site when enabled.
+6. **Conflicts of interest**: a judge is never a participant of the same competition.
+7. Organizer status gates writes: `en_attente` = drafts only, `suspendu` = read-only (no votes, no scores).
 
 ## Workflow
 
-1. Read the relevant docs section and the existing service/tests for the area.
-2. Write or update Pest tests next to similar ones (`tests/Feature/...`, helpers in
-   `tests/Feature/Services/helpers.php` and `tests/Feature/Stages/helpers.php`).
-3. Run `php artisan test`, then **also on PostgreSQL**:
-   `DB_CONNECTION=pgsql DB_DATABASE=battlegame_test DB_USERNAME=postgres DB_PASSWORD=root ./vendor/bin/pest`.
-4. For UI changes: `npm run build` (Node 22: `PATH=/opt/homebrew/bin:$PATH` on the owner's Mac)
-   and check the page renders (feature tests render Blade views; screenshots when layout matters).
-5. Update `docs/` when behavior, routes, env variables or commands change.
-6. Commit only when asked; end commit messages with the attribution line the harness provides.
+1. Read the relevant reference(s) and the existing service + tests of the area before editing.
+2. Implement in the service layer first; wire controllers/routes/views after.
+3. Write or extend Pest tests next to similar ones; cover the happy path, the forbidden role, the foreign
+   organizer (404) and the business refusal.
+4. Run `php artisan test`, then the PostgreSQL suite (see `references/testing.md`) — both must be green.
+5. UI changes: `npm run build` with Node 22 and render the page (tests render Blade; take screenshots when
+   layout matters).
+6. Update `docs/` and this skill (routes, env vars, commands, decisions).
+7. Commit / push only when the owner asks; end commit messages with the attribution line the harness provides.
+   Never commit `.env`; local credentials go through `SEED_*` variables.
 
 ## Gotchas learned the hard way
 
-- PostgreSQL aborts the whole transaction on a unique violation: wrap inserts that may race
-  in `DB::transaction()` (savepoint) and pre-check, as `VotingService` does.
-- `MatchClosed` implements `ShouldDispatchAfterCommit`: do not wrap multi-step flows (seeders)
-  in one transaction or listeners only fire at the very end.
-- In tests `actingAs($user)` without a guard reuses the last default guard: pass the guard.
-- `performances` are per stage (`stage_id`, one per participant) for submissions, or per match
-  for on-site captations; `BattleMatch::publishedPerformances()` merges both.
-- Group-phase completion recalculates standings synchronously in `PhaseProgress` (queued jobs
-  may lag); a group phase never finishes the competition by itself.
-- Local PHP upload limit is 2 MB: real media tests need `upload_max_filesize`/`post_max_size` raised.
+- PostgreSQL aborts the whole transaction on a unique violation (SQLite does not): wrap racy inserts in
+  `DB::transaction()` (savepoint) and pre-check, like `VotingService` / `RegistrationService`.
+- `MatchClosed` is `ShouldDispatchAfterCommit`: wrapping a multi-step flow (e.g. a seeder) in one transaction
+  delays every listener to the end — phases then never finish mid-flow.
+- In tests, `actingAs($user)` without a guard reuses the last default guard (e.g. `sanctum`): always pass it.
+- zsh does not word-split unquoted variables: in shell loops use `${=var}`.
+- Group standings are recalculated in a queued job; `PhaseProgress` recalculates synchronously before
+  finishing a group phase. A group phase never finishes the competition (a next phase may be added).
+- Walkovers/voids created by `BracketAdvancer` do not fire `MatchClosed`; stage completion is refreshed by
+  `StageService::refreshPhase()` inside `PhaseProgress`.
+- `performances`: a submission belongs to a stage (reused in all its matches); a captation also has a
+  `match_id`. Use `BattleMatch::publishedPerformances()` to get what voters/judges may see.
+- `@php use …; @endphp` is fine at the top of a view but not inside components' nested blocks — prefer FQCN.
+- Do not name a Blade loop variable `$slot`/`$slots` inside components (reserved).
+- Local machine: Node 18 by default (use `/opt/homebrew/bin` Node 22), no ffmpeg (duration check skipped),
+  PHP upload limit 2 MB, SMS written to `storage/logs/laravel.log`, login throttling is 6/min per IP.
+
+## Useful commands
+
+```bash
+php artisan migrate --seed                               # countries (CI active) + platform role
+php artisan db:seed --class=LocalAccountsSeeder          # SA, organizer, judge, artist, fan from SEED_* (local only)
+php artisan db:seed --class=DemoCompetitionSeeder        # demo competitions (local only), then re-run LocalAccountsSeeder
+php artisan stages:process | matches:close-expired       # scheduler jobs (every minute in production)
+php artisan scores:recompute {slug}                      # rebuild derived scores
+php artisan route:list --except-vendor                   # 90+ routes across the 6 areas
+```

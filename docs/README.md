@@ -19,7 +19,7 @@ Un agent IA qui reprend le projet doit aussi lire le skill
 
 | Espace | URL | Identifiant | Guard | Pour qui |
 |---|---|---|---|---|
-| Page d'accueil publique | `/` | — | — | tout le monde : compétitions, votes en direct, création de compte, liens de connexion |
+| Page d'accueil publique | `/` | — | — | tout le monde : hero animé, votes en direct, compétitions, création de compte, liens de connexion |
 | Back-office organisateur | `/login` → `/tableau-de-bord` | email + mot de passe | `web` | owners, admins, staff des organisateurs |
 | Console super-admin | `/{ADMIN_PATH}/login` | email + mot de passe | `admin` | propriétaire de la plateforme |
 | Portail jury | `/jury/login` | téléphone + mot de passe | `jury` | jurés (comptes créés par les organisateurs) |

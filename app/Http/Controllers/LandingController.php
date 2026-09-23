@@ -36,11 +36,14 @@ class LandingController extends Controller
                 ->withCount(['matches as voting_matches_count' => fn ($q) => $q->votingNow()])
                 ->latest('updated_at')->limit(6)->get(),
             'open' => $public()->where('status', CompetitionStatus::Registration)->latest()->limit(6)->get(),
+            // Stage names for the scrolling band (latest artists first).
+            'artistNames' => Participant::query()->latest()->limit(40)->pluck('stage_name')->unique()->take(16)->values(),
             'stats' => [
                 'competitions' => Competition::query()->where('status', '!=', CompetitionStatus::Draft)->count(),
                 'artists' => Participant::query()->distinct('user_id')->count('user_id'),
                 'votes' => PublicVote::query()->count(),
                 'organizers' => Organizer::query()->where('status', OrganizerStatus::Verified)->count(),
+                'live' => BattleMatch::query()->votingNow()->count(),
             ],
         ]);
     }

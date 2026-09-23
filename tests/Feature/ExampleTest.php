@@ -1,7 +1,7 @@
 <?php
 
 it('shows the public landing page at the root', function () {
-    $this->get('/')->assertOk()->assertSee('Les battles se jouent ici.');
+    $this->get('/')->assertOk()->assertSee('se joue en direct.');
 });
 
 it('redirects guests from the back-office to the organizer login', function () {

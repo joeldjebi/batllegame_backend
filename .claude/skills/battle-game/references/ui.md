@@ -12,13 +12,29 @@ Brand palette `brand-50…950` (violet, oklch), accents fuchsia (voting), emeral
 rose (danger), sky (info). Shadows `shadow-soft`, `shadow-lift`. Animations `animate-fade-in`, `animate-slide-up`.
 `.bracket-round/.bracket-match` draw the dashed connectors. `@source` scans `resources/views` and `app/Enums`.
 
+## Motion (landing, reusable anywhere)
+Plugins: `@alpinejs/intersect`, `collapse`, `focus`. Utilities in `app.css` (all disabled under
+`prefers-reduced-motion`):
+- `.reveal` + `x-intersect.once="$el.classList.add('is-visible')"` — fade/slide in on scroll, stagger with
+  `style="--delay: 120ms"`. Hidden only when `html.js` is set (the landing adds it in its head script).
+- `.parallax` + `style="--speed: -0.15"` — scroll parallax driven by `--scroll-y` (set per frame in `app.js`).
+- `.depth` + `style="--depth: 24"` inside `x-data="pointerParallax" x-on:mousemove="move($event)"` — mouse
+  parallax. Never put `.parallax` and `.depth` on the same element (both use `transform`): nest them.
+- `.float` (bobbing), `.equalizer span` (audio bars), `.marquee` (duplicate the content twice, `--duration`),
+  `.draw` on an SVG (paths drawn when `.is-visible`), `.fill-bar` (`--fill` 0–1, grows when visible), `.ping-slow`.
+- Alpine data: `counter(target)` (`x-intersect.once="start()"`, `x-text="formatted"`), `rotator(words, ms)`.
+- Still solid colors only: shapes are solid circles, rings and SVG grid lines — no gradient, no blur blob.
+
 ## Layouts
 - `x-layouts.app` — back-office and admin console (sidebar `bo.sidebar`, fed by a view composer in
   `AppServiceProvider`: `$navOrganizers` or `$adminCounts`), topbar (theme, user menu), toasts, `@stack('modals')`.
 - `x-layouts.portal` — jury / artist / public (top navigation from `Portal::current()`).
 - `x-layouts.auth` — split-screen login (organizers, `admin` variant dark).
-- `resources/views/landing.blade.php` — standalone public landing (hero + live battle, live votes, competitions,
-  open registrations, how it works, organizer CTA, footer with every login URL).
+- `resources/views/landing.blade.php` — standalone public landing: dark full-height hero (rotating word,
+  pointer-parallax floating cards with the real vote share of the featured live battle or an « Aperçu » label,
+  equalizer), scrolling band of disciplines and artists, animated counters, live votes, competitions, animated
+  bracket showcase, open registrations, how it works, final CTA, organizer CTA, footer with every login URL.
+  Illustrations never present fake numbers or real artists as live data.
 
 ## Components (`resources/views/components`)
 

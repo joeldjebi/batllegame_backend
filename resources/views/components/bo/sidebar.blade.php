@@ -21,6 +21,11 @@
                 <x-bo.nav-link :href="route('admin.competitions.index')" icon="trophy" :active="request()->routeIs('admin.competitions.*', 'admin.organizers.competitions.*')">Compétitions</x-bo.nav-link>
                 <x-bo.nav-link :href="route('admin.users.index')" icon="users" :active="request()->routeIs('admin.users.*')">Utilisateurs</x-bo.nav-link>
             </div>
+
+            <div class="space-y-1">
+                <p class="px-3 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Référentiel</p>
+                <x-bo.nav-link :href="route('admin.locations.index')" icon="globe-europe-africa" :active="request()->routeIs('admin.locations.*')">Pays, villes, communes</x-bo.nav-link>
+            </div>
         @else
             <div class="space-y-1">
                 <x-bo.nav-link :href="route('dashboard')" icon="squares-2x2" :active="request()->routeIs('dashboard')">Tableau de bord</x-bo.nav-link>

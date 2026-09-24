@@ -8,6 +8,8 @@ use App\Enums\OrganizerRole;
 use App\Enums\OrganizerStatus;
 use App\Enums\ParticipantStatus;
 use App\Enums\PlatformRole;
+use App\Enums\SeedKind;
+use App\Models\City;
 use App\Models\Country;
 use App\Models\Organizer;
 use App\Models\User;
@@ -36,10 +38,12 @@ class LocalAccountsSeeder extends Seeder
         $admin->syncRoles([PlatformRole::Admin->value]);
 
         $owner = $this->account($country, 'SEED_ORGANIZER', 'Organisateur Test');
+        $owner->forceFill(['seed_kind' => SeedKind::TestAccount])->save();
 
         $organizer = Organizer::query()->firstOrNew(['slug' => 'organisateur-test']);
-        $organizer->fill(['name' => 'Organisateur Test', 'city' => 'Abidjan', 'description' => 'Organisateur de démonstration.']);
-        $organizer->forceFill(['status' => OrganizerStatus::Verified, 'verified_at' => $organizer->verified_at ?? now()])->save();
+        $abidjan = City::query()->where('country_id', $country->id)->where('name', 'Abidjan')->first();
+        $organizer->fill(['name' => 'Organisateur Test', 'city_id' => $abidjan?->id, 'commune_id' => $abidjan?->communes()->where('name', 'Cocody')->value('id'), 'description' => 'Organisateur de démonstration.']);
+        $organizer->forceFill(['status' => OrganizerStatus::Verified, 'verified_at' => $organizer->verified_at ?? now(), 'seed_kind' => SeedKind::TestAccount])->save();
 
         $organizer->users()->syncWithoutDetaching([$owner->id => ['role' => OrganizerRole::Owner]]);
 
@@ -78,7 +82,7 @@ class LocalAccountsSeeder extends Seeder
         $user = User::query()->firstOrNew(['phone' => $country->toE164($phone)]);
         $user->fill(['name' => $user->name ?? $name, 'country_id' => $country->id, 'password' => $password]);
         // Ready to use: phone verified (voting), no forced password change.
-        $user->forceFill(['phone_verified_at' => $user->phone_verified_at ?? now(), 'must_change_password' => false])->save();
+        $user->forceFill(['phone_verified_at' => $user->phone_verified_at ?? now(), 'must_change_password' => false, 'seed_kind' => SeedKind::TestAccount])->save();
 
         return $user;
     }

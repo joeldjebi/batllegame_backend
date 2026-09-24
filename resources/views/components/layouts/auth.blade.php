@@ -1,4 +1,4 @@
-@props(['title', 'admin' => false])
+@props(['title', 'admin' => false, 'wide' => false, 'fit' => false])
 
 <!DOCTYPE html>
 <html lang="fr" class="h-full">
@@ -18,10 +18,15 @@
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <div class="flex min-h-full">
-        <div class="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:flex-none lg:px-20 xl:px-28">
-            <div class="mx-auto w-full max-w-sm animate-slide-up">
+<body @class(['h-full bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100', 'overflow-hidden' => $fit])>
+    {{-- fit: the page holds in the viewport (no scroll); the slot manages its own height. --}}
+    <div @class(['flex', 'min-h-full' => ! $fit, 'h-dvh overflow-hidden' => $fit])>
+        <div @class([
+            'flex flex-1 flex-col lg:flex-none',
+            'justify-center px-6 py-12 sm:px-12 lg:px-20 xl:px-28' => ! $fit,
+            'min-h-0 px-5 pt-5 pb-4 sm:px-12 sm:pt-8 sm:pb-6 lg:w-[34rem] lg:px-16 xl:w-[38rem] xl:px-20' => $fit,
+        ])>
+            <div @class(['mx-auto w-full animate-slide-up', 'max-w-sm' => ! $wide, 'max-w-md' => $wide, 'flex min-h-0 flex-1 flex-col' => $fit])>
                 <x-bo.logo :admin="$admin" />
                 {{ $slot }}
             </div>

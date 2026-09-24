@@ -15,13 +15,14 @@ use Illuminate\Support\Carbon;
  * performance, the public likes (one like per user) and the jury scores, then
  * the organizer publishes the N selected artists.
  */
-#[Fillable(['starts_at', 'ends_at', 'vote_ends_at', 'deliberation_hours', 'rules'])]
+#[Fillable(['starts_at', 'ends_at', 'vote_ends_at', 'deliberation_hours', 'rules', 'judges_per_entry'])]
 class Preselection extends Model
 {
     protected function casts(): array
     {
         return [
             'starts_at' => 'datetime',
+            'judges_per_entry' => 'integer',
             'ends_at' => 'datetime',
             'vote_ends_at' => 'datetime',
             'deliberation_hours' => 'integer',
@@ -74,7 +75,6 @@ class Preselection extends Model
     {
         return match (true) {
             $this->published_at !== null => PreselectionState::Published,
-            $this->starts_at->isFuture() => PreselectionState::Scheduled,
             $this->ends_at->isFuture() => PreselectionState::Open,
             $this->voteEndsAt()->isFuture() => PreselectionState::Voting,
             $this->deliberationEndsAt()->isFuture() => PreselectionState::Deliberation,
@@ -104,6 +104,14 @@ class Preselection extends Model
     public function acceptsScores(): bool
     {
         return in_array($this->state(), [PreselectionState::Open, PreselectionState::Voting, PreselectionState::Deliberation], true);
+    }
+
+    /**
+     * Entries split between the judges (each scored by judges_per_entry of them), else every judge scores every entry.
+     */
+    public function splitsJudging(): bool
+    {
+        return $this->judges_per_entry !== null && $this->judges_per_entry > 0;
     }
 
     public function publicVotingEnabled(): bool
@@ -152,7 +160,6 @@ class Preselection extends Model
     public function nextDeadline(): ?Carbon
     {
         return match ($this->state()) {
-            PreselectionState::Scheduled => $this->starts_at,
             PreselectionState::Open => $this->ends_at,
             PreselectionState::Voting => $this->voteEndsAt(),
             PreselectionState::Deliberation => $this->deliberationEndsAt(),
@@ -161,10 +168,10 @@ class Preselection extends Model
     }
 
     /**
-     * Rules can change until the pre-selection starts.
+     * Rules can change until the first performance is sent.
      */
     public function rulesFrozen(): bool
     {
-        return $this->state() !== PreselectionState::Scheduled;
+        return $this->exists && $this->entries()->exists();
     }
 }

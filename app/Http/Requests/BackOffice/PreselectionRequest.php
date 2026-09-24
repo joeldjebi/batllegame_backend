@@ -15,11 +15,12 @@ class PreselectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'starts_at' => ['required', 'date'],
-            'ends_at' => ['required', 'date', 'after:starts_at'],
+            'ends_at' => ['required', 'date', 'after:now'],
             'vote_ends_at' => ['nullable', 'date', 'after_or_equal:ends_at'],
             'deliberation_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
             'rules' => ['nullable', 'array'],
+            'split_judging' => ['boolean'],
+            'judges_per_entry' => ['required_if_accepted:split_judging', 'nullable', 'integer', 'min:1', 'max:20'],
         ];
     }
 
@@ -31,12 +32,17 @@ class PreselectionRequest extends FormRequest
      */
     public function preselectionData(): array
     {
-        return [...$this->validated(), 'deliberation_hours' => (int) $this->validated('deliberation_hours', 0)];
+        return [
+            ...collect($this->validated())->except(['split_judging'])->all(),
+            'deliberation_hours' => (int) $this->validated('deliberation_hours', 0),
+            // Null: every judge scores every entry (default).
+            'judges_per_entry' => $this->boolean('split_judging') ? $this->integer('judges_per_entry') : null,
+        ];
     }
 
     public function attributes(): array
     {
-        return ['starts_at' => 'début de la présélection', 'ends_at' => 'fin des envois', 'vote_ends_at' => 'fin du vote', 'deliberation_hours' => 'durée de délibération'];
+        return ['ends_at' => 'date limite d\'envoi', 'vote_ends_at' => 'fin du vote', 'deliberation_hours' => 'durée de délibération', 'judges_per_entry' => 'jurés par prestation'];
     }
 
     /**

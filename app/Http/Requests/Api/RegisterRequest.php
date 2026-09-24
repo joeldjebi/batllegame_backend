@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Http\Requests\Concerns\HasLocationInput;
 use App\Http\Requests\Concerns\HasPhoneNumber;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Validator;
 
 class RegisterRequest extends FormRequest
 {
-    use HasPhoneNumber;
+    use HasLocationInput, HasPhoneNumber;
 
     /**
      * @return array<string, mixed>
@@ -23,7 +24,13 @@ class RegisterRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
             'device_name' => ['nullable', 'string', 'max:100'],
+            ...$this->locationRules(),
         ];
+    }
+
+    public function attributes(): array
+    {
+        return $this->locationAttributes();
     }
 
     /**

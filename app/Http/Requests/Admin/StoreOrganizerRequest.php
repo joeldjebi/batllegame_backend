@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\OrganizerStatus;
+use App\Http\Requests\Concerns\HasLocationInput;
 use App\Models\Country;
 use App\Rules\NationalPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,6 +14,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreOrganizerRequest extends FormRequest
 {
+    use HasLocationInput;
+
     /**
      * @return array<string, mixed>
      */
@@ -20,7 +23,7 @@ class StoreOrganizerRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
+            ...$this->locationRules(),
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::enum(OrganizerStatus::class)->only([OrganizerStatus::Pending, OrganizerStatus::Verified])],
             'owner_name' => ['nullable', 'string', 'max:100'],
@@ -32,7 +35,7 @@ class StoreOrganizerRequest extends FormRequest
 
     public function attributes(): array
     {
-        return ['owner_name' => 'nom du propriétaire', 'owner_email' => 'email du propriétaire'];
+        return ['owner_name' => 'nom du propriétaire', 'owner_email' => 'email du propriétaire', ...$this->locationAttributes()];
     }
 
     public function country(): ?Country

@@ -96,7 +96,7 @@ class DashboardController extends Controller
             // Unpaid wins over any other state (also covers a registration made before the fee was set).
             $participant->status === ParticipantStatus::PaymentPending
                 || (! $paid && $participant->status === ParticipantStatus::Registered) => ['pay', $preselection?->ends_at ?? $competition->registration_ends_at],
-            $state === PreselectionState::Open && $participant->status === ParticipantStatus::Registered && $paid && $canResubmitPreselection => ['preselection', $preselection->ends_at],
+            $state === PreselectionState::Open && $participant->canEnterPreselection() && $canResubmitPreselection => ['preselection', $preselection->ends_at],
             $playing && $stage->acceptsSubmissions() && (! $submission || $submission->status === PerformanceStatus::Rejected) && $paid => ['stage', $stage->submission_deadline],
             default => [null, null],
         };

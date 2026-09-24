@@ -15,6 +15,7 @@ use App\Models\Phase;
 use App\Models\PublicVote;
 use App\Models\Stage;
 use App\Models\User;
+use App\Services\Competition\MatchCloser;
 use App\Services\Competition\PhaseLauncher;
 use App\Services\Competition\StageService;
 use App\Services\SubmissionService;
@@ -159,21 +160,25 @@ it('turns missing submissions into forfeits at the deadline', function () {
         ->and($phase->fresh()->status)->toBe(PhaseStatus::Finished);
 });
 
-it('counts a group forfeit as a loss, and a double forfeit as two losses', function () {
+it('takes the artists without a submission out of the group ranking', function () {
     ['phase' => $phase, 'participants' => $p] = startedCompetition(CompetitionMode::Online, 3, PhaseType::Groups, ['group_count' => 1, 'draw_method' => 'seed'], ['submissions_require_approval' => false], qualifiers: 1);
     $stage = openStage($phase->stages()->first());
     submitAs($p[0], $stage)->assertCreated();
+    submitAs($p[2], $stage)->assertCreated();
 
     $this->travel(2)->days();
     app(StageService::class)->applyForfeits($stage);
 
-    $standings = $phase->groups()->first()->standings()->with('participant')->get()->keyBy(fn ($s) => $s->participant->seed);
+    $match = $phase->matches()->first();
+    expect($match->slots()->where('is_forfeit', true)->pluck('participant_id')->all())->toBe([$p[1]->id])
+        ->and($match->activeSlots()->count())->toBe(2)
+        ->and($match->fresh()->status)->not->toBe(MatchStatus::Closed);
 
-    expect($standings[1]->wins)->toBe(2)
-        ->and($standings[1]->points)->toBe(6)
-        ->and($standings[2]->losses)->toBe(2)
-        ->and($standings[3]->losses)->toBe(2)
-        ->and($standings[2]->points + $standings[3]->points)->toBe(0);
+    app(StageService::class)->openVoting($stage);
+    app(MatchCloser::class)->close($match->fresh());
+
+    expect($match->slots()->where('participant_id', $p[1]->id)->value('rank'))->toBeNull()
+        ->and($match->slots()->whereNotNull('rank')->count())->toBe(2);
 });
 
 it('waits for the organizer review before opening the vote', function () {

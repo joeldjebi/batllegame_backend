@@ -47,7 +47,10 @@
                     </a>
                 @empty
                     <div class="p-3">
-                        <x-ui.empty icon="building-office-2" title="Aucun organisateur" description="Les organisateurs sont créés par la plateforme Battle Game. Contactez-nous pour ouvrir votre espace, ou demandez à un organisateur de vous ajouter à son équipe." />
+                        <x-ui.empty icon="building-office-2" title="Aucun organisateur" description="Créez votre organisateur, ou demandez à un organisateur de vous ajouter à son équipe." />
+                        @if (config('organizers.self_signup'))
+                            <div class="mt-3 flex justify-center"><x-ui.button size="sm" :href="route('organizers.signup')" icon="plus">Créer un organisateur</x-ui.button></div>
+                        @endif
                     </div>
                 @endforelse
             </div>

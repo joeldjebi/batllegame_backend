@@ -69,6 +69,8 @@ class PortalAuthController extends Controller
             'phone' => $request->e164Phone(),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
+            'city_id' => $request->validated('city_id'),
+            'commune_id' => $request->validated('commune_id'),
         ]);
 
         Auth::guard($portal->guard)->login($user);

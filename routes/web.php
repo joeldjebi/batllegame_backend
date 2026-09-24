@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\OrganizerSignupController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\BackOffice\CompetitionController;
 use App\Http\Controllers\BackOffice\CriterionController;
@@ -33,12 +34,18 @@ Route::middleware('guest:web')->group(function () {
     Route::post('login', [LoginController::class, 'store'])->middleware('throttle:6,1');
 });
 
+// Organizers open their own space (visitor: account + organizer; signed in: one more organizer).
+Route::middleware('organizer.area')->group(function () {
+    Route::get('creer-mon-espace', [OrganizerSignupController::class, 'create'])->name('organizers.signup');
+    Route::post('creer-mon-espace', [OrganizerSignupController::class, 'store'])->middleware('throttle:5,1');
+});
+
 Route::middleware(['auth:web', 'organizer.area'])->group(function () {
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
     Route::get('mot-de-passe', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('mot-de-passe', [PasswordController::class, 'update'])->name('password.update');
 
-    // Organizers are created by the platform super-admin only.
+    // Organizers are created by the super-admin, or by themselves (pending until verified).
     Route::middleware('fresh.password:password.edit')->group(function () {
         Route::get('tableau-de-bord', DashboardController::class)->name('dashboard');
 
@@ -54,6 +61,7 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                 Route::delete('members/{member}', [OrganizerMemberController::class, 'destroy'])->name('members.destroy');
 
                 Route::get('competitions', [CompetitionController::class, 'index'])->name('competitions.index');
+                Route::get('competitions/nouvelle', [CompetitionController::class, 'create'])->name('competitions.create');
                 Route::post('competitions', [CompetitionController::class, 'store'])->name('competitions.store');
 
                 Route::prefix('competitions/{competition}')->name('competitions.')->group(function () {
@@ -62,16 +70,20 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                     Route::patch('status', [CompetitionController::class, 'updateStatus'])->name('status');
                     Route::delete('/', [CompetitionController::class, 'destroy'])->name('destroy');
                     Route::post('duplicate', [CompetitionController::class, 'duplicate'])->name('duplicate');
+                    Route::post('guide/draft', [CompetitionController::class, 'draftGuide'])->name('guide.draft');
 
                     Route::post('phases', [PhaseController::class, 'store'])->name('phases.store');
                     Route::put('phases/{phase}', [PhaseController::class, 'update'])->name('phases.update');
                     Route::delete('phases/{phase}', [PhaseController::class, 'destroy'])->name('phases.destroy');
                     Route::post('phases/{phase}/start', [PhaseController::class, 'start'])->name('phases.start');
+                    Route::post('phases/{phase}/publish', [PhaseController::class, 'publish'])->name('phases.publish');
+                    Route::put('phases/{phase}/calendar', [PhaseController::class, 'calendar'])->name('phases.calendar');
 
                     Route::put('preselection', [PreselectionController::class, 'update'])->name('preselection.update');
                     Route::post('preselection/rank', [PreselectionController::class, 'rank'])->name('preselection.rank');
                     Route::post('preselection/publish', [PreselectionController::class, 'publish'])->name('preselection.publish');
                     Route::patch('preselection/entries/{entry}', [PreselectionController::class, 'review'])->name('preselection.entries.review');
+                    Route::delete('preselection/entries/{entry}/scores/{judge}', [PreselectionController::class, 'reopenScore'])->withoutScopedBindings()->name('preselection.entries.scores.destroy');
 
                     Route::put('stages/{stage}', [StageController::class, 'update'])->name('stages.update');
                     Route::post('stages/{stage}/open-submissions', [StageController::class, 'openSubmissions'])->name('stages.open-submissions');

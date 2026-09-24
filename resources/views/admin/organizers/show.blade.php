@@ -7,7 +7,7 @@
         </x-slot:leading>
         <x-slot:description>
             <x-ui.badge :value="$organizer->status" />
-            @if ($organizer->city)<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $organizer->city }}</span>@endif
+            @if ($organizer->locationLabel())<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $organizer->locationLabel() }}</span>@endif
             <span class="inline-flex items-center gap-1"><x-ui.icon name="calendar" variant="m" class="size-4" />Créé le {{ $organizer->created_at->translatedFormat('d M Y') }}</span>
             <span class="font-mono text-xs">{{ $organizer->slug }}</span>
         </x-slot:description>
@@ -86,7 +86,7 @@
                 <dl class="grid gap-x-8 gap-y-5 text-sm sm:grid-cols-2">
                     <div><dt class="text-slate-500">Nom</dt><dd class="mt-1 font-medium text-slate-900 dark:text-white">{{ $organizer->name }}</dd></div>
                     <div><dt class="text-slate-500">Identifiant (slug)</dt><dd class="mt-1 font-mono text-slate-900 dark:text-white">{{ $organizer->slug }}</dd></div>
-                    <div><dt class="text-slate-500">Ville</dt><dd class="mt-1 font-medium text-slate-900 dark:text-white">{{ $organizer->city ?? '—' }}</dd></div>
+                    <div><dt class="text-slate-500">Ville</dt><dd class="mt-1 font-medium text-slate-900 dark:text-white">{{ $organizer->locationLabel() ?? '—' }}</dd></div>
                     <div><dt class="text-slate-500">Offre</dt><dd class="mt-1 font-medium text-slate-900 dark:text-white">{{ $organizer->plan->label() }}</dd></div>
                     <div><dt class="text-slate-500">Statut</dt><dd class="mt-1"><x-ui.badge :value="$organizer->status" /></dd></div>
                     <div><dt class="text-slate-500">Vérifié le</dt><dd class="mt-1 font-medium text-slate-900 dark:text-white">{{ $organizer->verified_at?->translatedFormat('d M Y, H:i') ?? '—' }}</dd></div>

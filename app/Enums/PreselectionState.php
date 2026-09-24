@@ -7,7 +7,7 @@ use App\Enums\Contracts\HasBadge;
 
 /**
  * Derived state of a pre-selection, from the organizer's timeline:
- * starts_at → ends_at (submissions + likes + jury) → vote_ends_at (likes + jury)
+ * (open as soon as it exists) → ends_at (submissions + likes + jury) → vote_ends_at (likes + jury)
  * → + deliberation_hours (jury only) → to publish.
  */
 enum PreselectionState: string implements HasBadge

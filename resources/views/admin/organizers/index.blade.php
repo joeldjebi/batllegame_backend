@@ -37,6 +37,7 @@
         </div>
 
         <div class="p-5">
+            <div data-live="admin-organizers">
             @if ($organizers->isEmpty())
                 <x-ui.empty icon="building-office-2" title="Aucun organisateur" description="Aucun résultat pour ces filtres." />
             @else
@@ -50,7 +51,7 @@
                                     <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" square />
                                     <div>
                                         <a href="{{ route('admin.organizers.show', $organizer) }}" class="font-semibold text-slate-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-300">{{ $organizer->name }}</a>
-                                        <p class="text-xs text-slate-500">{{ $organizer->city ?? '—' }} · créé le {{ $organizer->created_at->translatedFormat('d M Y') }}</p>
+                                        <p class="text-xs text-slate-500">{{ $organizer->locationLabel() ?? '—' }} · créé le {{ $organizer->created_at->translatedFormat('d M Y') }}</p>
                                     </div>
                                 </div>
                             </td>
@@ -88,6 +89,7 @@
                     @endforeach
                 </x-ui.table>
             @endif
+            </div>
         </div>
 
         @if ($organizers->hasPages())
@@ -101,7 +103,7 @@
             <div class="space-y-4">
                 <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Organisateur</p>
                 <x-ui.input name="name" label="Nom de la structure" required />
-                <x-ui.input name="city" label="Ville" icon="map-pin" />
+                <x-location-select />
                 <x-ui.textarea name="description" label="Description" rows="3" />
                 <x-ui.select name="status" label="Statut" :options="['verifie' => 'Vérifié (peut ouvrir des inscriptions)', 'en_attente' => 'En attente de vérification']" />
             </div>
@@ -117,4 +119,5 @@
             </div>
         </form>
     </x-ui.slide-over>
+    <x-realtime :channels="[\App\Realtime\Channel::ADMIN]" />
 </x-layouts.app>

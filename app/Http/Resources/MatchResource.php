@@ -17,14 +17,17 @@ class MatchResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Scores stay hidden until the match is closed, unless live results are enabled.
-        $showScores = $this->isClosed() || $this->competition->settings->showLiveResults;
+        // Scores stay hidden until the match is closed (a group: until its phase results are published), unless live results are enabled.
+        $showScores = $this->resultsArePublic();
         $media = $this->publishedPerformances()->groupBy('participant_id');
 
         return [
             'id' => $this->id,
             'phase_id' => $this->phase_id,
             'group_id' => $this->group_id,
+            // A group of a ranking round: all its artists perform, the public votes once per phase.
+            'is_group' => $this->isGroupMatch(),
+            'title' => $this->title(),
             'bracket' => $this->bracket,
             'round' => $this->round,
             'bracket_position' => $this->bracket_position,
@@ -50,6 +53,8 @@ class MatchResource extends JsonResource
                 'jury_score' => $showScores ? $slot->jury_score : null,
                 'public_score' => $showScores ? $slot->public_score : null,
                 'final_score' => $showScores ? $slot->final_score : null,
+                'rank' => $showScores ? $slot->rank : null,
+                'is_forfeit' => $slot->is_forfeit,
                 'media' => MediaResource::collection($media->get($slot->participant_id, collect())),
             ])),
         ];

@@ -26,7 +26,8 @@ class OrganizerController extends Controller
     {
         $this->authorize('update', $organizer);
 
-        $organizer->fill($request->safe()->except('logo'));
+        // A city without communes posts no commune: clear the previous one.
+        $organizer->fill([...$request->safe()->except('logo'), 'commune_id' => $request->validated('commune_id')]);
 
         if ($request->hasFile('logo')) {
             $organizer->logo_path = $request->file('logo')->store('organizers', 'public');

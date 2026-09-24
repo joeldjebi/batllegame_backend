@@ -25,7 +25,7 @@ class JuryScoringService
         $criteria = $match->competition->criteria()->get()->keyBy('id');
 
         $validated = Validator::make($input, [
-            'participant_id' => ['required', 'integer', Rule::in($match->slots()->whereNotNull('participant_id')->pluck('participant_id'))],
+            'participant_id' => ['required', 'integer', Rule::in($match->activeSlots()->pluck('participant_id'))],
             'scores' => ['required', 'array', 'size:'.$criteria->count()],
             'scores.*.criterion_id' => ['required', 'integer', 'distinct', Rule::in($criteria->keys())],
             'scores.*.score' => ['required', 'numeric', 'min:0'],

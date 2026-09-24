@@ -33,6 +33,11 @@ class PublicVotePolicy
             return Response::deny('Vous ne pouvez pas voter pour un match auquel vous participez.');
         }
 
+        // Groups: the artists of the phase do not vote in it (one vote for the whole phase).
+        if ($match->isGroupMatch() && $match->phase->groups()->whereHas('participants', fn ($q) => $q->where('participants.user_id', $user->getKey()))->exists()) {
+            return Response::deny('Les artistes de la phase ne votent pas pour les poules.');
+        }
+
         if ($user->isJudgeOf($competition)) {
             return Response::deny('Les membres du jury ne votent pas avec le public.');
         }

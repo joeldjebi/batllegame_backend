@@ -8,6 +8,7 @@
         "realtime": "node realtime/server.js"
     },
     "devDependencies": {
+        "@alpinejs/anchor": "^3.17.4",
         "@alpinejs/collapse": "^3.17.4",
         "@alpinejs/focus": "^3.17.4",
         "@alpinejs/intersect": "^3.17.4",

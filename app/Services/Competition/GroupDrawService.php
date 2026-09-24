@@ -10,8 +10,9 @@ use App\Models\Phase;
 use Illuminate\Support\Collection;
 
 /**
- * Creates the groups of a phase, distributes the entrants and schedules the
- * round-robin matches of each group.
+ * Creates the groups of a phase (ranking rounds), distributes the entrants and
+ * creates one match per group holding all its artists: they do not face each
+ * other, each one performs and the group is ranked by the jury and the public.
  */
 class GroupDrawService
 {
@@ -42,7 +43,7 @@ class GroupDrawService
 
         foreach ($groups as $i => $group) {
             $group->participants()->attach(array_map(fn (Participant $p) => $p->id, $members[$i]));
-            $this->scheduleMatches($phase, $group, $members[$i]);
+            $this->createGroupMatch($phase, $group, $members[$i], $i + 1);
         }
 
         return $groups;
@@ -51,24 +52,20 @@ class GroupDrawService
     /**
      * @param  list<Participant>  $members
      */
-    private function scheduleMatches(Phase $phase, Group $group, array $members): void
+    private function createGroupMatch(Phase $phase, Group $group, array $members, int $position): void
     {
-        foreach (RoundRobinScheduler::rounds($members) as $roundIndex => $pairs) {
-            foreach ($pairs as $position => [$home, $away]) {
-                $match = new BattleMatch([
-                    'phase_id' => $phase->id,
-                    'group_id' => $group->id,
-                    'round' => $roundIndex + 1,
-                    'bracket_position' => $position + 1,
-                ]);
-                $match->save();
+        $match = new BattleMatch([
+            'phase_id' => $phase->id,
+            'group_id' => $group->id,
+            'round' => 1,
+            'bracket_position' => $position,
+        ]);
+        $match->save();
 
-                $match->slots()->createMany([
-                    ['slot' => 1, 'participant_id' => $home->id],
-                    ['slot' => 2, 'participant_id' => $away->id],
-                ]);
-            }
-        }
+        $match->slots()->createMany(array_map(fn (Participant $participant, int $i) => [
+            'slot' => $i + 1,
+            'participant_id' => $participant->id,
+        ], $members, array_keys($members)));
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Locations;
 use Database\Factories\CountryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -15,6 +16,12 @@ class Country extends Model
 {
     /** @use HasFactory<CountryFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => Locations::forget());
+        static::deleted(fn () => Locations::forget());
+    }
 
     protected function casts(): array
     {
@@ -43,6 +50,14 @@ class Country extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * @return HasMany<City, $this>
+     */
+    public function cities(): HasMany
+    {
+        return $this->hasMany(City::class);
     }
 
     /**

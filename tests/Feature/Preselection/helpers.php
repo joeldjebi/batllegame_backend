@@ -22,10 +22,9 @@ function competitionWithPreselection(int $count = 3, array $rules = [], array $s
 {
     $owner = User::factory()->create(['email' => fake()->unique()->safeEmail()]);
     $organizer = Organizer::factory()->withMember(OrganizerRole::Owner, $owner)->create();
-    $competition = Competition::factory()->for($organizer)->create(['status' => CompetitionStatus::Registration, 'entry_fee' => $fee, 'settings' => $settings]);
+    $competition = Competition::factory()->for($organizer)->create(['status' => CompetitionStatus::Registration, 'entry_fee' => $fee, 'settings' => ['registration_requires_approval' => false, ...$settings]]);
 
     app(PreselectionService::class)->configure($competition, [
-        'starts_at' => now()->subHour(),
         'ends_at' => now()->addDay(),
         'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 2, ...$rules],
     ]);

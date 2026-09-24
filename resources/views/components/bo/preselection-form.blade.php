@@ -16,8 +16,7 @@
     <input type="hidden" name="_form" value="preselection-settings">
     <fieldset @disabled(! $canUpdate || $state === PreselectionState::Published) class="space-y-4">
         <div class="grid gap-4 sm:grid-cols-2">
-            <x-ui.input name="starts_at" type="datetime-local" label="Début des envois" :value="$preselection?->starts_at" required />
-            <x-ui.input name="ends_at" type="datetime-local" label="Fin des envois" :value="$preselection?->ends_at" required hint="Plus aucune prestation acceptée après." />
+            <x-ui.input name="ends_at" type="datetime-local" label="Date limite d'envoi des prestations" :value="$preselection?->ends_at" required hint="Envoi possible dès que l'inscription est validée (et payée), jusqu'à cette date." class="sm:col-span-2" />
             @if ($publicVote)
                 <x-ui.input name="vote_ends_at" type="datetime-local" label="Fin du vote du public" :value="$preselection?->vote_ends_at" hint="Likes possibles dès la publication d'une prestation. Vide = fin des envois." />
             @else
@@ -49,6 +48,20 @@
                 <p class="text-xs text-slate-500">La présélection a commencé : seules les dates restent modifiables.</p>
             @endif
         </fieldset>
+        <div x-data="{ split: @js((bool) old('split_judging', $preselection?->splitsJudging())) }" class="rounded-xl ring-1 ring-slate-200 p-4 space-y-3 dark:ring-white/10">
+            <label class="flex items-start gap-3">
+                <input type="hidden" name="split_judging" :value="split ? 1 : 0">
+                <input type="checkbox" x-model="split" class="mt-0.5 size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                <span>
+                    <span class="block text-sm font-medium text-slate-800 dark:text-slate-100">Répartir les prestations entre les jurés</span>
+                    <span class="block text-xs text-slate-500">Par défaut, chaque juré note toutes les prestations. Réparties, chacune est notée par quelques jurés (équilibré) : indispensable avec beaucoup de prestations.</span>
+                </span>
+            </label>
+            <div x-show="split" x-collapse>
+                <x-ui.input name="judges_per_entry" type="number" min="1" max="20" label="Jurés par prestation" :value="$preselection?->judges_per_entry ?? 2" x-bind:disabled="! split"
+                    hint="2 minimum recommandé : aucun artiste ne dépend de l'avis d'une seule personne. La note jury est la moyenne des jurés qui l'ont notée." />
+            </div>
+        </div>
         @if ($canUpdate && $state !== PreselectionState::Published)
             <x-ui.button type="submit" class="w-full" icon="check">{{ $preselection ? 'Enregistrer' : 'Créer la présélection' }}</x-ui.button>
         @endif

@@ -13,6 +13,13 @@
     // Later stages wait for the winners of the previous one.
     $ready = ! $stage->matches()->where('status', \App\Enums\MatchStatus::Scheduled)->whereHas('slots', fn ($q) => $q->whereNull('participant_id'))->exists();
     $fmt = fn ($date) => $date?->translatedFormat('d M, H:i');
+    // Group phase: submissions shown per group, with who has not sent yet.
+    $groups = $stage->phase->type === \App\Enums\PhaseType::Groups
+        ? $stage->matches->whereNotNull('group_id')->sortBy('bracket_position')->map(fn ($match) => [
+            'name' => $match->group?->name ?? 'Poule',
+            'members' => $match->slots->pluck('participant')->filter()->values(),
+        ])->values()->all()
+        : [];
 @endphp
 
 <div class="rounded-xl bg-slate-50/80 p-4 ring-1 ring-slate-900/5 dark:bg-white/[0.02] dark:ring-white/10">
@@ -76,43 +83,44 @@
             <div x-data="{ open: @js($toReview->isNotEmpty()) }" class="mt-3">
                 <button type="button" x-on:click="open = ! open" class="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-300">
                     <x-ui.icon name="chevron-down" variant="m" class="size-4 transition" x-bind:class="open && 'rotate-180'" />
-                    <span x-text="open ? 'Masquer les soumissions' : 'Voir les {{ $performances->count() }} soumission(s)'"></span>
+                    <span x-text="open ? 'Masquer les soumissions' : 'Voir les {{ $performances->count() }} soumission(s){{ $groups ? ' par poule' : '' }}'"></span>
                 </button>
-                <div x-show="open" x-collapse x-cloak class="mt-3 grid gap-3 md:grid-cols-2">
-                    @foreach ($performances->sortBy(fn ($p) => $p->status === PerformanceStatus::Pending ? 0 : 1) as $performance)
-                        <div class="rounded-lg bg-white p-3 ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10">
-                            <div class="mb-2 flex items-center justify-between gap-2">
-                                <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $performance->participant->stage_name }}</span>
-                                <x-ui.badge :value="$performance->status" />
-                            </div>
-                            <x-bo.media-player :performance="$performance" />
-                            <p class="mt-2 text-xs text-slate-500">
-                                {{ $performance->media_type?->label() }}
-                                @if ($performance->duration_seconds) · {{ gmdate('i:s', $performance->duration_seconds) }}@endif
-                                · {{ number_format(($performance->size_bytes ?? 0) / 1048576, 1, ',', ' ') }} Mo
-                                · {{ $performance->updated_at->translatedFormat('d M, H:i') }}
-                            </p>
-                            <x-bo.media-provenance :media="$performance" :timezone="$competition->settings->timezone" class="mt-2" />
-                            @if ($performance->rejection_reason)<p class="mt-1 text-xs text-rose-600">{{ $performance->rejection_reason }}</p>@endif
-                            @if ($canRun && $performance->status === PerformanceStatus::Pending)
-                                <div class="mt-3 flex gap-2" x-data="{ rejecting: false }">
-                                    <form method="POST" action="{{ route('organizers.competitions.performances.review', [$organizer, $competition, $performance]) }}" x-show="! rejecting">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="decision" value="approve">
-                                        <x-ui.button type="submit" size="xs" icon="check">Valider</x-ui.button>
-                                    </form>
-                                    <x-ui.button size="xs" variant="danger-soft" icon="x-mark" x-show="! rejecting" x-on:click="rejecting = true">Rejeter</x-ui.button>
-                                    <form method="POST" action="{{ route('organizers.competitions.performances.review', [$organizer, $competition, $performance]) }}" x-show="rejecting" x-cloak class="flex w-full gap-2">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="decision" value="reject">
-                                        <input name="reason" required placeholder="Motif du rejet" class="min-w-0 flex-1 rounded-lg border-0 bg-slate-50 py-1 text-xs ring-1 ring-slate-200 focus:ring-2 focus:ring-rose-500 dark:bg-white/5 dark:ring-white/10">
-                                        <x-ui.button type="submit" size="xs" variant="danger">Rejeter</x-ui.button>
-                                    </form>
+                @if ($groups)
+                    <div x-show="open" x-collapse x-cloak class="mt-3 space-y-5">
+                        @foreach ($groups as ['name' => $groupName, 'members' => $members])
+                            @php
+                                $groupPerformances = $performances->whereIn('participant_id', $members->pluck('id'));
+                                $missing = $members->whereNotIn('id', $groupPerformances->pluck('participant_id'));
+                                $pendingInGroup = $groupPerformances->whereIn('status', [PerformanceStatus::Pending, PerformanceStatus::Processing])->count();
+                            @endphp
+                            <section>
+                                <div class="mb-2 flex flex-wrap items-center gap-2">
+                                    <h4 class="font-display text-sm font-bold text-slate-900 dark:text-white">{{ $groupName }}</h4>
+                                    <x-ui.badge tone="gray" :dot="false">{{ $groupPerformances->count() }} / {{ $members->count() }} envoyée(s)</x-ui.badge>
+                                    @if ($pendingInGroup)<x-ui.badge tone="amber" :dot="false">{{ $pendingInGroup }} à valider</x-ui.badge>@endif
                                 </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    @foreach ($groupPerformances->sortBy(fn ($p) => $p->status === PerformanceStatus::Pending ? 0 : 1) as $performance)
+                                        <x-bo.performance-card :performance="$performance" :organizer="$organizer" :competition="$competition" :can-run="$canRun" />
+                                    @endforeach
+                                    @foreach ($missing as $member)
+                                        <div class="flex items-center gap-3 rounded-lg border border-dashed border-slate-200 p-3 text-sm text-slate-500 dark:border-white/10">
+                                            <x-ui.avatar :name="$member->stage_name" :src="$member->user?->avatarUrl()" size="sm" />
+                                            <span class="min-w-0 flex-1 truncate font-medium text-slate-700 dark:text-slate-200">{{ $member->stage_name }}</span>
+                                            <span class="text-xs">{{ $stage->isDeadlinePassed() ? 'Forfait : rien reçu' : 'Pas encore envoyée' }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </section>
+                        @endforeach
+                    </div>
+                @else
+                    <div x-show="open" x-collapse x-cloak class="mt-3 grid gap-3 md:grid-cols-2">
+                        @foreach ($performances->sortBy(fn ($p) => $p->status === PerformanceStatus::Pending ? 0 : 1) as $performance)
+                            <x-bo.performance-card :performance="$performance" :organizer="$organizer" :competition="$competition" :can-run="$canRun" />
+                        @endforeach
+                    </div>
+                @endif
             </div>
         @endif
     @endif

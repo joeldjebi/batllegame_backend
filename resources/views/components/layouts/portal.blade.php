@@ -32,6 +32,7 @@
     </script>
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
 </head>
 <body class="min-h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
     <header class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/80">
@@ -71,7 +72,7 @@
                     <x-ui.dropdown width="w-64">
                         <x-slot:trigger>
                             <button type="button" class="flex items-center gap-2 rounded-xl p-1 pr-2 transition hover:bg-slate-100 dark:hover:bg-white/10">
-                                <x-ui.avatar :name="$user->name" size="sm" />
+                                <x-ui.avatar :name="$user->name" :src="$user->avatarUrl()" size="sm" />
                                 <span class="hidden text-sm font-semibold sm:block">{{ $user->name }}</span>
                             </button>
                         </x-slot:trigger>
@@ -85,6 +86,8 @@
                         <div class="my-1 h-px bg-slate-100 dark:bg-white/10"></div>
                         @if ($portal->key === 'jury')
                             <x-ui.dropdown-item :href="route('jury.password.edit')" icon="key">Mot de passe</x-ui.dropdown-item>
+                        @else
+                            <x-ui.dropdown-item :href="route('artist.profile.edit')" icon="user-circle">Mon profil</x-ui.dropdown-item>
                         @endif
                         <form method="POST" action="{{ route($portal->key.'.logout') }}">
                             @csrf
@@ -105,7 +108,8 @@
 
     <x-portal.bottom-nav :portal="$portal->key" />
 
-    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 p-4 sm:bottom-0 sm:items-end sm:p-6">
+    {{-- Toasts: top-right on desktop, under the header on phones (the tab bar is at the bottom). --}}
+    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 top-16 z-[60] flex flex-col items-center gap-2 p-4 sm:left-auto sm:items-end sm:px-6">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible" x-transition.opacity class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-900/10 dark:bg-slate-800 dark:ring-white/10">
                 <span :class="toast.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'" class="grid size-8 shrink-0 place-items-center rounded-full">

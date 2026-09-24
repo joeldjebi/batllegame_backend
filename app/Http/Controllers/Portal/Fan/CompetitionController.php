@@ -7,8 +7,11 @@ use App\Enums\MatchStatus;
 use App\Enums\PerformanceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Competition;
+use App\Models\Preselection;
+use App\Models\PreselectionSubmission;
 use App\Models\PublicVote;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -21,7 +24,7 @@ class CompetitionController extends Controller
         return view('portal.fan.index', [
             'competitions' => Competition::query()
                 ->whereIn('status', [CompetitionStatus::InProgress, CompetitionStatus::Registration, CompetitionStatus::Finished])
-                ->with('organizer')
+                ->with(['organizer', 'city', 'commune'])
                 ->withCount([
                     'participants',
                     'matches as voting_matches_count' => fn ($q) => $q->votingNow(),
@@ -40,24 +43,44 @@ class CompetitionController extends Controller
         $matches = $competition->matches()
             ->whereIn('status', [MatchStatus::Voting, MatchStatus::Closed])
             ->where('is_forfeit', false)
-            ->with(['stage', 'phase', 'slots.participant'])
+            ->with(['stage', 'phase', 'group', 'slots.participant'])
             ->latest('updated_at')
             ->get();
 
         $preselection = $competition->preselection;
+        $myVotes = $user ? PublicVote::query()->where('user_id', $user->id)->whereIn('match_id', $matches->modelKeys())->get(['match_id', 'participant_id']) : collect();
+        $closed = $matches->where('status', MatchStatus::Closed);
+        $groupPhases = $matches->filter->isGroupMatch()->pluck('phase_id', 'id');
 
         return view('portal.fan.competition', [
             'preselection' => $preselection,
-            'entries' => $preselection
-                ? $preselection->entries()->where('status', PerformanceStatus::Approved)->with('participant')
-                    ->when($preselection->published_at, fn ($q) => $q->orderBy('rank'), fn ($q) => $q->inRandomOrder())->get()
-                : collect(),
-            'myLike' => $user && $preselection ? $preselection->likes()->where('user_id', $user->id)->value('submission_id') : null,
+            'entries' => $preselection ? $this->entries($preselection, $request) : collect(),
+            'likes' => $preselection ? PreselectionController::likesState($preselection, $user) : null,
             'competition' => $competition->load('organizer'),
             'voting' => $matches->filter->isVotingOpen()->values(),
-            'results' => $matches->where('status', MatchStatus::Closed)->take(12)->values(),
-            'myVotes' => $user ? PublicVote::query()->where('user_id', $user->id)->whereIn('match_id', $matches->modelKeys())->pluck('participant_id', 'match_id') : collect(),
+            'results' => $closed->reject->isGroupMatch()->take(12)->values(),
+            // Groups: the ranking once the organizer published the phase results.
+            'groupResults' => $closed->filter(fn ($match) => $match->isGroupMatch() && $match->resultsArePublic())->sortBy('bracket_position')->groupBy('phase_id'),
+            'myVotes' => $myVotes->pluck('participant_id', 'match_id'),
+            // One vote per group phase: the artist voted for, by phase.
+            'phaseVotes' => $myVotes->filter(fn ($vote) => $groupPhases->has($vote->match_id))->mapWithKeys(fn ($vote) => [$groupPhases[$vote->match_id] => $vote->participant_id]),
             'user' => $user,
         ]);
+    }
+
+    /**
+     * Published entries: by rank once published, otherwise shuffled but stable for a viewer
+     * (fair to the artists, no card jumping when the page refreshes live).
+     *
+     * @return Collection<int, PreselectionSubmission>
+     */
+    private function entries(Preselection $preselection, Request $request): Collection
+    {
+        $entries = $preselection->entries()->where('status', PerformanceStatus::Approved)->with('participant.user')->get();
+        $seed = (string) ($request->user()?->id ?? $request->session()->getId());
+
+        return $preselection->published_at
+            ? $entries->sortBy('rank')->values()
+            : $entries->sortBy(fn (PreselectionSubmission $entry) => crc32($seed.'-'.$entry->id))->values();
     }
 }

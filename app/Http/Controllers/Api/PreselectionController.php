@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\PerformanceStatus;
 use App\Enums\PreselectionState;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Portal\Fan\PreselectionController as FanPreselectionController;
 use App\Models\Competition;
 use App\Models\PreselectionSubmission;
 use App\Services\PreselectionService;
@@ -23,13 +24,14 @@ class PreselectionController extends Controller
         abort_unless($competition->status->isPublic(), 404);
         $preselection = $competition->preselection ?? abort(404);
         $state = $preselection->state();
-        $showCounts = $state === PreselectionState::Published || $competition->settings->showLiveResults;
         $myLike = $request->user('sanctum') ? $preselection->likes()->where('user_id', $request->user('sanctum')->id)->value('submission_id') : null;
+        // Counts: after the viewer's own like, with live results, or once published.
+        $showCounts = FanPreselectionController::showsAllCounts($preselection, $myLike);
+        $viewerId = $request->user('sanctum')?->id;
 
         return response()->json([
             'data' => [
                 'state' => $state,
-                'starts_at' => $preselection->starts_at,
                 'ends_at' => $preselection->ends_at,
                 'vote_ends_at' => $preselection->voteEndsAt(),
                 'deliberation_ends_at' => $preselection->deliberationEndsAt(),
@@ -49,7 +51,8 @@ class PreselectionController extends Controller
                     'id' => $entry->id,
                     'stage_name' => $entry->participant->stage_name,
                     'media' => ['type' => $entry->media_type, 'url' => $entry->mediaUrl(), 'duration_seconds' => $entry->duration_seconds],
-                    'likes' => $showCounts ? $entry->likes_count : null,
+                    // An artist always sees the count of their own entry.
+                    'likes' => $showCounts || ($viewerId && $entry->participant->user_id === $viewerId) ? $entry->likes_count : null,
                     'rank' => $state === PreselectionState::Published ? $entry->rank : null,
                     'selected' => $state === PreselectionState::Published ? $entry->selected : null,
                 ]),
@@ -77,7 +80,11 @@ class PreselectionController extends Controller
 
         $preselections->like($request->user(), $entry, $request->header('X-Device-Id'), $request->ip());
 
-        return response()->json(['message' => 'Like enregistré.', 'likes' => $entry->fresh()->likes_count], 201);
+        return response()->json([
+            'message' => 'Like enregistré.',
+            'likes' => $entry->fresh()->likes_count,
+            ...FanPreselectionController::likesState($competition->preselection, $request->user()),
+        ], 201);
     }
 
     public function unlike(Request $request, Competition $competition, PreselectionService $preselections): JsonResponse
@@ -87,7 +94,7 @@ class PreselectionController extends Controller
 
         $preselections->unlike($request->user(), $preselection);
 
-        return response()->json(['message' => 'Like retiré.']);
+        return response()->json(['message' => 'Like retiré.', ...FanPreselectionController::likesState($preselection->fresh(), $request->user())]);
     }
 
     public function score(Request $request, Competition $competition, PreselectionSubmission $entry, PreselectionService $preselections): JsonResponse

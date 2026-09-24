@@ -87,8 +87,7 @@ it('pays through the API', function () {
 });
 
 it('treats a registration made before the fee as unpaid: pitch instead of upload, and it can pay', function () {
-    app(PreselectionService::class)->configure($this->competition, [
-        'starts_at' => now()->subHour(), 'ends_at' => now()->addDays(3),
+    app(PreselectionService::class)->configure($this->competition, ['ends_at' => now()->addDays(3),
         'rules' => ['like_weight' => 40, 'jury_weight' => 60, 'selection_size' => 2],
     ]);
     $participant = $this->competition->participants()->create(['user_id' => $this->artist->id, 'stage_name' => 'MC Legacy', 'status' => ParticipantStatus::Registered]);

@@ -13,6 +13,7 @@ use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\PublicVote;
 use App\Models\User;
+use App\Services\DemoDataPurger;
 use Illuminate\View\View;
 
 /**
@@ -20,7 +21,7 @@ use Illuminate\View\View;
  */
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(DemoDataPurger $purger): View
     {
         $countBy = fn (string $model) => $model::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
@@ -52,6 +53,7 @@ class DashboardController extends Controller
                 ])
                 ->latest('updated_at')->limit(6)->get(),
             'recentUsers' => User::query()->with('country')->latest()->limit(6)->get(),
+            'seeded' => ['demo' => $purger->preview(), 'all' => $purger->preview(withAccounts: true)],
         ]);
     }
 }

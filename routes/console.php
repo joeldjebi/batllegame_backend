@@ -1,14 +1,17 @@
 <?php
 
 use App\Enums\MatchStatus;
+use App\Enums\PlatformRole;
 use App\Exceptions\CompetitionFlowException;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Performance;
 use App\Models\PreselectionSubmission;
+use App\Models\User;
 use App\Services\Competition\GroupStandingsCalculator;
 use App\Services\Competition\MatchCloser;
 use App\Services\Competition\StageService;
+use App\Services\DemoDataPurger;
 use App\Services\Media\MediaProvenance;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
@@ -86,3 +89,48 @@ Artisan::command('stages:process', function (StageService $stages) {
 
 Schedule::command('stages:process')->everyMinute()->withoutOverlapping();
 Schedule::command('matches:close-expired')->everyMinute()->withoutOverlapping();
+
+Artisan::command('demo:purge {--accounts : Also remove the test organizer and the SEED_* test accounts} {--force : Really delete (without it: preview only)}', function (DemoDataPurger $purger) {
+    $withAccounts = (bool) $this->option('accounts');
+    $preview = $purger->preview($withAccounts);
+
+    $this->table(['Compétitions', 'Organisateurs', 'Comptes', 'Comptes conservés (utilisés ailleurs)'], [array_values($preview)]);
+
+    // No interactive confirmation: a prompt fed by a pipe or a script must never delete anything.
+    if (! $this->option('force')) {
+        $this->warn('Aperçu uniquement. Relancez avec --force pour supprimer définitivement ces données.');
+
+        return;
+    }
+
+    $result = $purger->purge($withAccounts);
+    $this->info("Supprimé : {$result['competitions']} compétition(s), {$result['organizers']} organisateur(s), {$result['users']} compte(s), {$result['files']} fichier(s).");
+})->purpose('Remove the data created by the local seeders');
+
+Artisan::command('judges:default-password {--force : Really apply (without it: preview only)}', function () {
+    $password = config('accounts.judge_default_password');
+
+    if (blank($password) || app()->isProduction()) {
+        $this->error('Définissez JUDGE_DEFAULT_PASSWORD dans .env (jamais en production).');
+
+        return 1;
+    }
+
+    // Judge accounts only: never a platform admin nor a back-office account (their login is their own).
+    $judges = User::query()->whereHas('judgeAssignments')
+        ->whereDoesntHave('organizerMemberships')
+        ->whereDoesntHave('roles', fn ($q) => $q->where('name', PlatformRole::Admin->value))
+        ->get();
+
+    $this->table(['Juré', 'Téléphone'], $judges->map(fn (User $u) => [$u->name, $u->phone])->all());
+
+    if (! $this->option('force')) {
+        $this->warn('Aperçu uniquement. Relancez avec --force pour appliquer le mot de passe par défaut.');
+
+        return 0;
+    }
+
+    // Changed at their next login, like any temporary password.
+    $judges->each(fn (User $u) => $u->forceFill(['password' => $password, 'must_change_password' => true])->save());
+    $this->info("{$judges->count()} juré(s) : mot de passe par défaut appliqué, à changer à la prochaine connexion.");
+})->purpose('Give every judge account the default temporary password (local, until SMS delivery)');

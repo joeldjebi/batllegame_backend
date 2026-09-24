@@ -62,8 +62,10 @@ class Phase extends Model
             'position' => 'integer',
             'qualifiers_per_group' => 'integer',
             'rules' => PhaseRules::class,
+            'calendar' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'results_published_at' => 'datetime',
         ];
     }
 

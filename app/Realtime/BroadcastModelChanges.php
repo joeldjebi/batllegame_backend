@@ -140,10 +140,16 @@ class BroadcastModelChanges implements ShouldHandleEventsAfterCommit
     private function like(PreselectionLike $like): void
     {
         $competition = $this->competition($like->competition_id);
-        $channels = [Channel::backOffice($competition->id), $competition->settings->showLiveResults ? Channel::competition($competition->id) : null];
-
-        $this->push($competition, $channels, 'preselection.like', throttle: "like:{$competition->id}");
+        // Signal only (no counts in the payload): each page re-renders with the viewer's own rights,
+        // so fans who liked see the counters move.
+        $this->push($competition, [Channel::backOffice($competition->id), Channel::competition($competition->id)], 'preselection.like', throttle: "like:{$competition->id}");
         $this->push($competition, [Channel::user($like->user_id)], 'preselection.like');
+
+        // The artist sees their counter move, with a toast for each new like.
+        $artistId = $like->exists ? $like->submission?->participant?->user_id : null;
+        if ($artistId) {
+            $this->push($competition, [Channel::user($artistId)], 'preselection.like', message: 'Nouveau like sur ta prestation ❤️');
+        }
     }
 
     private function score(?int $competitionId): void

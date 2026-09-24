@@ -11,6 +11,8 @@ use App\Models\Competition;
 use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\PublicVote;
+use App\Realtime\Channel;
+use App\Realtime\Realtime;
 use App\Services\BackOfficeAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +30,7 @@ class OrganizerController extends Controller
     {
         $organizers = Organizer::query()
             ->withCount(['competitions', 'members'])
-            ->with(['members' => fn ($q) => $q->where('role', 'owner')->with('user:id,name,email')])
+            ->with(['city', 'commune', 'members' => fn ($q) => $q->where('role', 'owner')->with('user:id,name,email')])
             ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
             ->when($request->query('q'), fn ($q, $search) => $q->whereLike('name', "%{$search}%"))
             ->orderByRaw("case status when 'en_attente' then 0 when 'verifie' then 1 else 2 end")
@@ -44,14 +46,14 @@ class OrganizerController extends Controller
     }
 
     /**
-     * Only the platform creates organizers, with their owner account.
+     * The super-admin creates an organizer with its owner account (organizers can also sign up themselves).
      */
     public function store(StoreOrganizerRequest $request, BackOfficeAccountService $accounts): RedirectResponse
     {
         $this->authorize('moderate', Organizer::class);
 
         [$organizer, $owner, $password] = DB::transaction(function () use ($request, $accounts): array {
-            $organizer = new Organizer($request->safe()->only(['name', 'city', 'description']));
+            $organizer = new Organizer($request->safe()->only(['name', 'city_id', 'commune_id', 'description']));
             $organizer->slug = Organizer::uniqueSlug($organizer->name);
             $status = OrganizerStatus::from($request->validated('status'));
             $organizer->forceFill(['status' => $status, 'verified_at' => $status === OrganizerStatus::Verified ? now() : null])->save();
@@ -94,7 +96,7 @@ class OrganizerController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Organizer $organizer): RedirectResponse
+    public function updateStatus(Request $request, Organizer $organizer, Realtime $realtime): RedirectResponse
     {
         $this->authorize('moderate', $organizer);
 
@@ -105,6 +107,12 @@ class OrganizerController extends Controller
             'status' => $status,
             'verified_at' => $status === OrganizerStatus::Verified ? ($organizer->verified_at ?? now()) : $organizer->verified_at,
         ])->save();
+
+        $realtime->push([Channel::organizer($organizer->id), Channel::ADMIN], 'organizer.status', ['organizer_id' => $organizer->id], match ($status) {
+            OrganizerStatus::Verified => "« {$organizer->name} » est vérifié : vous pouvez ouvrir les inscriptions 🎉",
+            OrganizerStatus::Suspended => "« {$organizer->name} » a été suspendu par Battle Game.",
+            default => null,
+        });
 
         return back()->with('status', "{$organizer->name} : {$status->label()}.");
     }

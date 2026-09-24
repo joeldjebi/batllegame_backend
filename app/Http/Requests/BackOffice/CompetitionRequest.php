@@ -5,7 +5,9 @@ namespace App\Http\Requests\BackOffice;
 use App\Data\CompetitionSettings;
 use App\Enums\CompetitionMode;
 use App\Enums\Discipline;
+use App\Http\Requests\Concerns\HasLocationInput;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -15,6 +17,8 @@ use Illuminate\Validation\Validator;
  */
 class CompetitionRequest extends FormRequest
 {
+    use HasLocationInput;
+
     /**
      * @return array<string, mixed>
      */
@@ -34,6 +38,12 @@ class CompetitionRequest extends FormRequest
             'prizes' => ['nullable', 'array', 'max:20'],
             'prizes.*.rank' => ['nullable', 'string', 'max:60'],
             'prizes.*.reward' => ['nullable', 'string', 'max:255'],
+            'regulations' => ['nullable', 'string', 'max:50000'],
+            'schedule' => ['nullable', 'array', 'max:30'],
+            'schedule.*.title' => ['nullable', 'string', 'max:100'],
+            'schedule.*.date' => ['nullable', 'date'],
+            'schedule.*.details' => ['nullable', 'string', 'max:255'],
+            ...$this->locationRules(),
         ];
     }
 
@@ -47,6 +57,12 @@ class CompetitionRequest extends FormRequest
     {
         $data = $this->safe()->except('status');
 
+        // Venue: only from the form that shows it (a city without communes posts no commune).
+        if ($this->has('city_id')) {
+            $data['city_id'] = $this->validated('city_id');
+            $data['commune_id'] = $this->validated('commune_id');
+        }
+
         if (array_key_exists('prizes', $data)) {
             $prizes = collect($data['prizes'] ?? [])
                 ->filter(fn ($p) => filled($p['reward'] ?? null))
@@ -58,6 +74,21 @@ class CompetitionRequest extends FormRequest
                 ->all();
 
             $data['prizes'] = $prizes ?: null;
+        }
+
+        // Schedule: steps without a title dropped, dates kept as local date-times.
+        if (array_key_exists('schedule', $data)) {
+            $steps = collect($data['schedule'] ?? [])
+                ->filter(fn ($step) => filled($step['title'] ?? null))
+                ->values()
+                ->map(fn ($step) => [
+                    'title' => trim($step['title']),
+                    'date' => filled($step['date'] ?? null) ? Carbon::parse($step['date'])->format('Y-m-d\TH:i') : null,
+                    'details' => filled($step['details'] ?? null) ? trim($step['details']) : null,
+                ])
+                ->all();
+
+            $data['schedule'] = $steps ?: null;
         }
 
         return $data;

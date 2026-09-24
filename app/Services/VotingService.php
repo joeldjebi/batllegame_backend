@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BattleMatch;
+use App\Models\Phase;
 use App\Models\PublicVote;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -17,10 +18,10 @@ class VotingService
 {
     public function cast(User $voter, BattleMatch $match, int $participantId, ?string $voteCode = null, ?string $deviceId = null, ?string $ip = null): PublicVote
     {
-        $participants = $match->slots()->whereNotNull('participant_id')->pluck('participant_id')->all();
+        $participants = $match->activeSlots()->pluck('participant_id')->all();
 
         if (! in_array($participantId, $participants, true)) {
-            throw ValidationException::withMessages(['participant_id' => 'Ce participant ne joue pas ce match.']);
+            throw ValidationException::withMessages(['participant_id' => $match->isGroupMatch() ? 'Cet artiste ne fait pas partie de cette poule.' : 'Ce participant ne joue pas ce match.']);
         }
 
         // On-site with room code: only people present in the room can vote.
@@ -44,7 +45,18 @@ class VotingService
 
         try {
             // Savepoint: a unique violation (concurrent double vote) must not abort an outer transaction.
-            DB::transaction(fn () => $vote->save());
+            DB::transaction(function () use ($vote, $match, $voter): void {
+                // Groups: one vote for the whole phase, whatever the group (the phase row serializes concurrent votes).
+                if ($match->isGroupMatch()) {
+                    Phase::query()->lockForUpdate()->find($match->phase_id);
+
+                    if (PublicVote::query()->where('user_id', $voter->id)->whereIn('match_id', $match->phase->matches()->select('id'))->exists()) {
+                        abort(409, 'Vous avez déjà voté pour cette phase : un seul vote par phase.');
+                    }
+                }
+
+                $vote->save();
+            });
         } catch (UniqueConstraintViolationException) {
             abort(409, 'Vous avez déjà voté pour ce match.');
         }

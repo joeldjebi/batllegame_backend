@@ -9,6 +9,7 @@ use App\Models\Competition;
 use App\Models\Organizer;
 use App\Models\Performance;
 use App\Services\SubmissionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,7 +23,7 @@ class PerformanceController extends Controller
 {
     public function __construct(private SubmissionService $submissions) {}
 
-    public function review(Request $request, Organizer $organizer, Competition $competition, Performance $performance): RedirectResponse
+    public function review(Request $request, Organizer $organizer, Competition $competition, Performance $performance): RedirectResponse|JsonResponse
     {
         $this->authorize('runMatches', $competition);
 
@@ -39,7 +40,9 @@ class PerformanceController extends Controller
             ? $this->submissions->approve($performance, $request->user())
             : $this->submissions->reject($performance, $request->user(), $validated['reason']);
 
-        return back()->with('status', $validated['decision'] === 'approve' ? 'Soumission validée.' : 'Soumission rejetée.');
+        $message = $validated['decision'] === 'approve' ? "Prestation de {$performance->participant->stage_name} validée." : "Prestation de {$performance->participant->stage_name} rejetée.";
+
+        return $request->expectsJson() ? response()->json(['message' => $message, 'status' => $performance->fresh()->status]) : back()->with('status', $message);
     }
 
     /**

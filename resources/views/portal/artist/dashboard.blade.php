@@ -14,7 +14,10 @@
         <div class="absolute -top-20 -right-20 size-64 rounded-full border-[36px] border-white/10"></div>
         <div class="absolute right-24 -bottom-24 size-40 rounded-full bg-brand-700"></div>
         <div class="relative flex items-center gap-4">
-            <x-ui.avatar :name="$user->name" size="lg" class="!ring-white/30" />
+            <a href="{{ route('artist.profile.edit') }}" class="relative shrink-0" title="Mon profil">
+                <x-ui.avatar :name="$user->name" :src="$user->avatarUrl()" size="lg" class="!ring-white/30" />
+                @unless ($user->avatar_path)<span class="absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full bg-white text-brand-700 shadow"><x-ui.icon name="camera" variant="m" class="size-3.5" /></span>@endunless
+            </a>
             <div class="min-w-0">
                 <p class="text-sm text-white/70">Espace artiste</p>
                 <h1 class="truncate font-display text-2xl font-extrabold sm:text-3xl">Salut, {{ Str::before($user->name, ' ') }} 🎤</h1>
@@ -31,6 +34,17 @@
     </section>
 
     <div class="mt-8 space-y-10">
+        @unless ($user->avatar_path)
+            <a href="{{ route('artist.profile.edit') }}" class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-slate-900/5 transition hover:ring-brand-300 dark:bg-white/5 dark:ring-white/10">
+                <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><x-ui.icon name="camera" class="size-5" /></span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold">Ajoute ta photo de profil</span>
+                    <span class="block text-xs text-slate-500">Elle accompagne tes prestations : l'organisateur, le jury et le public te reconnaissent.</span>
+                </span>
+                <x-ui.icon name="chevron-right" variant="m" class="size-5 text-slate-300" />
+            </a>
+        @endunless
+
         {{-- Action center --}}
         @if ($actions->isNotEmpty())
             <section class="space-y-4">
@@ -39,8 +53,10 @@
                     @if ($journey['action'] === 'pay')
                         <x-portal.payment-pitch :competition="$journey['competition']" :deadline="$journey['deadline']" />
                     @else
-                        @php($isPreselection = $journey['action'] === 'preselection')
-                        @php($mediaRules = $isPreselection ? $journey['preselection']->rules : $journey['stage']->phase->rules)
+                        @php
+                            $isPreselection = $journey['action'] === 'preselection';
+                            $mediaRules = $isPreselection ? $journey['preselection']->rules : $journey['stage']->phase->rules;
+                        @endphp
                         <div class="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-7 dark:bg-slate-900 dark:ring-white/10">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
@@ -59,7 +75,9 @@
                                 @endif
                             </div>
 
-                            @php($current = $isPreselection ? $journey['entry'] : $journey['submission'])
+                            @php
+                                $current = $isPreselection ? $journey['entry'] : $journey['submission'];
+                            @endphp
                             @if ($current?->status === PerformanceStatus::Rejected)
                                 <p class="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300"><strong>Prestation refusée :</strong> {{ $current->rejection_reason }}. Envoie une nouvelle version.</p>
                             @endif
@@ -82,75 +100,103 @@
             @if ($participations->isEmpty())
                 <x-ui.empty icon="microphone" title="Pas encore de compétition" description="Inscris-toi à une compétition ouverte ci-dessous pour commencer." />
             @else
-                <div class="space-y-4">
+                <div class="grid gap-4 lg:grid-cols-2">
                     @foreach ($participations as $journey)
-                        @php($participant = $journey['participant'])
-                        @php($competition = $journey['competition'])
-                        <article x-data="{ open: false }" class="overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10">
-                            <div class="flex items-start gap-4 p-5">
-                                <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><x-ui.icon :name="$competition->discipline->icon()" class="size-6" /></span>
+                        @php
+                            $participant = $journey['participant'];
+                            $competition = $journey['competition'];
+                            $entry = $journey['entry'];
+                            $media = $entry ?? $journey['submission'];
+                            $preselection = $journey['preselection'];
+                            $likesOpen = $entry && $entry->status === PerformanceStatus::Approved && $preselection?->acceptsLikes();
+                            $entryUrl = $entry && $entry->status === PerformanceStatus::Approved ? route('fan.competitions.preselection.entry', [$competition, $entry]) : null;
+                            $shareUrl = $entryUrl ?? route('fan.competitions.show', $competition);
+                            $modal = 'my-media-'.$participant->id;
+                            [$tone, $icon, $message] = match (true) {
+                                ! $journey['paid'] => ['amber', 'lock-closed', "Envoi verrouillé jusqu'au paiement ({$fmtFee($competition)})."],
+                                $journey['state'] === PreselectionState::Published && $participant->status === ParticipantStatus::Validated => ['green', 'trophy', 'Sélectionné'.($entry?->rank ? ' · '.$entry->rank.'e de la présélection' : '').' ! Prépare-toi pour la compétition.'],
+                                $journey['state'] === PreselectionState::Published => ['gray', 'face-frown', 'Pas retenu cette fois'.($entry?->rank ? ' ('.$entry->rank.'e)' : '').'. Merci et à la prochaine !'],
+                                $participant->awaitsApproval() && $journey['state'] !== PreselectionState::Published => ['amber', 'clock', "Inscription en attente de validation par l'organisateur : tu pourras envoyer ta prestation dès qu'elle sera validée."],
+                                $journey['action'] === 'preselection' => ['violet', 'arrow-up-tray', 'Envoie ta prestation avant le '.$preselection->ends_at->translatedFormat('d F à H:i').' (voir « À faire »).'],
+                                $likesOpen => ['fuchsia', 'heart', 'Partage ta prestation : le public peut liker jusqu\'au '.$preselection->voteEndsAt()->translatedFormat('d F à H:i').'.'],
+                                $journey['state'] === PreselectionState::Deliberation => ['violet', 'scale', 'Le jury délibère : résultats après le '.$preselection->deliberationEndsAt()->translatedFormat('d F à H:i').'.'],
+                                $journey['state'] === PreselectionState::Closed => ['gray', 'clock', 'Présélection terminée : résultats bientôt.'],
+                                $entry && $entry->status === PerformanceStatus::Pending => ['amber', 'clock', "Prestation reçue : en attente de validation par l'organisateur."],
+                                $journey['playing'] && $journey['submission'] => ['violet', 'film', $journey['stage']->name.' : prestation '.mb_strtolower($journey['submission']->status->label()).'.'],
+                                $journey['stage'] && ! $journey['stage']->isOnline() && $journey['playing'] => ['violet', 'map-pin', $journey['stage']->name.' en présentiel : rendez-vous sur scène.'],
+                                $journey['out'] => ['gray', 'flag', 'Parcours terminé pour cette compétition.'],
+                                default => ['gray', 'check-circle', 'Rien à faire pour le moment.'],
+                            };
+                            $toneClasses = [
+                                'amber' => 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200',
+                                'green' => 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200',
+                                'violet' => 'bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-200',
+                                'fuchsia' => 'bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-500/10 dark:text-fuchsia-200',
+                                'gray' => 'bg-slate-50 text-slate-600 dark:bg-white/5 dark:text-slate-300',
+                            ][$tone];
+                        @endphp
+                        <article @class(['flex flex-col rounded-3xl bg-white shadow-soft ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10', 'opacity-80' => $journey['out']])>
+                            <header class="flex items-start gap-3 p-4 sm:p-5">
+                                <span @class(['grid size-11 shrink-0 place-items-center rounded-2xl text-white', 'bg-brand-600' => ! $journey['out'], 'bg-slate-400 dark:bg-slate-600' => $journey['out']])>
+                                    <x-ui.icon :name="$competition->discipline->icon()" class="size-5" />
+                                </span>
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-display text-base font-bold sm:text-lg">{{ $competition->name }}</h3>
-                                    <p class="truncate text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $participant->stage_name }}</p>
-                                    <div class="mt-2 flex flex-wrap gap-1.5">
-                                        <x-ui.badge :value="$participant->status" />
-                                        <x-ui.badge :value="$competition->status" />
+                                    <a href="{{ route('artist.competitions.show', $competition) }}" class="line-clamp-2 font-display text-base leading-snug font-bold hover:text-brand-700 sm:text-lg dark:hover:text-brand-300">{{ $competition->name }}</a>
+                                    <p class="mt-0.5 truncate text-xs text-slate-500">
+                                        {{ $competition->organizer->name }} · {{ $competition->discipline->label() }}
+                                        @if (filled($competition->regulations) || $competition->scheduleList() !== []) · <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 hover:underline dark:text-brand-300">Déroulé & règlement</a>@endif
+                                    </p>
+                                </div>
+                                <x-ui.badge :value="$participant->status" class="shrink-0" />
+                            </header>
+
+                            <x-portal.progress :steps="$journey['steps']" class="px-4 sm:px-5" />
+
+                            <div class="mx-4 mt-4 flex items-start gap-2.5 rounded-2xl p-3 text-sm sm:mx-5 {{ $toneClasses }}">
+                                <x-ui.icon :name="$icon" variant="m" class="mt-0.5 size-4 shrink-0" />
+                                <p class="min-w-0">{{ $message }}</p>
+                            </div>
+
+                            @if ($media?->media_path)
+                                <div class="mx-4 mt-3 flex items-center gap-3 rounded-2xl p-2 ring-1 ring-slate-100 sm:mx-5 dark:ring-white/10">
+                                    <button type="button" x-data x-on:click="$dispatch('open-modal', '{{ $modal }}')" class="group relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-slate-900" aria-label="Revoir ma prestation">
+                                        @if ($media->media_type === \App\Enums\MediaType::Video)
+                                            <video src="{{ $media->mediaUrl() }}#t=0.5" preload="metadata" muted playsinline class="pointer-events-none size-full object-cover opacity-80"></video>
+                                        @endif
+                                        <span class="absolute inset-0 grid place-items-center"><span class="grid size-9 place-items-center rounded-full bg-white/90 text-slate-900 shadow transition group-active:scale-95"><x-ui.icon name="play" variant="s" class="size-4" /></span></span>
+                                    </button>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-semibold text-slate-500">{{ $entry ? 'Ma prestation de présélection' : ($journey['stage']?->name ?? 'Ma prestation') }}</p>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <x-ui.badge :value="$media->status" />
+                                            @if ($entry)
+                                                <span class="inline-flex items-center gap-1 text-sm font-bold text-fuchsia-600 tabular-nums dark:text-fuchsia-300"><x-ui.icon name="heart" variant="s" class="size-4" />{{ $entry->likes_count }}</span>
+                                            @endif
+                                        </div>
+                                        @if ($media->rejection_reason)<p class="mt-1 line-clamp-2 text-xs text-rose-600">{{ $media->rejection_reason }}</p>@endif
                                     </div>
                                 </div>
-                            </div>
+                            @endif
 
-                            <div class="border-t border-slate-100 px-5 py-4 dark:border-white/5">
-                                <x-portal.stepper :steps="$journey['steps']" />
-                            </div>
-
-                            {{-- Current status --}}
-                            <div class="space-y-3 border-t border-slate-100 bg-slate-50/60 px-5 py-4 text-sm dark:border-white/5 dark:bg-white/[0.02]">
+                            <footer class="mt-auto grid grid-cols-2 gap-2 p-4 sm:p-5">
                                 @if (! $journey['paid'])
-                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <p class="text-slate-600 dark:text-slate-300"><x-ui.icon name="lock-closed" variant="m" class="mr-1 inline size-4 text-amber-500" /> Envoi de prestation verrouillé jusqu'au paiement ({{ $fmtFee($competition) }}).</p>
-                                        <x-ui.button size="sm" :href="route('artist.competitions.payment', $competition)" icon="credit-card">Débloquer</x-ui.button>
-                                    </div>
-                                @elseif ($journey['state'] === PreselectionState::Published)
-                                    @if ($participant->status === ParticipantStatus::Validated)
-                                        <p class="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><x-ui.icon name="trophy" class="size-5" /> Sélectionné{{ $journey['entry']?->rank ? ' · '.$journey['entry']->rank.'e de la présélection' : '' }} ! Prépare-toi pour la compétition.</p>
-                                    @else
-                                        <p class="text-slate-500">Pas retenu cette fois{{ $journey['entry']?->rank ? ' ('.$journey['entry']->rank.'e)' : '' }}. Merci et à la prochaine !</p>
-                                    @endif
-                                @elseif ($journey['preselection'] && $journey['state'] !== PreselectionState::Published)
-                                    @if ($journey['state'] === PreselectionState::Scheduled)
-                                        <p class="text-slate-500">Présélection à partir du <strong>{{ $journey['preselection']->starts_at->translatedFormat('l d F à H:i') }}</strong>.</p>
-                                    @elseif ($journey['action'] === 'preselection')
-                                        <p class="flex items-center gap-2 font-medium text-brand-700 dark:text-brand-300"><x-ui.icon name="arrow-up-tray" variant="m" class="size-4" /> Prestation attendue avant le {{ $journey['preselection']->ends_at->translatedFormat('d F à H:i') }} (voir « À faire »).</p>
-                                    @elseif ($journey['entry'] && $journey['entry']->status !== PerformanceStatus::Rejected)
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <span>Ta prestation</span><x-ui.badge :value="$journey['entry']->status" />
-                                            <span class="inline-flex items-center gap-1 text-slate-500"><x-ui.icon name="heart" variant="m" class="size-4 text-fuchsia-500" /> {{ $journey['entry']->likes_count }} like(s)</span>
-                                        </div>
-                                        @if ($journey['preselection']->acceptsLikes())
-                                            <p class="text-slate-500">Partage ton lien : le public peut liker jusqu'au {{ $journey['preselection']->voteEndsAt()->translatedFormat('d F à H:i') }}.</p>
-                                        @elseif ($journey['state'] === PreselectionState::Deliberation)
-                                            <p class="text-slate-500">Le jury délibère : résultats après le {{ $journey['preselection']->deliberationEndsAt()->translatedFormat('d F à H:i') }}.</p>
-                                        @elseif ($journey['state'] === PreselectionState::Closed)
-                                            <p class="text-slate-500">Présélection terminée : résultats bientôt.</p>
-                                        @endif
-                                    @endif
-                                @elseif ($journey['playing'] && $journey['submission'])
-                                    <div class="flex flex-wrap items-center gap-2"><span>{{ $journey['stage']->name }} :</span><x-ui.badge :value="$journey['submission']->status" /></div>
-                                @elseif ($journey['stage'] && ! $journey['stage']->isOnline() && $journey['playing'])
-                                    <p class="text-slate-500">{{ $journey['stage']->name }} en présentiel : rendez-vous sur scène.</p>
+                                    <x-ui.button :href="route('artist.competitions.payment', $competition)" icon="credit-card" class="col-span-2">Débloquer · {{ $fmtFee($competition) }}</x-ui.button>
                                 @else
-                                    <p class="text-slate-500">Rien à faire pour le moment.</p>
+                                    <x-portal.share :url="$shareUrl" :title="$participant->stage_name.' · '.$competition->name"
+                                        :text="$likesOpen ? 'Soutiens-moi dans « '.$competition->name.' » : un like peut tout changer ❤️' : 'Suis « '.$competition->name.' » sur Battle Game 🎤'"
+                                        :label="$likesOpen ? 'Partager' : 'Inviter'" :variant="$likesOpen ? 'primary' : 'secondary'" align="left" class="w-full [&>button]:w-full" />
+                                    <x-ui.button variant="secondary" :href="route('artist.competitions.show', $competition)" icon="map" class="w-full">Mon parcours</x-ui.button>
                                 @endif
-
-                                @php($media = $journey['entry'] ?? $journey['submission'])
-                                @if ($media?->media_path)
-                                    <button type="button" x-on:click="open = ! open" class="flex items-center gap-1.5 text-xs font-semibold text-brand-600 dark:text-brand-300">
-                                        <x-ui.icon name="play-circle" variant="m" class="size-4" /><span x-text="open ? 'Masquer ma prestation' : 'Revoir ma prestation'"></span>
-                                    </button>
-                                    <div x-show="open" x-collapse x-cloak><x-bo.media-player :performance="$media" class="max-w-xl" /></div>
-                                @endif
-                            </div>
+                            </footer>
                         </article>
+
+                        @if ($media?->media_path)
+                            @push('modals')
+                                <x-ui.modal :name="$modal" :title="$competition->name" icon="film" max-width="2xl" :description="$participant->stage_name.' · '.$media->status->label()">
+                                    <x-bo.media-player :performance="$media" preload="none" />
+                                </x-ui.modal>
+                            @endpush
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -195,6 +241,9 @@
                                 @csrf
                                 <input name="stage_name" required placeholder="Ton nom de scène" value="{{ $user->name }}" class="block w-full rounded-xl border-0 bg-slate-50 py-3 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
                                 <x-ui.button type="submit" size="lg" class="w-full" icon="user-plus">S'inscrire{{ $competition->entry_fee ? ' · '.$fmtFee($competition) : '' }}</x-ui.button>
+                                @if (filled($competition->regulations))
+                                    <p class="text-center text-xs text-slate-500">En t'inscrivant, tu acceptes le <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 underline dark:text-brand-300">règlement</a>.</p>
+                                @endif
                             </form>
                         </article>
                     @endforeach

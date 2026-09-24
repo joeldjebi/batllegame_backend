@@ -31,6 +31,8 @@ final readonly class PhaseRules extends JsonData
         public int $pointsLoss,
         public bool $allowDraws,
         public ?int $groupCount,
+        // Participants the organizer plans for (sizes the groups before registrations close).
+        public ?int $expectedEntrants,
         public GroupDrawMethod $drawMethod,
         public bool $grandFinalReset,
         /** @var list<MediaType> */
@@ -55,6 +57,7 @@ final readonly class PhaseRules extends JsonData
             'points_loss' => ['sometimes', 'integer', 'between:0,10'],
             'allow_draws' => ['sometimes', 'boolean'],
             'group_count' => ['sometimes', 'nullable', 'integer', 'between:1,64'],
+            'expected_entrants' => ['sometimes', 'nullable', 'integer', 'between:2,1024'],
             'draw_method' => ['sometimes', Rule::enum(GroupDrawMethod::class)],
             'grand_final_reset' => ['sometimes', 'boolean'],
             'media_types' => ['sometimes', 'array', 'min:1'],
@@ -96,6 +99,7 @@ final readonly class PhaseRules extends JsonData
             pointsLoss: (int) ($validated['points_loss'] ?? 0),
             allowDraws: (bool) ($validated['allow_draws'] ?? false),
             groupCount: isset($validated['group_count']) ? (int) $validated['group_count'] : null,
+            expectedEntrants: isset($validated['expected_entrants']) ? (int) $validated['expected_entrants'] : null,
             drawMethod: GroupDrawMethod::from($validated['draw_method'] ?? GroupDrawMethod::Random->value),
             grandFinalReset: (bool) ($validated['grand_final_reset'] ?? false),
             mediaTypes: array_map(MediaType::from(...), $validated['media_types'] ?? MediaType::values()),
@@ -118,6 +122,7 @@ final readonly class PhaseRules extends JsonData
             'points_loss' => $this->pointsLoss,
             'allow_draws' => $this->allowDraws,
             'group_count' => $this->groupCount,
+            'expected_entrants' => $this->expectedEntrants,
             'draw_method' => $this->drawMethod->value,
             'grand_final_reset' => $this->grandFinalReset,
             'media_types' => array_map(fn (MediaType $t) => $t->value, $this->mediaTypes),

@@ -34,7 +34,7 @@ it('validates the pre-selection rules', function () {
     $competition->unsetRelation('preselection');
 
     expect(fn () => app(PreselectionService::class)->configure($competition, [
-        'starts_at' => now(), 'ends_at' => now()->addDay(), 'rules' => ['like_weight' => 70, 'jury_weight' => 70],
+        'ends_at' => now()->addDay(), 'rules' => ['like_weight' => 70, 'jury_weight' => 70],
     ]))->toThrow(ValidationException::class);
 });
 
@@ -252,7 +252,7 @@ it('creates the pre-selection from the back-office form', function () {
     $competition->preselection()->delete();
 
     $this->actingAs($owner, 'web')->put(route('organizers.competitions.preselection.update', [$organizer, $competition]), [
-        'starts_at' => now()->addDay()->format('Y-m-d H:i'), 'ends_at' => now()->addDays(8)->format('Y-m-d H:i'),
+        'ends_at' => now()->addDays(8)->format('Y-m-d H:i'),
         'rules' => ['like_weight' => 30, 'jury_weight' => 70, 'selection_size' => 8, 'media_types' => ['video'], 'media_max_duration' => 120, 'media_max_size_mb' => 50],
     ])->assertSessionHasNoErrors();
 
@@ -273,19 +273,24 @@ it('shows the pre-selection to the public, the artists and the judges', function
 
     $this->actingAs($artists[1]->user, 'member')->get(route('artist.dashboard'))->assertOk()->assertSee('À faire maintenant')->assertSee('Envoyer ma prestation');
 
-    $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection', $competition))->assertOk()->assertSee('Flow');
+    $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection', $competition))->assertOk()->assertSee('Commencer la notation')->assertSee($entry->participant->stage_name);
+    $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection.entries.show', [$competition, $entry]))->assertOk()->assertSee('Flow');
 
     $this->getJson("/api/competitions/{$competition->slug}/preselection")->assertOk()->assertJsonPath('data.state', 'ouverte')->assertJsonCount(1, 'data.entries');
 });
 
-it('freezes the rules once the pre-selection has started but keeps dates editable', function () {
-    ['competition' => $competition] = competitionWithPreselection(0, ['selection_size' => 4]);
+it('freezes the rules once a performance is sent but keeps dates editable', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1, ['selection_size' => 4]);
     $newEnd = now()->addDays(3)->startOfMinute();
 
-    app(PreselectionService::class)->configure($competition, ['starts_at' => now()->subHour(), 'ends_at' => $newEnd, 'rules' => ['selection_size' => 20]]);
+    app(PreselectionService::class)->configure($competition, ['ends_at' => now()->addDays(2), 'rules' => ['selection_size' => 6]]);
+    expect($competition->preselection->fresh()->rules->selectionSize)->toBe(6);
+
+    preselectionEntry($artists[0]);
+    app(PreselectionService::class)->configure($competition, ['ends_at' => $newEnd, 'rules' => ['selection_size' => 20]]);
 
     expect($competition->preselection->fresh())
-        ->rules->selectionSize->toBe(4)
+        ->rules->selectionSize->toBe(6)
         ->ends_at->equalTo($newEnd)->toBeTrue();
 });
 
@@ -362,4 +367,144 @@ it('lists entries in an airy ranking with a detail modal to watch and review eac
         ->assertSee("Motif (visible par l'artiste)", false)
         ->assertSee('Configuration de la présélection')
         ->assertDontSee('@js(', false);
+});
+
+it('likes, moves and removes a like in AJAX with the counters of every entry', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(2, settings: ['submissions_require_approval' => false, 'show_live_results' => true]);
+    [$a, $b] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
+    $fan = User::factory()->create();
+    $like = fn ($entry) => $this->actingAs($fan, 'member')->postJson(route('fan.competitions.preselection.like', [$competition, $entry]));
+
+    $like($a)->assertOk()
+        ->assertJsonPath('my_like', $a->id)
+        ->assertJsonPath("counts.{$a->id}", 1)
+        ->assertJsonPath('message', 'Vous soutenez Artiste 1 !');
+
+    // One like per competition: moving it frees the first entry.
+    $like($b)->assertOk()->assertJsonPath('my_like', $b->id)->assertJsonPath("counts.{$a->id}", 0)->assertJsonPath("counts.{$b->id}", 1);
+
+    $this->actingAs($fan, 'member')->deleteJson(route('fan.competitions.preselection.unlike', $competition))
+        ->assertOk()->assertJsonPath('my_like', null)->assertJsonPath("counts.{$b->id}", 0);
+
+    // Refusals come back as JSON messages (own entry).
+    $this->actingAs($artists[0]->user, 'member')->postJson(route('fan.competitions.preselection.like', [$competition, $a]))
+        ->assertForbidden()->assertJsonPath('message', 'Vous ne pouvez pas liker votre propre prestation.');
+});
+
+it('shows the counters to fans once they liked, hides them from the others, and renders the like component', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1);
+    $entry = preselectionEntry($artists[0]);
+    [$fan, $other] = User::factory()->count(2)->create();
+
+    // Like a poll: the counters appear with the fan's own like.
+    $this->actingAs($fan, 'member')->postJson(route('fan.competitions.preselection.like', [$competition, $entry]))
+        ->assertOk()->assertJsonPath('my_like', $entry->id)->assertJsonPath("counts.{$entry->id}", 1);
+
+    $this->actingAs($fan, 'member')->get(route('fan.competitions.show', $competition))
+        ->assertOk()
+        ->assertSee('x-data="preselectionLikes(', false)
+        ->assertSee('"my_like":'.$entry->id, false)
+        ->assertSee('1 like')
+        ->assertSee("Je n'aime plus")
+        ->assertDontSee('@js(', false);
+
+    // Someone who has not liked (and no live results) does not see them.
+    $this->actingAs($other, 'member')->get(route('fan.competitions.show', $competition))
+        ->assertOk()->assertSee('"counts":null', false)->assertDontSee('1 like');
+});
+
+it('has a shareable page per entry with link previews and share buttons', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(2);
+    [$entry] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
+    $url = route('fan.competitions.preselection.entry', [$competition, $entry]);
+
+    $this->get($url)
+        ->assertOk()
+        ->assertSee('<meta property="og:title" content="Artiste 1 · '.e($competition->name).'">', false)
+        ->assertSee('og-default.png', false)
+        ->assertSee('Partager la prestation')
+        ->assertSee('https://wa.me/?text=', false)
+        ->assertSee('Voir les 1 autre(s) prestation(s)');
+
+    // Unpublished entries and foreign competitions stay hidden.
+    $entry->forceFill(['status' => PerformanceStatus::Pending])->save();
+    $this->get($url)->assertNotFound();
+    ['competition' => $other] = competitionWithPreselection(0);
+    $this->get(route('fan.competitions.preselection.entry', [$other, $entry]))->assertNotFound();
+});
+
+it('lets an artist send the performance once the organizer validated the registration', function () {
+    ['competition' => $competition, 'artists' => $artists, 'owner' => $owner, 'organizer' => $organizer] = competitionWithPreselection(1, settings: ['registration_requires_approval' => true]);
+    $artist = $artists[0];
+
+    expect(fn () => preselectionEntry($artist))->toThrow(CompetitionFlowException::class, "attend la validation de l'organisateur");
+    $this->actingAs($artist->user, 'member')->get(route('artist.dashboard'))->assertOk()->assertSee('Inscription en attente de validation', false);
+
+    $this->actingAs($owner, 'web')->patch(route('organizers.competitions.participants.update', [$organizer, $competition, $artist]), ['status' => ParticipantStatus::Validated->value])->assertRedirect();
+
+    expect(preselectionEntry($artist->fresh())->participant_id)->toBe($artist->id);
+});
+
+it('marks validated artists who were not selected as not selected', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(3, rules: ['selection_size' => 2, 'like_weight' => 100, 'jury_weight' => 0]);
+    $artists->each(fn ($a) => $a->update(['status' => ParticipantStatus::Validated]));
+    $entries = $artists->map(fn ($a) => preselectionEntry($a->fresh()));
+    likeAs($entries[0]);
+    likeAs($entries[0]);
+    likeAs($entries[1]);
+    $competition->preselection->update(['ends_at' => now()->subMinute(), 'vote_ends_at' => now()->subMinute(), 'deliberation_hours' => 0]);
+
+    app(PreselectionService::class)->publish($competition->preselection->fresh());
+
+    expect($artists[2]->fresh()->status)->toBe(ParticipantStatus::NotSelected)
+        ->and($artists[0]->fresh()->status)->toBe(ParticipantStatus::Validated);
+});
+
+it('opens the submissions as soon as the pre-selection exists: only the deadline matters', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1);
+    $competition->preselection->update(['ends_at' => now()->addDays(5)]);
+
+    expect($competition->preselection->fresh()->state())->toBe(PreselectionState::Open)
+        ->and(preselectionEntry($artists[0])->participant_id)->toBe($artists[0]->id);
+
+    $competition->preselection->update(['ends_at' => now()->subMinute(), 'vote_ends_at' => now()->addDay()]);
+    expect(fn () => preselectionEntry($artists[0]->fresh()))->toThrow(CompetitionFlowException::class);
+});
+
+it('paginates the participants and the pre-selection entries by 15', function () {
+    ['competition' => $competition, 'artists' => $artists, 'owner' => $owner, 'organizer' => $organizer] = competitionWithPreselection(17);
+    $artists->each(fn ($artist) => preselectionEntry($artist));
+
+    $html = $this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))->assertOk()->getContent();
+
+    // Participants: in the page (filters in the browser); entries: 20 per page from the server.
+    expect(substr_count($html, 'aria-label="Pagination"'))->toBe(1)
+        ->and($html)->toContain('x-show="visible(16)"');
+
+    $this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]).'?pre_q='.urlencode($artists[3]->stage_name))
+        ->assertOk()->assertSee('Voir la fiche');
+});
+
+it('reviews an entry in AJAX', function () {
+    ['competition' => $competition, 'artists' => $artists, 'owner' => $owner, 'organizer' => $organizer] = competitionWithPreselection(2, settings: ['submissions_require_approval' => true]);
+    [$a, $b] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
+    $url = fn ($entry) => route('organizers.competitions.preselection.entries.review', [$organizer, $competition, $entry]);
+    expect($this->actingAs($owner, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))->getContent())->toContain('x-data="ajaxForm');
+
+    $this->actingAs($owner, 'web')->patchJson($url($a), ['decision' => 'approve'])->assertOk()
+        ->assertJsonPath('status', PerformanceStatus::Approved->value)->assertJsonPath('message', fn ($m) => str_contains($m, 'validée'));
+    $this->actingAs($owner, 'web')->patchJson($url($b), ['decision' => 'reject'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAs($owner, 'web')->patchJson($url($b), ['decision' => 'reject', 'reason' => 'Vidéo TikTok'])->assertOk()
+        ->assertJsonPath('status', PerformanceStatus::Rejected->value);
+});
+
+it('updates the jury score and the ranking as soon as a judge scores', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1);
+    $criterion = Criterion::factory()->for($competition)->create(['max_points' => 10]);
+    $judge = $competition->judges()->create(['user_id' => User::factory()->create()->id, 'status' => JudgeStatus::Accepted]);
+    $entry = preselectionEntry($artists[0]);
+
+    app(PreselectionService::class)->score($judge, $entry, ['scores' => [['criterion_id' => $criterion->id, 'score' => 8]]]);
+
+    expect($entry->fresh())->jury_score->toBe(80.0)->rank->toBe(1);
 });

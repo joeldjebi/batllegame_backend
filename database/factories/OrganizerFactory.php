@@ -22,7 +22,6 @@ class OrganizerFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(4)),
             'description' => fake()->sentence(),
-            'city' => fake()->randomElement(['Abidjan', 'Bouaké', 'Yamoussoukro', 'San-Pédro']),
             'status' => OrganizerStatus::Verified,
             'verified_at' => now(),
         ];

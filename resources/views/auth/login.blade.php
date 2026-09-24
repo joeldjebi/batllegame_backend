@@ -19,6 +19,10 @@
         <x-ui.button type="submit" variant="primary" size="lg" class="w-full" icon-right="arrow-right">Se connecter</x-ui.button>
     </form>
 
+    @if (config('organizers.self_signup'))
+        <p class="mt-8 text-center text-sm text-slate-500">Pas encore d'espace ? <a href="{{ route('organizers.signup') }}" class="font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-300">Créer mon espace organisateur</a></p>
+    @endif
+
     <p class="mt-10 text-xs text-slate-400">Participants et public : connectez-vous depuis l'application mobile Battle Game.</p>
 
     <x-slot:aside>

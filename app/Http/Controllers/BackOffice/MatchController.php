@@ -56,7 +56,7 @@ class MatchController extends Controller
         ]);
 
         $playable = in_array($match->status, [MatchStatus::Scheduled, MatchStatus::Submissions], true)
-            && $match->slots()->whereNotNull('participant_id')->count() === 2;
+            && ($match->isGroupMatch() ? $match->activeSlots()->exists() : $match->slots()->whereNotNull('participant_id')->count() === 2);
 
         if (! $playable) {
             throw CompetitionFlowException::matchNotPlayable();

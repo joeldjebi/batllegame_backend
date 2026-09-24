@@ -33,8 +33,9 @@ class MatchCloser
                 return $match; // Idempotent: the scheduler and an organizer may race.
             }
 
+            $group = $match->isGroupMatch();
             $playable = in_array($match->status, [MatchStatus::Scheduled, MatchStatus::Submissions, MatchStatus::Voting], true)
-                && $match->slots()->whereNotNull('participant_id')->count() === 2;
+                && ($group ? $match->activeSlots()->exists() : $match->slots()->whereNotNull('participant_id')->count() === 2);
 
             if (! $playable) {
                 throw CompetitionFlowException::matchNotPlayable();
@@ -46,9 +47,14 @@ class MatchCloser
                 throw CompetitionFlowException::missingJuryScores();
             }
 
+            // A group has no winner: its artists are ranked (the organizer publishes the phase results).
+            if ($group) {
+                $this->rankGroup($match, $scores);
+            }
+
             $match->forceFill([
                 'status' => MatchStatus::Closed,
-                'winner_id' => $this->decideWinner($match, $scores, $forcedWinnerId),
+                'winner_id' => $group ? null : $this->decideWinner($match, $scores, $forcedWinnerId),
                 'closed_at' => now(),
             ])->save();
 
@@ -91,6 +97,40 @@ class MatchCloser
 
             return $match;
         });
+    }
+
+    /**
+     * Rank the artists of a group: final score, then the phase tie breakers (jury,
+     * public, seed), then registration order. Forfeited artists get no rank.
+     *
+     * @param  array<int, array{jury: ?float, public: ?float, final: ?float}>  $scores
+     * @return list<int> Participant ids, best first.
+     */
+    public function rankGroup(BattleMatch $match, array $scores): array
+    {
+        $seeds = Participant::query()->whereIn('id', array_keys($scores))->pluck('seed', 'id');
+        $key = fn (int $id) => [
+            -($scores[$id]['final'] ?? 0),
+            ...array_map(fn (TieBreaker $tieBreaker) => match ($tieBreaker) {
+                TieBreaker::JuryScore => -($scores[$id]['jury'] ?? 0),
+                TieBreaker::PublicScore => -($scores[$id]['public'] ?? 0),
+                TieBreaker::Seed => $seeds[$id] ?? PHP_INT_MAX,
+                TieBreaker::HeadToHead, TieBreaker::ScoreDiff => 0,
+            }, $match->phase->rules->tieBreakers),
+            $id,
+        ];
+
+        $ranked = collect(array_keys($scores))
+            ->sort(fn (int $a, int $b) => $key($a) <=> $key($b))
+            ->values()
+            ->all();
+
+        $match->slots()->update(['rank' => null]);
+        foreach ($ranked as $index => $participantId) {
+            $match->slots()->where('participant_id', $participantId)->update(['rank' => $index + 1]);
+        }
+
+        return $ranked;
     }
 
     /**

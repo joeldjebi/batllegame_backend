@@ -20,14 +20,14 @@ class LandingController extends Controller
     {
         $public = fn () => Competition::query()
             ->whereHas('organizer', fn ($q) => $q->where('status', '!=', OrganizerStatus::Suspended))
-            ->with('organizer')
+            ->with(['organizer', 'city', 'commune'])
             ->withCount('participants');
 
         return view('landing', [
             'live' => BattleMatch::query()
                 ->votingNow()
                 ->whereHas('competition', fn ($q) => $q->where('status', CompetitionStatus::InProgress))
-                ->with(['competition', 'stage', 'slots.participant'])
+                ->with(['competition', 'stage', 'group', 'slots.participant'])
                 ->withCount('publicVotes')
                 ->latest('voting_opens_at')
                 ->limit(3)

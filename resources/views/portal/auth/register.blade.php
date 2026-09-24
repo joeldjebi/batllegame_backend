@@ -10,6 +10,7 @@
                 @csrf
                 <x-ui.input name="name" label="Nom complet" icon="user" required />
                 <x-phone-input :countries="$countries" />
+                <x-location-select label="Ville (facultatif)" communeLabel="Commune (facultatif)" hint="Pour vous proposer les compétitions près de chez vous." />
                 <x-ui.input name="password" type="password" label="Mot de passe" icon="lock-closed" required autocomplete="new-password" hint="8 caractères minimum." />
                 <x-ui.input name="password_confirmation" type="password" label="Confirmation" icon="lock-closed" required autocomplete="new-password" />
                 <x-ui.button type="submit" size="lg" class="w-full" icon="check">Créer mon compte</x-ui.button>

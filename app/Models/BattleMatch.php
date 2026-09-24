@@ -212,9 +212,47 @@ class BattleMatch extends Model
         return $this->status === MatchStatus::Closed;
     }
 
+    /**
+     * A group of a ranking round: all its artists perform, nobody faces anybody.
+     */
     public function isGroupMatch(): bool
     {
         return $this->group_id !== null;
+    }
+
+    /**
+     * Artists still competing: filled slots without forfeit.
+     *
+     * @return HasMany<MatchParticipant, $this>
+     */
+    public function activeSlots(): HasMany
+    {
+        return $this->slots()->whereNotNull('participant_id')->where('is_forfeit', false);
+    }
+
+    /**
+     * Title shown everywhere: « Poule A » for a group, « A vs B » for a battle.
+     */
+    public function title(): string
+    {
+        if ($this->isGroupMatch()) {
+            return $this->group?->name ?? 'Poule';
+        }
+
+        return $this->slots->map(fn (MatchParticipant $slot) => $slot->participant?->stage_name ?? 'À déterminer')->implode(' vs ');
+    }
+
+    /**
+     * Scores and ranks are public once the match is closed, and for a group once the
+     * organizer published the phase results (or with live results).
+     */
+    public function resultsArePublic(): bool
+    {
+        if ($this->competition->settings->showLiveResults) {
+            return true;
+        }
+
+        return $this->isClosed() && (! $this->isGroupMatch() || $this->phase->results_published_at !== null);
     }
 
     /**

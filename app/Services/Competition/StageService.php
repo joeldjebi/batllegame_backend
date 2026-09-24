@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\Log;
  * Drives a stage through its lifecycle.
  *
  * Online:  Pending -> Submissions (until the deadline) -> forfeits for missing
- *          submissions -> Voting (jury + public on the videos, then the jury alone
- *          during the deliberation) -> Closed.
+ *          submissions (a battle is lost, an artist of a group leaves the ranking)
+ *          -> Voting (jury + public on the videos, then the jury alone during the
+ *          deliberation) -> Closed.
  * On-site: Pending -> Voting (the organizer opens each match live) -> Closed.
  */
 class StageService
@@ -98,6 +99,18 @@ class StageService
         foreach ($stage->playableMatches()->with('slots')->get() as $match) {
             $ids = $match->slots->pluck('participant_id')->filter()->values()->all();
             $present = array_values(array_intersect($ids, $submitted));
+
+            // A group goes on with the artists who performed; the others are out of the ranking.
+            if ($match->isGroupMatch()) {
+                $match->slots()->whereNotIn('participant_id', $present)->update(['is_forfeit' => true]);
+
+                if ($present === []) {
+                    $this->closer->forfeit($match, null);
+                    $forfeits++;
+                }
+
+                continue;
+            }
 
             if (count($present) === 2) {
                 continue;

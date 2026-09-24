@@ -64,3 +64,12 @@ Relancer `LocalAccountsSeeder` après `DemoCompetitionSeeder` pour rattacher le 
 compétitions de démonstration. Comptes de `DemoCompetitionSeeder` (mot de passe `password`) : artistes
 `07 1000000x` (Abidjan Rap Battle) et `01 3000000x` (Abidjan Talents en ligne, soumissions ouvertes),
 jurés `05 20000000` et `05 20000001`.
+
+**Vider les données de test** : console super-admin → Vue d'ensemble → carte « Données de test » →
+« Vider les données de test » (saisir `VIDER`), ou `php artisan demo:purge [--accounts] [--force]`.
+Les seeders marquent ce qu'ils créent (`seed_kind` : `demo` pour les compétitions et comptes générés,
+`compte_test` pour l'organisateur test et les comptes `SEED_*`). Supprimé : les compétitions de démo avec
+tout leur contenu (inscriptions, paiements simulés, matchs, votes, likes, notes, fichiers médias) et les comptes
+générés ; avec l'option, aussi l'organisateur test (et toutes ses compétitions) et les comptes de test.
+Jamais supprimés : les super-admins, les comptes réels, et un compte marqué encore utilisé dans une vraie
+compétition ou chez un vrai organisateur.

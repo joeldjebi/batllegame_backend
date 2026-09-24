@@ -104,3 +104,37 @@ quick « Valider », « Voir ») and pushes its detail modal `entry-{id}` (max-w
 file info + « Ouvrir le fichier », expanded provenance, scores, review with a reason textarea). `x-ui.modal` pauses its
 media on close; `x-bo.media-player` shows « Lecture impossible » + a link when the file cannot be played.
 
+## AJAX likes (fan page)
+`Alpine.data('preselectionLikes', {likeUrl, unlikeUrl, loginUrl, loggedIn})` on the pre-selection section of
+`portal/fan/competition`: state in `<script type="application/json" x-ref="state">@json($likes)</script>`
+(`Fan\PreselectionController::likesState()`: `my_like`, `counts` (null until the viewer liked, unless live results /
+published), `can_like`), re-read on the
+`live:refreshed` window event that `realtime.js` fires after a morph. `toggle(id)` updates optimistically, calls the
+like / unlike routes with `Accept: application/json` (controllers answer JSON, redirect fallback) and rolls back with
+an error toast. Entries are shuffled with a per-viewer stable seed (`crc32(seed-id)`), never `inRandomOrder()` (live
+refreshes would reorder the cards).
+
+## Sharing and public entry page
+- `x-portal.share :url :title :text [label] [icon] [variant] [size] [align=left|right]`: Web Share API on phones,
+  otherwise a menu (WhatsApp, Facebook, X, Telegram, copy link with toast). Never inside an `overflow-hidden` parent.
+- `x-portal.entry-card` (inside `preselectionLikes`): player, heart + counter, share icon, like button; used by the
+  gallery and by `portal/fan/entry` (route `fan.competitions.preselection.entry`, approved entries only).
+- `<x-og :title :description :url [image] [video] />` pushes Open Graph / Twitter tags to `@stack('head')` (both
+  layouts); default image `public/images/og-default.png` (1200×630, solid colors).
+- Artist « Mes compétitions »: `x-portal.progress` (segmented bar + « Étape k/n » on phones, `x-portal.stepper` from
+  sm), one status message with a tone, media tile opening a modal player, footer « Partager / Inviter » + « Ma page ».
+- Toasts: top-right under the header in both layouts (`top-16`), centered on phones.
+
+
+## Places
+
+Never a free-text city: `<x-location-select :city :commune :required label>` (country > city > commune from
+`App\Support\Locations::tree()`, cached, cleared by the models) posts `city_id` / `commune_id`; validate with the
+`HasLocationInput` concern (`locationRules($required)`: commune required when the city has communes). A city without
+communes posts no `commune_id`: set it to null explicitly on update. Display with `$model->locationLabel()`.
+
+## Dropdowns
+
+`<x-ui.dropdown>` teleports its menu to `<body>` and anchors it to the trigger (`@alpinejs/anchor`): it is never
+clipped by an `overflow-hidden` card or table and flips above the trigger near the bottom of the screen. Keep menu
+content self-contained (forms, `x-ui.confirm` triggers work; do not rely on a parent `x-data` of the page).

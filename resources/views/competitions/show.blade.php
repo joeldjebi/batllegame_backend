@@ -25,6 +25,9 @@
     $nextStatuses = collect($competition->status->nextStatuses())->filter(fn ($s) => $user->can('changeStatus', [$competition, $s]));
 
     $usesJury = $competition->phases->contains(fn ($p) => $p->rules->usesJury());
+    // Only groups produce qualifiers: nothing can follow an elimination phase.
+    $lastPhase = $competition->phases->sortBy('position')->last();
+    $canAddPhase = $lastPhase === null || $lastPhase->type === PhaseType::Groups;
     $checklist = [
         ['Description et récompenses', filled($competition->description) && $competition->prizeList() !== []],
         ['Au moins une phase', $competition->phases->isNotEmpty()],
@@ -49,6 +52,7 @@
             <x-ui.badge :value="$competition->status" />
             <span class="inline-flex items-center gap-1"><x-ui.icon :name="$competition->discipline->icon()" variant="m" class="size-4" />{{ $competition->discipline->label() }}</span>
             <span class="inline-flex items-center gap-1"><x-ui.icon :name="$competition->mode->icon()" variant="m" class="size-4" />{{ $competition->mode->label() }}</span>
+            @if ($competition->locationLabel())<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $competition->locationLabel() }}</span>@endif
             <span x-data="{ copied: false }" class="inline-flex items-center gap-1">
                 <x-ui.icon name="link" variant="m" class="size-4" />
                 <button type="button" class="font-mono text-xs hover:text-brand-600" x-on:click="navigator.clipboard.writeText(@js($competition->slug)); copied = true; setTimeout(() => copied = false, 1500)">
@@ -83,7 +87,7 @@
                         </x-ui.confirm>
                     @endif
                     @if ($canDelete)
-                        <x-ui.confirm :action="route('organizers.competitions.destroy', [$organizer, $competition])" method="DELETE" title="Supprimer la compétition ?" message="Elle disparaîtra du back-office et de l'application." confirm="Supprimer">
+                        <x-ui.confirm :action="route('organizers.competitions.destroy', [$organizer, $competition])" method="DELETE" title="Supprimer la compétition ?" :message="($competition->participants->count() ? $competition->participants->count().' inscrit(s) seront retirés, aucun n\'a payé. ' : '').'Elle disparaîtra du back-office et de l\'application.'" confirm="Supprimer">
                             <x-ui.dropdown-item icon="trash" danger>Supprimer</x-ui.dropdown-item>
                         </x-ui.confirm>
                     @endif
@@ -134,20 +138,20 @@
                                     {{ $phase->effectiveMode()->label() }} ·
                                     {{ $phase->rules->voteMode->label() }}@if ($phase->rules->voteMode === VoteMode::Mixed) ({{ $phase->rules->juryWeight }} % jury / {{ $phase->rules->publicWeight }} % public)@endif ·
                                     {{ $phase->rules->rounds }} passage(s) de {{ $phase->rules->turnDuration }} s
-                                    @if ($phase->type === PhaseType::Groups) · {{ $phase->rules->groupCount }} poule(s), {{ $phase->qualifiers_per_group }} qualifié(s) par poule @endif
+                                    @if ($phase->type === PhaseType::Groups) · {{ $phase->rules->groupCount }} poule(s) de classement, {{ $phase->qualifiers_per_group }} qualifié(s) par poule @endif
                                 </p>
                                 @if ($phase->matches->isNotEmpty())
-                                    @php($done = $phase->matches->whereIn('status', [MatchStatus::Closed, MatchStatus::Cancelled])->count())
+                                    @php $done = $phase->matches->whereIn('status', [MatchStatus::Closed, MatchStatus::Cancelled])->count(); @endphp
                                     <div class="mt-3 flex items-center gap-3">
                                         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-brand-600" style="width: {{ round($done / $phase->matches->count() * 100) }}%"></div></div>
-                                        <span class="text-xs text-slate-500 tabular-nums">{{ $done }}/{{ $phase->matches->count() }} matchs</span>
+                                        <span class="text-xs text-slate-500 tabular-nums">{{ $done }}/{{ $phase->matches->count() }} {{ $phase->type === PhaseType::Groups ? 'poule(s) close(s)' : 'matchs' }}</span>
                                     </div>
                                 @endif
                             </div>
                         </div>
                     @empty
                         <x-ui.empty icon="queue-list" title="Aucune phase" description="Ajoutez des poules, une élimination simple ou double pour structurer la compétition.">
-                            @if ($canUpdate)<x-ui.button size="sm" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>@endif
+                            @if ($canUpdate && $canAddPhase)<x-ui.button size="sm" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>@endif
                         </x-ui.empty>
                     @endforelse
                 </x-ui.card>
@@ -174,7 +178,7 @@
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Fin des inscriptions</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $competition->registration_ends_at?->translatedFormat('d M Y, H:i') ?? '—' }}</dd></div>
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Frais</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $competition->entry_fee ? number_format($competition->entry_fee, 0, ',', ' ').' '.$competition->currency : 'Gratuit' }}</dd></div>
                             @if ($competition->requiresPayment())
-                                @php($paidPayments = $competition->participants->flatMap->payments->where('status', \App\Enums\PaymentStatus::Paid))
+                                @php $paidPayments = $competition->participants->flatMap->payments->where('status', \App\Enums\PaymentStatus::Paid); @endphp
                                 <div class="flex justify-between gap-4"><dt class="text-slate-500">Frais encaissés (simulés)</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ number_format($paidPayments->sum('amount'), 0, ',', ' ') }} {{ $competition->currency }} · {{ $paidPayments->count() }} paiement(s)</dd></div>
                             @endif
                             <div class="flex justify-between gap-4"><dt class="text-slate-500">Vote du public</dt><dd class="font-medium text-slate-800 dark:text-slate-100">{{ $settings->publicVotingEnabled ? 'Activé' : 'Désactivé' }}</dd></div>
@@ -191,8 +195,15 @@
         <x-ui.tab-panel name="phases" class="space-y-6">
             <div data-live="tab-phases">
             @if ($canUpdate)
-                <div class="flex justify-end">
-                    <x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>
+                <div class="flex flex-wrap items-center justify-end gap-3">
+                    @if ($lastPhase && $lastPhase->type === PhaseType::Groups)
+                        <p class="mr-auto flex items-center gap-2 text-sm text-slate-500"><x-ui.icon name="information-circle" variant="m" class="size-4 shrink-0 text-brand-600" /> Terminez par une phase à élimination pour désigner le vainqueur.</p>
+                    @elseif ($lastPhase)
+                        <p class="mr-auto flex items-center gap-2 text-sm text-slate-500"><x-ui.icon name="flag" variant="m" class="size-4 shrink-0 text-slate-400" /> La phase {{ $lastPhase->position }} ({{ mb_strtolower($lastPhase->type->label()) }}) désigne le vainqueur : aucune phase ne peut la suivre.</p>
+                    @endif
+                    @if ($canAddPhase)
+                        <x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>
+                    @endif
                 </div>
             @endif
 
@@ -216,10 +227,18 @@
                             <x-ui.confirm :action="route('organizers.competitions.phases.destroy', [$organizer, $competition, $phase])" method="DELETE" title="Supprimer cette phase ?" confirm="Supprimer">
                                 <x-ui.button size="sm" variant="ghost" icon="trash" class="!text-rose-600"><span class="sr-only">Supprimer</span></x-ui.button>
                             </x-ui.confirm>
-                            <x-ui.confirm :action="route('organizers.competitions.phases.start', [$organizer, $competition, $phase])" :danger="false" icon="rocket-launch"
-                                title="Démarrer la phase ?" message="Les règles seront figées et les poules ou le bracket générés automatiquement." confirm="Démarrer">
-                                <x-ui.button size="sm" variant="primary" icon="rocket-launch">Démarrer</x-ui.button>
-                            </x-ui.confirm>
+                            <x-ui.button size="sm" variant="secondary" icon="pencil-square" x-data x-on:click="$dispatch('open-modal', 'edit-phase-{{ $phase->id }}')">Modifier</x-ui.button>
+                            @php
+                                $before = $competition->phases->where('position', '<', $phase->position)->sortBy('position')->last();
+                            @endphp
+                            @if ($before === null || $before->status === \App\Enums\PhaseStatus::Finished)
+                                <x-ui.confirm :action="route('organizers.competitions.phases.start', [$organizer, $competition, $phase])" :danger="false" icon="rocket-launch"
+                                    title="Démarrer la phase ?" message="Les règles seront figées et les poules ou le bracket générés automatiquement." confirm="Démarrer">
+                                    <x-ui.button size="sm" variant="primary" icon="rocket-launch">Démarrer</x-ui.button>
+                                </x-ui.confirm>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 px-2 text-xs text-slate-500"><x-ui.icon name="clock" variant="m" class="size-4" /> Après la phase {{ $before->position }}</span>
+                            @endif
                         </x-slot:actions>
                     @endif
 
@@ -232,22 +251,35 @@
                     @endif
 
                     @if (! $phase->isFrozen())
-                        <x-ui.empty icon="rocket-launch" title="Prête à démarrer" description="Au démarrage, les règles sont figées et les matchs générés : tirage des poules ou bracket complet avec byes." />
+                        <x-bo.phase-calendar :phase="$phase" :organizer="$organizer" :competition="$competition" :can-update="$canUpdate" />
                     @elseif ($phase->type === PhaseType::Groups)
-                        <div class="grid gap-5 lg:grid-cols-2">
-                            @foreach ($phase->groups as $group)
-                                <div x-data="{ open: false }" class="space-y-3">
-                                    <x-bo.standings :group="$group" :qualifiers="$phase->qualifiers_per_group" />
-                                    <button type="button" x-on:click="open = ! open" class="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-300">
-                                        <x-ui.icon name="chevron-down" variant="m" class="size-4 transition" x-bind:class="open && 'rotate-180'" />
-                                        <span x-text="open ? 'Masquer les matchs' : 'Voir les {{ $phase->matches->where('group_id', $group->id)->count() }} matchs'"></span>
-                                    </button>
-                                    <div x-show="open" x-collapse x-cloak class="grid gap-3 sm:grid-cols-2">
-                                        @foreach ($phase->matches->where('group_id', $group->id)->sortBy(['round', 'bracket_position']) as $match)
-                                            <x-bo.match-card :match="$match" :organizer="$organizer" :competition="$competition" :can-run="$canRun" :onsite="$phase->effectiveMode() === CompetitionMode::OnSite" />
-                                        @endforeach
-                                    </div>
-                                </div>
+                        @php
+                            $groupMatches = $phase->matches->whereNotNull('group_id')->sortBy('bracket_position');
+                            $openGroups = $groupMatches->whereNotIn('status', [\App\Enums\MatchStatus::Closed, \App\Enums\MatchStatus::Cancelled])->count();
+                        @endphp
+                        @if ($phase->results_published_at)
+                            <div class="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                                <x-ui.icon name="check-badge" class="size-5 shrink-0" /> Résultats publiés le {{ $phase->results_published_at->translatedFormat('d F à H:i') }} : les qualifiés passent à la phase suivante.
+                            </div>
+                        @elseif ($phase->status === \App\Enums\PhaseStatus::InProgress)
+                            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-900/5 dark:bg-white/[0.03] dark:ring-white/10">
+                                <p class="flex items-start gap-2 text-slate-600 dark:text-slate-300">
+                                    <x-ui.icon name="megaphone" class="mt-0.5 size-5 shrink-0 text-brand-600" />
+                                    <span>{{ $openGroups
+                                        ? "Chaque artiste présente sa prestation, le public vote (1 vote par phase) et le jury délibère. Publication possible quand les {$openGroups} poule(s) restante(s) seront closes."
+                                        : 'Toutes les poules sont closes : vérifiez les classements puis publiez les résultats.' }}</span>
+                                </p>
+                                @if ($canRun && ! $openGroups)
+                                    <x-ui.confirm :action="route('organizers.competitions.phases.publish', [$organizer, $competition, $phase])" :danger="false" icon="megaphone"
+                                        title="Publier les résultats des poules ?" message="Les {{ $phase->qualifiers_per_group }} premier(s) de chaque poule se qualifient, les autres sont éliminés. Le classement devient public et les artistes sont prévenus." confirm="Publier">
+                                        <x-ui.button size="sm" icon="megaphone">Publier les résultats</x-ui.button>
+                                    </x-ui.confirm>
+                                @endif
+                            </div>
+                        @endif
+                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            @foreach ($groupMatches as $match)
+                                <x-bo.group-card :match="$match" :phase="$phase" :organizer="$organizer" :competition="$competition" :can-run="$canRun" :onsite="$phase->effectiveMode() === CompetitionMode::OnSite" />
                             @endforeach
                         </div>
                     @else
@@ -256,7 +288,7 @@
                 </x-ui.card>
             @empty
                 <x-ui.empty icon="trophy" title="Aucune phase" description="Une compétition enchaîne des phases : poules, élimination simple ou double élimination.">
-                    @if ($canUpdate)<x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>@endif
+                    @if ($canUpdate && $canAddPhase)<x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-phase')">Ajouter une phase</x-ui.button>@endif
                 </x-ui.empty>
             @endforelse
             </div>
@@ -273,7 +305,7 @@
         <x-ui.tab-panel name="participants">
             <div data-live="tab-participants">
             <x-ui.card title="Participants" description="Validez les inscriptions et attribuez les têtes de série" icon="users"
-                x-data="{ search: '', status: '' }">
+                x-data="pager({ search: '', status: '' })">
                 <x-slot:actions>
                     <div class="relative">
                         <x-ui.icon name="magnifying-glass" variant="m" class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-slate-400" />
@@ -291,17 +323,14 @@
                     <x-ui.table>
                         <x-slot:head><th>Artiste</th><th>Compte</th><th>Statut</th><th>Paiement</th><th>Inscrit le</th><th class="!text-right">Seed & statut</th></x-slot:head>
                         @foreach ($participants as $participant)
-                            <tr x-show="(! status || status === @js($participant->status->value)) && @js(Str::lower($participant->stage_name.' '.$participant->user->name.' '.$participant->user->phone)).includes(search.toLowerCase())">
+                            <tr x-effect="track({{ $loop->index }}, (! status || status === @js($participant->status->value)) && @js(Str::lower($participant->stage_name.' '.$participant->user->name.' '.$participant->user->phone)).includes(search.toLowerCase()))" x-show="visible({{ $loop->index }})">
                                 <td>
-                                    <div class="flex items-center gap-3">
-                                        <x-ui.avatar :name="$participant->stage_name" size="sm" />
-                                        <span class="font-semibold text-slate-900 dark:text-white">{{ $participant->stage_name }}</span>
-                                    </div>
+                                    <x-bo.participant-card :participant="$participant" :competition="$competition" />
                                 </td>
                                 <td><p>{{ $participant->user->name }}</p><p class="text-xs text-slate-500">{{ $participant->user->phone }}</p></td>
                                 <td><x-ui.badge :value="$participant->status" /></td>
                                 <td>
-                                    @php($paid = $participant->payments->firstWhere('status', \App\Enums\PaymentStatus::Paid))
+                                    @php $paid = $participant->payments->firstWhere('status', \App\Enums\PaymentStatus::Paid); @endphp
                                     @if ($paid)
                                         <x-ui.badge tone="green" :dot="false" icon="check">{{ number_format($paid->amount, 0, ',', ' ') }} {{ $paid->currency }}</x-ui.badge>
                                         <p class="mt-1 text-[11px] text-slate-400">{{ $paid->method->label() }} · {{ $paid->reference }}</p>
@@ -333,6 +362,8 @@
                             </tr>
                         @endforeach
                     </x-ui.table>
+                    <x-ui.pager :count="$participants->count()" class="-mx-5 -mb-5 mt-4" />
+                    <p x-show="! total" x-cloak class="py-6 text-center text-sm text-slate-500">Aucun participant ne correspond à ces filtres.</p>
                 @endif
             </x-ui.card>
             </div>
@@ -369,7 +400,7 @@
                     @if ($canUpdate)
                         <x-slot:actions><x-ui.button size="sm" icon="plus" x-data x-on:click="$dispatch('open-modal', 'add-criterion')">Ajouter</x-ui.button></x-slot:actions>
                     @endif
-                    @php($totalWeight = $competition->criteria->sum('weight') ?: 1)
+                    @php $totalWeight = $competition->criteria->sum('weight') ?: 1; @endphp
                     @forelse ($competition->criteria as $criterion)
                         <div class="border-b border-slate-100 py-3 first:pt-0 last:border-0 last:pb-0 dark:border-white/5">
                             <div class="flex items-center justify-between gap-3">
@@ -406,6 +437,7 @@
                         <x-ui.input name="registration_ends_at" type="datetime-local" label="Fin des inscriptions" :value="$competition->registration_ends_at" />
                         <x-ui.input name="max_participants" type="number" min="2" label="Participants max." :value="$competition->max_participants" />
                         <x-ui.input name="entry_fee" type="number" min="0" label="Frais d'inscription" :value="$competition->entry_fee" suffix="XOF" />
+                        <x-location-select :city="$competition->city_id" :commune="$competition->commune_id" label="Lieu (ville)" hint="Où se déroule la compétition (présentiel)." class="sm:col-span-2" />
                     </fieldset>
                 </x-ui.card>
 
@@ -431,7 +463,7 @@
                     </fieldset>
                 </x-ui.card>
 
-                @php($prizeRows = old('prizes', $competition->prizeList() ?: [['rank' => '1er prix', 'reward' => '']]))
+                @php $prizeRows = old('prizes', $competition->prizeList() ?: [['rank' => '1er prix', 'reward' => '']]); @endphp
                 <x-ui.card title="Récompenses" icon="gift" description="Dans l'ordre du classement.">
                     <fieldset @disabled(! $canUpdate) x-data="{ prizes: @js(array_values($prizeRows)) }" class="space-y-3">
                         <template x-for="(prize, index) in prizes" :key="index">
@@ -456,6 +488,48 @@
                     </fieldset>
                 </x-ui.card>
 
+                <x-ui.card title="Règlement" icon="scale" class="xl:col-span-2" description="Les règles que les artistes acceptent en s'inscrivant, affichées sur la page de la compétition.">
+                    @if ($canUpdate)
+                        <x-slot:actions>
+                            <x-ui.confirm :action="route('organizers.competitions.guide.draft', [$organizer, $competition])" :danger="false" icon="sparkles"
+                                title="Générer un brouillon ?" message="Le déroulé et le règlement sont pré-remplis à partir de vos phases, de la présélection et des critères. Rien n'est enregistré : relisez, modifiez puis enregistrez. Ce que vous avez déjà écrit dans ces deux champs sera remplacé dans le formulaire." confirm="Générer">
+                                <x-ui.button size="sm" variant="secondary" icon="sparkles">Générer un brouillon</x-ui.button>
+                            </x-ui.confirm>
+                        </x-slot:actions>
+                    @endif
+                    <fieldset @disabled(! $canUpdate) class="min-w-0">
+                        <x-ui.rich-editor name="regulations" :value="$competition->regulations" placeholder="Participation, prestations, votes, départage, conduite…" hint="Écrit par vous. « Générer un brouillon » le pré-remplit à partir de votre configuration." />
+                    </fieldset>
+                </x-ui.card>
+
+                @php $scheduleRows = old('schedule', $competition->scheduleList() ?: [['title' => '', 'date' => null, 'details' => '']]); @endphp
+                <x-ui.card title="Déroulé" icon="calendar-days" description="Les grandes étapes, dans l'ordre.">
+                    <fieldset @disabled(! $canUpdate) x-data="{ steps: @js(array_values($scheduleRows)) }" class="space-y-3">
+                        <template x-for="(step, index) in steps" :key="index">
+                            <div class="flex items-start gap-2 rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
+                                <span class="mt-1.5 grid size-7 shrink-0 place-items-center rounded-lg bg-brand-100 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300" x-text="index + 1"></span>
+                                <div class="min-w-0 flex-1 space-y-1.5">
+                                    <input type="text" :name="`schedule[${index}][title]`" x-model="step.title" maxlength="100" placeholder="Étape (ex. Finale sur scène)"
+                                        class="block w-full rounded-lg border-0 bg-white py-2 text-sm font-semibold text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-white dark:ring-white/10">
+                                    <input type="datetime-local" :name="`schedule[${index}][date]`" x-model="step.date"
+                                        class="block w-full rounded-lg border-0 bg-white py-1.5 text-xs text-slate-700 ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10">
+                                    <input type="text" :name="`schedule[${index}][details]`" x-model="step.details" maxlength="255" placeholder="Précisions (facultatif)"
+                                        class="block w-full rounded-lg border-0 bg-white py-1.5 text-xs text-slate-700 ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10">
+                                </div>
+                                <div class="flex flex-col gap-0.5">
+                                    <button type="button" x-on:click="index > 0 && steps.splice(index - 1, 0, steps.splice(index, 1)[0])" x-show="index > 0" class="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-brand-600 dark:hover:bg-white/10" title="Monter"><x-ui.icon name="chevron-up" variant="m" class="size-4" /></button>
+                                    <button type="button" x-on:click="steps.splice(index, 1)" x-show="steps.length > 1" class="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" title="Retirer"><x-ui.icon name="trash" variant="m" class="size-4" /></button>
+                                </div>
+                            </div>
+                        </template>
+                        <button type="button" x-on:click="steps.push({ title: '', date: null, details: '' })" x-show="steps.length < 30"
+                            class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 dark:border-white/15 dark:text-slate-300">
+                            <x-ui.icon name="plus" variant="m" class="size-4" /> Ajouter une étape
+                        </button>
+                        @error('schedule.*')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
+                    </fieldset>
+                </x-ui.card>
+
                 @if ($canUpdate)
                     <div class="flex justify-end xl:col-span-3">
                         <x-ui.button type="submit" variant="primary" icon="check">Enregistrer les modifications</x-ui.button>
@@ -465,102 +539,15 @@
         </x-ui.tab-panel>
     </x-ui.tabs>
 
-    {{-- Create phase --}}
+    {{-- Create / edit phases --}}
     @if ($canUpdate)
-        <x-ui.slide-over name="create-phase" title="Nouvelle phase" description="Les règles restent modifiables jusqu'au démarrage de la phase." icon="rectangle-stack"
-            :show="$errors->hasAny(['type', 'qualifiers_per_group']) || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'rules.'))">
-            <form method="POST" action="{{ route('organizers.competitions.phases.store', [$organizer, $competition]) }}" class="space-y-6"
-                x-data="{
-                    type: @js(old('type', PhaseType::SingleElimination->value)),
-                    vote: @js(old('rules.vote_mode', VoteMode::Mixed->value)),
-                    jury: {{ (int) old('rules.jury_weight', 50) }},
-                    mode: @js(old('mode', $competition->mode === CompetitionMode::Hybrid ? CompetitionMode::Online->value : '')),
-                    inherited: @js($competition->mode->value),
-                    get online() { return (this.mode || this.inherited) === 'en_ligne' },
-                }">
-                @csrf
-                <input type="hidden" name="_form" value="create-phase">
-                <x-ui.field label="Format">
-                    <div class="grid gap-2">
-                        @foreach (PhaseType::cases() as $type)
-                            <label class="cursor-pointer">
-                                <input type="radio" name="type" value="{{ $type->value }}" x-model="type" class="peer sr-only">
-                                <span class="flex items-center gap-3 rounded-xl p-3 ring-1 ring-slate-200 transition peer-checked:bg-brand-50 peer-checked:ring-2 peer-checked:ring-brand-500 hover:bg-slate-50 dark:ring-white/10 dark:peer-checked:bg-brand-500/10">
-                                    <span class="grid size-9 place-items-center rounded-lg bg-white text-brand-600 shadow-soft ring-1 ring-slate-900/5 dark:bg-white/10 dark:text-brand-300"><x-ui.icon :name="$type->icon()" class="size-5" /></span>
-                                    <span>
-                                        <span class="block text-sm font-semibold text-slate-900 dark:text-white">{{ $type->label() }}</span>
-                                        <span class="block text-xs text-slate-500">{{ match ($type) { PhaseType::Groups => 'Tout le monde s\'affronte dans sa poule, les meilleurs se qualifient.', PhaseType::SingleElimination => 'Une défaite et c\'est fini. Bracket généré avec byes.', PhaseType::DoubleElimination => 'Deux défaites pour être éliminé, tableau des perdants.' } }}</span>
-                                    </span>
-                                </span>
-                            </label>
-                        @endforeach
-                    </div>
-                </x-ui.field>
-
-                <div x-show="type === 'poules'" x-collapse class="grid gap-4 sm:grid-cols-3">
-                    <x-ui.input name="rules[group_count]" type="number" min="1" label="Nombre de poules" value="2" />
-                    <x-ui.input name="qualifiers_per_group" type="number" min="1" label="Qualifiés / poule" value="2" />
-                    <x-ui.select name="rules[draw_method]" label="Tirage" :options="\App\Enums\GroupDrawMethod::options()" />
-                    <label class="flex items-center gap-2 text-sm text-slate-600 sm:col-span-3 dark:text-slate-300">
-                        <input type="checkbox" name="rules[allow_draws]" value="1" class="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"> Autoriser les matchs nuls
-                    </label>
-                </div>
-                <label x-show="type === 'double_elimination'" x-collapse class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                    <input type="checkbox" name="rules[grand_final_reset]" value="1" class="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"> Grande finale « reset » si le finaliste du tableau des perdants gagne
-                </label>
-
-                <div class="grid gap-4 sm:grid-cols-3">
-                    <x-ui.select name="mode" label="Mode" x-model="mode"
-                        :options="collect(CompetitionMode::options())->except(CompetitionMode::Hybrid->value)->all()"
-                        :placeholder="$competition->mode === CompetitionMode::Hybrid ? null : 'Hérité ('.$competition->mode->label().')'"
-                        :hint="$competition->mode === CompetitionMode::Hybrid ? 'Compétition mixte : choisissez pour chaque phase.' : null" />
-                    <x-ui.input name="rules[rounds]" type="number" min="1" max="10" label="Passages" value="1" />
-                    <x-ui.input name="rules[turn_duration]" type="number" min="15" label="Durée d'un passage" value="60" suffix="sec" />
-                </div>
-
-                <x-ui.field label="Qui décide ?">
-                    <div class="grid grid-cols-3 gap-2">
-                        @foreach (VoteMode::cases() as $mode)
-                            <label class="cursor-pointer">
-                                <input type="radio" name="rules[vote_mode]" value="{{ $mode->value }}" x-model="vote" class="peer sr-only">
-                                <span class="block rounded-xl p-2.5 text-center text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-checked:ring-2 peer-checked:ring-brand-500 dark:text-slate-300 dark:ring-white/10 dark:peer-checked:bg-brand-500/10 dark:peer-checked:text-brand-200">{{ $mode->label() }}</span>
-                            </label>
-                        @endforeach
-                    </div>
-                </x-ui.field>
-
-                <div x-show="vote === 'mixte'" x-collapse class="rounded-xl bg-slate-50 p-4 dark:bg-white/[0.03]">
-                    <div class="flex justify-between text-sm font-medium">
-                        <span class="text-brand-700 dark:text-brand-300">Jury <span x-text="jury"></span> %</span>
-                        <span class="text-fuchsia-600 dark:text-fuchsia-300">Public <span x-text="100 - jury"></span> %</span>
-                    </div>
-                    <input type="range" min="5" max="95" step="5" x-model.number="jury" class="mt-3 w-full accent-brand-600">
-                    <input type="hidden" name="rules[jury_weight]" :value="jury">
-                    <input type="hidden" name="rules[public_weight]" :value="100 - jury">
-                </div>
-
-                <div x-show="online" x-collapse class="space-y-4 rounded-xl bg-slate-50 p-4 dark:bg-white/[0.03]">
-                    <p class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100"><x-ui.icon name="cloud-arrow-up" class="size-5 text-brand-600" /> Soumissions en ligne</p>
-                    <p class="-mt-2 text-xs text-slate-500">Une soumission par participant et par étape. Sans soumission à la date limite : forfait.</p>
-                    <div class="flex flex-wrap gap-4">
-                        @foreach (\App\Enums\MediaType::cases() as $type)
-                            <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                <input type="checkbox" name="rules[media_types][]" value="{{ $type->value }}" checked class="size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"> {{ $type->label() }}
-                            </label>
-                        @endforeach
-                    </div>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <x-ui.input name="rules[media_max_duration]" type="number" min="10" max="1800" label="Durée maximale" value="180" suffix="sec" />
-                        <x-ui.input name="rules[media_max_size_mb]" type="number" min="1" max="2048" label="Taille maximale" value="200" suffix="Mo" />
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-2 border-t border-slate-100 pt-5 dark:border-white/10">
-                    <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'create-phase')">Annuler</x-ui.button>
-                    <x-ui.button type="submit" variant="primary" icon="plus">Ajouter la phase</x-ui.button>
-                </div>
-            </form>
-        </x-ui.slide-over>
+        @if ($canAddPhase)
+            <x-bo.phase-form :competition="$competition" :organizer="$organizer" />
+        @endif
+        @foreach ($competition->phases->reject->isFrozen() as $editable)
+            <x-bo.phase-form :competition="$competition" :organizer="$organizer" :phase="$editable"
+                :types="$competition->phases->contains(fn ($p) => $p->position > $editable->position) ? [PhaseType::Groups] : PhaseType::cases()" />
+        @endforeach
 
         <x-ui.modal name="invite-judge" title="Ajouter un juré" description="Si le numéro n'a pas encore de compte, il est créé et le juré reçoit un mot de passe provisoire par SMS. Il notera depuis l'application." icon="scale" :show="$errors->hasAny(['phone', 'country_id'])">
             <form method="POST" action="{{ route('organizers.competitions.judges.store', [$organizer, $competition]) }}" class="space-y-4">

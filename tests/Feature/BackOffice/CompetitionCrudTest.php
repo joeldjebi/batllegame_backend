@@ -3,12 +3,15 @@
 use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
 use App\Enums\OrganizerRole;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
 use App\Enums\PhaseStatus;
 use App\Enums\PhaseType;
 use App\Models\Competition;
 use App\Models\Criterion;
 use App\Models\Organizer;
 use App\Models\Participant;
+use App\Models\Payment;
 use App\Models\Phase;
 use App\Models\User;
 
@@ -67,11 +70,26 @@ it('runs the full CRUD: create, read, update, delete', function () {
         ->and(Competition::withTrashed()->find($competition->id))->not->toBeNull();
 });
 
-it('refuses to delete a competition that is open or running', function () {
-    $open = Competition::factory()->for($this->organizer)->create();
+it('deletes any competition until a participant has paid, then only lets it be cancelled', function () {
+    $open = Competition::factory()->for($this->organizer)->create(['status' => CompetitionStatus::Registration, 'entry_fee' => 5000]);
+    $unpaid = Participant::factory()->for($open)->create();
 
-    $this->actingAs($this->owner, 'web')->delete(route('organizers.competitions.destroy', [$this->organizer, $open]))->assertForbidden();
-    expect($open->fresh())->not->toBeNull();
+    // Registered but nobody paid: the owner can delete it.
+    $this->actingAs($this->owner, 'web')->get($this->index)->assertSee('1 inscrit(s) seront retirés', false);
+    $this->actingAs($this->owner, 'web')->delete(route('organizers.competitions.destroy', [$this->organizer, $open]))->assertRedirect($this->index);
+    expect(Competition::find($open->id))->toBeNull();
+
+    $paid = Competition::factory()->for($this->organizer)->create(['status' => CompetitionStatus::InProgress, 'entry_fee' => 5000]);
+    $participant = Participant::factory()->for($paid)->create();
+    $payment = new Payment;
+    $payment->forceFill([
+        'competition_id' => $paid->id, 'participant_id' => $participant->id, 'user_id' => $participant->user_id, 'amount' => 5000, 'currency' => 'XOF',
+        'method' => PaymentMethod::Wave, 'provider' => 'simulation', 'reference' => 'BG-TEST1', 'status' => PaymentStatus::Paid, 'paid_at' => now(),
+    ])->save();
+
+    $this->actingAs($this->owner, 'web')->delete(route('organizers.competitions.destroy', [$this->organizer, $paid]))->assertForbidden();
+    $this->actingAs($this->owner, 'web')->get($this->index)->assertSee('des participants ont déjà payé', false);
+    expect($paid->fresh())->not->toBeNull();
 });
 
 it('duplicates a competition as a draft with its presentation, criteria and phases only', function () {

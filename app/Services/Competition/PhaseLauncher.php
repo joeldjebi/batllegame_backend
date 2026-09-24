@@ -24,6 +24,8 @@ class PhaseLauncher
         private QualificationService $qualification,
         private PhaseProgress $progress,
         private StageBuilder $stages,
+        private PhaseCalendar $calendar,
+        private StageService $stageService,
     ) {}
 
     /**
@@ -68,6 +70,8 @@ class PhaseLauncher
             };
 
             $this->stages->build($phase);
+            // Dates planned before the start (« Calendrier prévu ») go to the real stages.
+            $this->calendar->apply($phase, $this->stageService);
 
             // A bracket made only of byes may already be decided.
             $this->progress->finishIfComplete($phase);
@@ -110,13 +114,19 @@ class PhaseLauncher
      */
     private function ensureEnoughEntrants(Phase $phase, Collection $entrants): void
     {
-        // Each group needs two participants to play, and enough members to qualify.
-        $required = $phase->type === PhaseType::Groups
-            ? $phase->rules->groupCount * max(2, $phase->qualifiers_per_group ?? 1)
-            : 2;
+        if ($phase->type !== PhaseType::Groups) {
+            if ($entrants->count() < 2) {
+                throw CompetitionFlowException::notEnoughEntrants(2, $entrants->count());
+            }
 
-        if ($entrants->count() < $required) {
-            throw CompetitionFlowException::notEnoughEntrants($required, $entrants->count());
+            return;
+        }
+
+        // Same rules as the back-office preview (GroupPlan): each group plays and qualifies fewer than its members.
+        $problems = GroupPlan::problems($entrants->count(), (int) $phase->rules->groupCount, $phase->qualifiers_per_group ?? 1);
+
+        if ($problems !== []) {
+            throw CompetitionFlowException::groupFormat($problems[0]);
         }
     }
 }

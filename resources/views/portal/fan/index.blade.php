@@ -16,7 +16,7 @@
                     </div>
                     <div class="p-5">
                         <h2 class="font-display font-semibold group-hover:text-brand-700 dark:group-hover:text-brand-300">{{ $competition->name }}</h2>
-                        <p class="mt-1 text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }} · {{ $competition->mode->label() }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }} · {{ $competition->mode->label() }}{{ $competition->locationLabel() ? ' · '.$competition->locationLabel() : '' }}</p>
                         <p class="mt-3 text-xs text-slate-400">{{ $competition->participants_count }} artiste(s)</p>
                     </div>
                 </a>

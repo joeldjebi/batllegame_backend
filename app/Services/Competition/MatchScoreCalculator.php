@@ -9,7 +9,7 @@ use App\Models\BattleMatch;
  *
  *  - jury score (0-100): for each judge, weighted average of the criteria
  *    normalized by their max points; then the mean over the judges who scored.
- *  - public score (0-100): share of the match votes; 50/50 when nobody voted.
+ *  - public score (0-100): share of the match votes; an even split when nobody voted.
  *  - final score: jury and public combined with the phase weights.
  */
 class MatchScoreCalculator
@@ -20,7 +20,8 @@ class MatchScoreCalculator
     public function calculate(BattleMatch $match): array
     {
         $rules = $match->phase->rules;
-        $participantIds = $match->slots()->whereNotNull('participant_id')->orderBy('slot')->pluck('participant_id')->all();
+        // Forfeited artists (no submission) are out of the scores.
+        $participantIds = $match->activeSlots()->orderBy('slot')->pluck('participant_id')->all();
 
         $jury = $this->juryScores($match, $participantIds);
         $public = $this->publicScores($match, $participantIds);

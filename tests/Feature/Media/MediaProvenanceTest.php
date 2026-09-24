@@ -72,7 +72,7 @@ it('stores the provenance of an entry and compares it with the pre-selection per
     config(['media.disk' => 'public']);
     fakeMediaDuration(60);
     ['competition' => $competition, 'artists' => $artists, 'owner' => $owner, 'organizer' => $organizer] = competitionWithPreselection(2, settings: ['submissions_require_approval' => true]);
-    $competition->preselection->update(['starts_at' => now()->subDays(3)]);
+    $competition->preselection->forceFill(['created_at' => now()->subDays(3)])->save();
 
     $upload = fn (Carbon $recorded) => new UploadedFile(fakeMp4(['created' => $recorded, 'handler' => 'Core Media Video', 'pascal' => true, 'keys' => [
         'com.apple.quicktime.make' => 'Apple', 'com.apple.quicktime.model' => 'iPhone 13', 'com.apple.quicktime.creationdate' => $recorded->toIso8601String(),

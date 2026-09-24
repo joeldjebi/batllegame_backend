@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
+use App\Http\Requests\Portal\ProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\AvatarService;
 use App\Services\PhoneVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,8 @@ class AuthController extends Controller
             'phone' => $request->e164Phone(),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
+            'city_id' => $request->validated('city_id'),
+            'commune_id' => $request->validated('commune_id'),
         ]);
 
         $verification->sendCode($user);
@@ -65,6 +69,14 @@ class AuthController extends Controller
         $request->user()->forceFill(['password' => $validated['password'], 'must_change_password' => false])->save();
 
         return new UserResource($request->user()->load('country'));
+    }
+
+    /**
+     * Name, email, city and profile photo (multipart « photo », or remove_photo=1).
+     */
+    public function updateProfile(ProfileRequest $request, AvatarService $avatars): UserResource
+    {
+        return new UserResource($avatars->updateProfile($request->user(), $request)->load('country'));
     }
 
     public function me(Request $request): UserResource

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('countries', [CountryController::class, 'index'])->name('api.countries.index');
+Route::get('locations', [CountryController::class, 'locations'])->name('api.locations.index');
 
 // Socket.IO: server URL + signed token for the private channels of the user.
 Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');
@@ -34,6 +35,7 @@ Route::prefix('auth')->name('api.auth.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('me', [AuthController::class, 'me'])->name('me');
+        Route::post('profile', [AuthController::class, 'updateProfile'])->middleware('throttle:10,1')->name('profile');
         Route::post('phone/send-code', [PhoneVerificationController::class, 'send'])->middleware('throttle:3,1')->name('phone.send');
         Route::post('phone/verify', [PhoneVerificationController::class, 'verify'])->middleware('throttle:10,1')->name('phone.verify');
         Route::post('password', [AuthController::class, 'changePassword'])->middleware('throttle:6,1')->name('password');

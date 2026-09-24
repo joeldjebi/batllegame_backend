@@ -30,7 +30,7 @@
                     <a href="{{ route('jury.competitions.matches.show', [$competition, $match]) }}" class="flex flex-wrap items-center gap-4 px-5 py-4 transition hover:bg-slate-50 dark:hover:bg-white/[0.03]">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase">{{ $match->stage?->name ?? 'Match' }} · {{ $match->phase->effectiveMode()->label() }}</p>
-                            <p class="mt-1 font-semibold">{{ $match->slots->map(fn ($s) => $s->participant?->stage_name ?? '—')->implode(' vs ') }}</p>
+                            <p class="mt-1 font-semibold">{{ $match->title() }}</p>
                         </div>
                         <x-ui.badge :value="$match->status" />
                         @if ($match->status === MatchStatus::Voting)

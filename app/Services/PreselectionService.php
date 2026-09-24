@@ -7,6 +7,7 @@ use App\Enums\PerformanceStatus;
 use App\Enums\PreselectionState;
 use App\Exceptions\CompetitionFlowException;
 use App\Jobs\ProcessSubmission;
+use App\Jobs\RankPreselection;
 use App\Models\Competition;
 use App\Models\Judge;
 use App\Models\Participant;
@@ -38,7 +39,7 @@ class PreselectionService
     /**
      * Create or update the pre-selection of a competition.
      *
-     * @param  array{starts_at: string, ends_at: string, vote_ends_at?: ?string, deliberation_hours?: int, rules?: array<string, mixed>}  $data
+     * @param  array{ends_at: string, vote_ends_at?: ?string, deliberation_hours?: int, rules?: array<string, mixed>}  $data
      */
     public function configure(Competition $competition, array $data): Preselection
     {
@@ -71,9 +72,11 @@ class PreselectionService
             throw CompetitionFlowException::preselectionClosed();
         }
 
-        // Paid competitions: never accept a performance before the fee is paid.
-        if ($participant->status !== ParticipantStatus::Registered || ! $participant->hasPaid()) {
-            throw CompetitionFlowException::preselectionNotEligible();
+        // Fee paid and registration validated (when the organizer approves registrations).
+        if (! $participant->canEnterPreselection()) {
+            throw $participant->awaitsApproval() && $participant->hasPaid()
+                ? CompetitionFlowException::registrationNotApproved()
+                : CompetitionFlowException::preselectionNotEligible();
         }
 
         return DB::transaction(function () use ($participant, $preselection, $file, $clientModifiedAt): PreselectionSubmission {
@@ -149,6 +152,18 @@ class PreselectionService
      */
     public function score(Judge $judge, PreselectionSubmission $entry, array $input): void
     {
+        $workload = app(JuryWorkload::class);
+
+        // A judge scores once: the notes are final (the organizer can reopen them).
+        if ($workload->hasScored($judge, $entry)) {
+            throw CompetitionFlowException::scoreLocked();
+        }
+
+        $workload->sync($entry->preselection);
+        if (! $workload->isAssigned($judge, $entry)) {
+            throw CompetitionFlowException::entryNotAssigned();
+        }
+
         $criteria = $entry->competition->criteria()->get()->keyBy('id');
 
         $validated = Validator::make($input, [
@@ -174,6 +189,22 @@ class PreselectionService
                 );
             }
         });
+
+        // The ranking (jury / final scores) follows the scores, off the request.
+        RankPreselection::dispatch($entry->preselection);
+    }
+
+    /**
+     * Organizer: erase a judge's notes on an entry (input mistake) so they can score it again.
+     */
+    public function reopenScore(PreselectionSubmission $entry, Judge $judge): void
+    {
+        if (! $entry->preselection->acceptsScores()) {
+            throw CompetitionFlowException::preselectionClosed();
+        }
+
+        PreselectionScore::query()->where('submission_id', $entry->id)->where('judge_id', $judge->id)->delete();
+        $this->rank($entry->preselection);
     }
 
     /**
@@ -258,7 +289,7 @@ class PreselectionService
             $competition->participants()->whereIn('id', $selectedIds)->update(['status' => ParticipantStatus::Validated]);
             $competition->participants()
                 ->whereNotIn('id', $selectedIds)
-                ->whereIn('status', [ParticipantStatus::Registered, ParticipantStatus::PaymentPending])
+                ->whereIn('status', [ParticipantStatus::Registered, ParticipantStatus::PaymentPending, ParticipantStatus::Validated])
                 ->update(['status' => ParticipantStatus::NotSelected]);
 
             $preselection->forceFill(['published_at' => now()])->save();

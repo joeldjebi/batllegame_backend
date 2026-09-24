@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Portal\Artist\CompetitionController as ArtistCompetitionController;
 use App\Http\Controllers\Portal\Artist\DashboardController as ArtistDashboardController;
 use App\Http\Controllers\Portal\Artist\ParticipationController as ArtistParticipationController;
 use App\Http\Controllers\Portal\Artist\PaymentController as ArtistPaymentController;
 use App\Http\Controllers\Portal\Artist\PreselectionController as ArtistPreselectionController;
+use App\Http\Controllers\Portal\Artist\ProfileController as ArtistProfileController;
 use App\Http\Controllers\Portal\Fan\CompetitionController as FanCompetitionController;
 use App\Http\Controllers\Portal\Fan\PreselectionController as FanPreselectionController;
 use App\Http\Controllers\Portal\Fan\VerificationController;
@@ -48,6 +50,7 @@ Route::prefix('jury')->name('jury.')->group(function () use ($authRoutes) {
             Route::get('competitions/{competition:slug}/matches/{match}', [JuryCompetitionController::class, 'match'])->name('competitions.matches.show');
             Route::post('competitions/{competition:slug}/matches/{match}/scores', [JuryCompetitionController::class, 'score'])->name('competitions.matches.scores.store');
             Route::get('competitions/{competition:slug}/preselection', [JuryPreselectionController::class, 'index'])->name('competitions.preselection');
+            Route::get('competitions/{competition:slug}/preselection/{entry}', [JuryPreselectionController::class, 'show'])->name('competitions.preselection.entries.show');
             Route::post('competitions/{competition:slug}/preselection/{entry}/scores', [JuryPreselectionController::class, 'score'])->name('competitions.preselection.scores.store');
         });
     });
@@ -60,6 +63,9 @@ Route::prefix('artiste')->name('artist.')->group(function () use ($authRoutes) {
     Route::middleware(['auth:member', 'deny.admins'])->scopeBindings()->group(function () {
         Route::post('logout', [PortalAuthController::class, 'destroy'])->name('logout');
         Route::get('/', ArtistDashboardController::class)->name('dashboard');
+        Route::get('profil', [ArtistProfileController::class, 'edit'])->name('profile.edit');
+        Route::get('competitions/{competition:slug}', [ArtistCompetitionController::class, 'show'])->name('competitions.show');
+        Route::put('profil', [ArtistProfileController::class, 'update'])->middleware('throttle:10,1')->name('profile.update');
         Route::post('competitions/{competition:slug}/inscription', [ArtistParticipationController::class, 'register'])->name('competitions.register');
         Route::post('competitions/{competition:slug}/stages/{stage}/soumission', [ArtistParticipationController::class, 'submit'])
             ->middleware('throttle:10,1')
@@ -79,6 +85,8 @@ Route::prefix('vote')->name('fan.')->group(function () use ($authRoutes) {
     Route::scopeBindings()->group(function () {
         Route::get('/', [FanCompetitionController::class, 'index'])->name('dashboard');
         Route::get('competitions/{competition:slug}', [FanCompetitionController::class, 'show'])->name('competitions.show');
+        // Shareable page of one pre-selection entry (link previews, like button).
+        Route::get('competitions/{competition:slug}/prestations/{entry}', [FanPreselectionController::class, 'show'])->name('competitions.preselection.entry');
 
         Route::middleware(['auth:member', 'deny.admins'])->group(function () {
             Route::post('logout', [PortalAuthController::class, 'destroy'])->name('logout');

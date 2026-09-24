@@ -61,7 +61,7 @@
 
         <x-ui.card title="À vérifier" icon="clock" :padding="false">
             <x-slot:actions><x-ui.button size="sm" variant="ghost" :href="route('admin.organizers.index', ['status' => 'en_attente'])" icon-right="arrow-right">Tout voir</x-ui.button></x-slot:actions>
-            <div class="p-2">
+            <div class="p-2" data-live="admin-pending-organizers">
                 @forelse ($pendingOrganizers as $organizer)
                     @php($owner = $organizer->members->first()?->user)
                     <a href="{{ route('admin.organizers.show', $organizer) }}" class="flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50 dark:hover:bg-white/[0.03]">
@@ -125,4 +125,58 @@
             </div>
         </x-ui.card>
     </div>
+
+    @php($hasSeeded = array_sum(array_slice($seeded['all'], 0, 3)) > 0)
+    @if ($hasSeeded)
+        <x-ui.card title="Données de test" icon="beaker" class="mt-6"
+            description="Créées par les seeders locaux (compétitions de démo, faux artistes, jurés et fans). À vider avant la mise en service.">
+            <x-slot:actions>
+                <x-ui.button size="sm" variant="danger-soft" icon="trash" x-data x-on:click="$dispatch('open-modal', 'purge-demo-data')">Vider les données de test</x-ui.button>
+            </x-slot:actions>
+            <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                @foreach ([['Compétitions de démo', $seeded['demo']['competitions'], 'trophy'], ['Comptes générés', $seeded['demo']['users'], 'users'], ['Comptes de test', $seeded['all']['users'] - $seeded['demo']['users'], 'identification'], ['Organisateur de test', $seeded['all']['organizers'], 'building-office-2']] as [$label, $value, $icon])
+                    <div class="rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-900/5 dark:bg-white/5 dark:ring-white/10">
+                        <dt class="flex items-center gap-1.5 text-xs text-slate-500"><x-ui.icon :name="$icon" variant="m" class="size-4 shrink-0" /><span class="truncate">{{ $label }}</span></dt>
+                        <dd class="mt-1 font-display text-lg font-bold tabular-nums">{{ $fmt($value) }}</dd>
+                    </div>
+                @endforeach
+            </dl>
+        </x-ui.card>
+
+        @push('modals')
+            <x-ui.modal name="purge-demo-data" title="Vider les données de test ?" icon="trash" danger
+                description="Suppression définitive, sans retour possible. Les comptes réels, les super-admins et leurs compétitions ne sont jamais touchés.">
+                <form method="POST" action="{{ route('admin.demo-data.destroy') }}" class="space-y-4" x-data="{ all: @js((bool) old('with_accounts')), typed: '' }">
+                    @csrf @method('DELETE')
+                    <input type="hidden" name="_form" value="purge-demo-data">
+
+                    <ul class="space-y-1.5 rounded-xl bg-slate-50 p-3 text-sm text-slate-700 dark:bg-white/5 dark:text-slate-300">
+                        <li class="flex gap-2"><x-ui.icon name="check" variant="m" class="mt-0.5 size-4 shrink-0 text-rose-500" /><span><strong>{{ $seeded['demo']['competitions'] }}</strong> compétition(s) de démo avec tout leur contenu : inscriptions, paiements simulés, matchs, votes, likes, notes, vidéos.</span></li>
+                        <li class="flex gap-2"><x-ui.icon name="check" variant="m" class="mt-0.5 size-4 shrink-0 text-rose-500" /><span><strong x-text="all ? @js($fmt($seeded['all']['users'])) : @js($fmt($seeded['demo']['users']))">{{ $fmt($seeded['demo']['users']) }}</strong> compte(s) <span x-text="all ? 'générés et de test' : 'générés (faux artistes, jurés, fans)'">générés (faux artistes, jurés, fans)</span>.</span></li>
+                        <li class="flex gap-2" x-show="all" x-cloak><x-ui.icon name="check" variant="m" class="mt-0.5 size-4 shrink-0 text-rose-500" /><span>L'organisateur de test et <strong>toutes</strong> ses compétitions ({{ $seeded['all']['competitions'] }} au total).</span></li>
+                        @if ($seeded['all']['kept_users'])
+                            <li class="flex gap-2 text-slate-500"><x-ui.icon name="shield-check" variant="m" class="mt-0.5 size-4 shrink-0" /><span>{{ $seeded['all']['kept_users'] }} compte(s) conservé(s) : encore utilisés dans une vraie compétition.</span></li>
+                        @endif
+                    </ul>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:ring-white/10 dark:hover:bg-white/[0.03]">
+                        <input type="checkbox" name="with_accounts" value="1" x-model="all" class="mt-0.5 size-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                        <span>
+                            <span class="block text-sm font-medium text-slate-800 dark:text-slate-100">Supprimer aussi les comptes de test</span>
+                            <span class="mt-0.5 block text-xs text-slate-500">L'organisateur de test et les comptes SEED_* (juré, artiste, public). Pour les recréer : <code>php artisan db:seed --class=LocalAccountsSeeder</code>.</span>
+                        </span>
+                    </label>
+
+                    <x-ui.input name="confirmation" label="Saisissez VIDER pour confirmer" x-model="typed" autocomplete="off" />
+
+                    <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                        <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', 'purge-demo-data')">Annuler</x-ui.button>
+                        <x-ui.button type="submit" variant="danger" icon="trash" x-bind:disabled="typed.trim().toUpperCase() !== 'VIDER'">Vider définitivement</x-ui.button>
+                    </div>
+                </form>
+            </x-ui.modal>
+        @endpush
+    @endif
+
+    <x-realtime :channels="[\App\Realtime\Channel::ADMIN]" />
 </x-layouts.app>

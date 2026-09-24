@@ -7,6 +7,9 @@ use App\Enums\CompetitionMode;
 use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
 use App\Enums\ParticipantStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\SeedKind;
+use App\Models\Concerns\HasLocation;
 use App\Models\Concerns\HasUniqueSlug;
 use App\Support\RichText;
 use Database\Factories\CompetitionFactory;
@@ -23,11 +26,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * organizer_id and created_by are set explicitly by the application, never mass assigned.
  */
-#[Fillable(['name', 'slug', 'description', 'prizes', 'discipline', 'mode', 'status', 'registration_ends_at', 'max_participants', 'entry_fee', 'currency', 'settings'])]
+#[Fillable(['name', 'slug', 'description', 'prizes', 'discipline', 'mode', 'status', 'registration_ends_at', 'max_participants', 'entry_fee', 'currency', 'settings', 'city_id', 'commune_id', 'schedule', 'regulations'])]
 class Competition extends Model
 {
     /** @use HasFactory<CompetitionFactory> */
-    use HasFactory, HasUniqueSlug, SoftDeletes;
+    use HasFactory, HasLocation, HasUniqueSlug, SoftDeletes;
 
     /**
      * Mirrors the column defaults so enum-based helpers work before a refresh.
@@ -42,6 +45,7 @@ class Competition extends Model
     {
         return [
             'discipline' => Discipline::class,
+            'seed_kind' => SeedKind::class,
             'mode' => CompetitionMode::class,
             'status' => CompetitionStatus::class,
             'registration_ends_at' => 'datetime',
@@ -49,6 +53,7 @@ class Competition extends Model
             'entry_fee' => 'integer',
             'settings' => CompetitionSettings::class,
             'prizes' => 'array',
+            'schedule' => 'array',
         ];
     }
 
@@ -60,6 +65,25 @@ class Competition extends Model
     protected function description(): Attribute
     {
         return Attribute::make(set: fn (?string $value) => RichText::sanitize($value));
+    }
+
+    protected function regulations(): Attribute
+    {
+        return Attribute::make(set: fn (?string $value) => RichText::sanitize($value));
+    }
+
+    /**
+     * Schedule steps in display order, empty rows removed.
+     *
+     * @return list<array{title: string, date: ?string, details: ?string}>
+     */
+    public function scheduleList(): array
+    {
+        // Fixed key order (jsonb does not keep it).
+        return array_values(array_map(
+            fn (array $step) => ['title' => $step['title'], 'date' => $step['date'] ?? null, 'details' => $step['details'] ?? null],
+            array_filter((array) $this->schedule, fn ($step) => filled($step['title'] ?? null)),
+        ));
     }
 
     /**
@@ -147,6 +171,16 @@ class Competition extends Model
         return $this->preselection()->exists() || $this->settings->registrationRequiresApproval
             ? ParticipantStatus::Registered
             : ParticipantStatus::Validated;
+    }
+
+    /**
+     * At least one participant paid its entry fee (then the competition can only be cancelled, not deleted).
+     */
+    public function hasPaidPayments(): bool
+    {
+        return isset($this->attributes['paid_payments_count'])
+            ? $this->attributes['paid_payments_count'] > 0
+            : $this->payments()->where('status', PaymentStatus::Paid)->exists();
     }
 
     public function requiresPayment(): bool

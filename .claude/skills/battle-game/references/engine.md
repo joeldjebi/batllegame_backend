@@ -122,3 +122,25 @@ input)` (all criteria, max points), `RegistrationService::register(user, competi
 - Shown to organizers only by `x-bo.media-provenance` (preselection panel, stage panel). Indication, never an automatic
   rejection. GPS coordinates are never stored.
 
+
+
+## Groups are ranking rounds (no head-to-head)
+
+`GroupDrawService` creates **one match per group holding all its members** (N slots). Nobody faces anybody: each
+artist performs, `MatchCloser::close()` stores the scores and `rankGroup()` sets `match_participants.rank` (final,
+then tie breakers, then id), no winner. Online: `StageService::applyForfeits()` flags `is_forfeit` on the slots
+without a submission (out of the scores and the ranking); `activeSlots()` = filled and not forfeited.
+Public vote: **one per phase** for group matches (`VotingService`, phase row locked), artists of the phase cannot
+vote. A group phase is never auto-finished (`PhaseProgress` skips it): `GroupResultsService::publish()` (organizer,
+all groups closed) copies ranks to `group_participants`, eliminates non-qualifiers, sets `results_published_at`,
+finishes the phase and notifies. `BattleMatch::resultsArePublic()` hides group scores/ranks until then.
+`GroupPlan` holds the format arithmetic (sizes, blocking problems, expected entrants) mirrored by `groupPlanner` (JS).
+
+## Planned calendar and automatic final
+
+Creating a group phase also creates the following single-elimination phase (`PhaseController::store`, same mode and
+rules). `PhaseCalendar::stageNames()` lists the stages a phase will have before it starts (groups: « Poules »;
+single elimination: `RoundLabel` names for ceil(log2(expected entrants)) rounds, expected = previous groups'
+qualifiers, else `rules.expected_entrants`, else `GroupPlan::expectedEntrants`). `phases.calendar` (jsonb) stores
+dates **by stage name** in UTC; `PhaseLauncher` calls `PhaseCalendar::apply()` right after `StageBuilder`, through
+`StageService::schedule()`. Double elimination is not pre-planned (winners/losers rounds interleave).

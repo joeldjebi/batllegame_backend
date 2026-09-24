@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\Auth\LoginController;
 use App\Http\Controllers\Admin\CompetitionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DemoDataController;
+use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\OrganizerController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
@@ -37,4 +39,20 @@ Route::middleware(['auth:admin', 'platform.admin', 'admin.idle'])->group(functio
 
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
+
+    Route::delete('demo-data', [DemoDataController::class, 'destroy'])->name('demo-data.destroy');
+
+    // Reference places: countries > cities > communes.
+    Route::prefix('lieux')->name('locations.')->controller(LocationController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('pays', 'storeCountry')->name('countries.store');
+        Route::put('pays/{country}', 'updateCountry')->name('countries.update');
+        Route::delete('pays/{country}', 'destroyCountry')->name('countries.destroy');
+        Route::post('pays/{country}/villes', 'storeCities')->name('cities.store');
+        Route::put('villes/{city}', 'updateCity')->name('cities.update');
+        Route::delete('villes/{city}', 'destroyCity')->name('cities.destroy');
+        Route::post('villes/{city}/communes', 'storeCommunes')->name('communes.store');
+        Route::put('communes/{commune}', 'updateCommune')->name('communes.update');
+        Route::delete('communes/{commune}', 'destroyCommune')->name('communes.destroy');
+    });
 });

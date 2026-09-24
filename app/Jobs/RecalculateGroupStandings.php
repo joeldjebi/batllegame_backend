@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\Group;
 use App\Services\Competition\GroupStandingsCalculator;
-use App\Services\Competition\PhaseProgress;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,9 +25,8 @@ class RecalculateGroupStandings implements ShouldBeUnique, ShouldQueue
         return (string) $this->group->id;
     }
 
-    public function handle(GroupStandingsCalculator $standings, PhaseProgress $progress): void
+    public function handle(GroupStandingsCalculator $standings): void
     {
         $standings->recalculate($this->group);
-        $progress->finishIfComplete($this->group->phase);
     }
 }

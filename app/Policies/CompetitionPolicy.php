@@ -74,8 +74,9 @@ class CompetitionPolicy
     {
         $access = $this->organizerAccess($user, $competition->organizer, OrganizerPermission::DeleteCompetitions);
 
-        if ($access->allowed() && ! in_array($competition->status, [CompetitionStatus::Draft, CompetitionStatus::Cancelled], true)) {
-            return Response::deny('Seule une compétition en brouillon ou annulée peut être supprimée.');
+        // Money received: the competition must be cancelled (participants to refund), not deleted.
+        if ($access->allowed() && $competition->hasPaidPayments()) {
+            return Response::deny('Des participants ont déjà payé : annulez la compétition plutôt que de la supprimer.');
         }
 
         return $access;

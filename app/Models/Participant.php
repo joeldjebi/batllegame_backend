@@ -126,6 +126,28 @@ class Participant extends Model
     }
 
     /**
+     * May send a pre-selection performance: fee paid, and registration validated by the
+     * organizer (or simply registered when the competition does not require approval).
+     */
+    public function canEnterPreselection(): bool
+    {
+        if (! $this->hasPaid()) {
+            return false;
+        }
+
+        return $this->status === ParticipantStatus::Validated
+            || ($this->status === ParticipantStatus::Registered && ! $this->competition->settings->registrationRequiresApproval);
+    }
+
+    /**
+     * Registered and paid, waiting for the organizer to validate the registration.
+     */
+    public function awaitsApproval(): bool
+    {
+        return $this->status === ParticipantStatus::Registered && $this->competition->settings->registrationRequiresApproval;
+    }
+
+    /**
      * Still competing (registered or validated, not eliminated or out).
      */
     public function isActive(): bool

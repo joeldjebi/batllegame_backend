@@ -16,7 +16,7 @@
         :breadcrumbs="['Tableau de bord' => route('dashboard'), $organizer->name => route('organizers.show', $organizer), 'Compétitions' => null]">
         <x-slot:actions>
             @if ($canCreate)
-                <x-ui.button variant="primary" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Nouvelle compétition</x-ui.button>
+                <x-ui.button variant="primary" icon="plus" :href="route('organizers.competitions.create', $organizer)">Nouvelle compétition</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -70,7 +70,7 @@
         <x-ui.empty icon="trophy" :title="$filtered || $status ? 'Aucun résultat' : 'Aucune compétition'"
             :description="$filtered || $status ? 'Modifiez ou effacez les filtres.' : 'Créez votre première compétition : elle démarre en brouillon.'">
             @if ($canCreate && ! $filtered && ! $status)
-                <x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Créer une compétition</x-ui.button>
+                <x-ui.button icon="plus" :href="route('organizers.competitions.create', $organizer)">Créer une compétition</x-ui.button>
             @endif
         </x-ui.empty>
     @else
@@ -115,11 +115,11 @@
                                     </x-ui.confirm>
                                 @endif
                                 @if ($canDelete)
-                                    <x-ui.confirm :action="route('organizers.competitions.destroy', [$organizer, $competition])" method="DELETE" :title="'Supprimer « '.$competition->name.' » ?'" message="Elle disparaîtra du back-office et de l'application." confirm="Supprimer">
+                                    <x-ui.confirm :action="route('organizers.competitions.destroy', [$organizer, $competition])" method="DELETE" :title="'Supprimer « '.$competition->name.' » ?'" :message="($count ? $count.' inscrit(s) seront retirés, aucun n\'a payé. ' : '').'Elle disparaîtra du back-office et de l\'application.'" confirm="Supprimer">
                                         <x-ui.dropdown-item icon="trash" danger>Supprimer</x-ui.dropdown-item>
                                     </x-ui.confirm>
                                 @elseif ($canUpdate)
-                                    <p class="px-2.5 py-2 text-xs text-slate-400">Suppression : brouillon ou compétition annulée uniquement.</p>
+                                    <p class="px-2.5 py-2 text-xs text-slate-400">{{ $competition->hasPaidPayments() ? 'Suppression impossible : des participants ont déjà payé (annulez-la plutôt).' : 'Suppression réservée au propriétaire.' }}</p>
                                 @endif
                             </x-ui.dropdown>
                         </div>
@@ -153,10 +153,6 @@
     @endif
 
     </div>
-
-    @if ($canCreate)
-        <x-bo.create-competition :organizer="$organizer" />
-    @endif
 
     <x-realtime :channels="[\App\Realtime\Channel::organizer($organizer->id)]" />
 </x-layouts.app>

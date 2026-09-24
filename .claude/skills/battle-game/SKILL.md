@@ -69,7 +69,8 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
 9. Every new listing / filter / sort needs an index (see `docs/architecture.md` › Indexation).
 10. **Realtime (Socket.IO)**: a change users should see live goes through `App\Realtime\BroadcastModelChanges`
     (observer, add the model in `AppServiceProvider::registerRealtime()`), never through a direct emit. Public channels
-    (`competition.{id}`, `live`) never receive vote/like data unless `settings.showLiveResults`. A page declares its
+    (`competition.{id}`, `live`) never carry counts (updates are bare signals, pages re-render per viewer); vote
+    signals go there only with `settings.showLiveResults`. A page declares its
     channels with `<x-realtime :channels="[...]" />` and marks re-renderable areas `data-live="unique-key"` (never a
     region holding a Trix editor; forms are safe: dirty regions are skipped). Private channels must be checked in
     `RealtimeToken::allows()`.
@@ -102,9 +103,16 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
 - `performances`: a submission belongs to a stage (reused in all its matches); a captation also has a
   `match_id`. Use `BattleMatch::publishedPerformances()` to get what voters/judges may see.
 - `@php use …; @endphp` is fine at the top of a view but not inside components' nested blocks — prefer FQCN.
+- Never mix the inline `@php($x = …)` form with a `@php … @endphp` block in the same view: the compiler pairs them
+  wrongly (ParseError « unexpected endforeach/endif »). Use blocks only once a view has one.
+  Rendering is the only place it fails: after editing views, lint the compiled views —
+  `php artisan view:cache && for f in storage/framework/views/*.php; do php -l "$f" | grep -v '^No syntax'; done; php artisan view:clear`.
 - **Never put a Blade directive (`@js`, `@if`…) inside the attributes of a component tag** (`<x-ui.button x-on:click="…@js($x)…">`):
   it is not compiled, reaches Alpine verbatim and breaks the page's JS. Use `'{{ $x }}'` there. A test asserts
   `assertDontSee('@js(', false)` on the competition page.
+- A valueless attribute on a **component** tag (`<x-ui.icon x-transition.scale />`) is rendered as
+  `x-transition.scale="x-transition.scale"` and crashes Alpine: put `x-transition` / `x-collapse` on a plain HTML
+  wrapper (`x-cloak` is harmless).
 - Every form inside `x-ui.modal` / `x-ui.slide-over` carries `<input type="hidden" name="_form" value="<modal name>">`:
   the modal reopens on its own validation errors (whatever the failing field).
 - Use `BattleMatch::votingNow()` (status vote **and** window not expired) for anything shown as « en direct »;
@@ -124,6 +132,8 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
 php artisan migrate --seed                               # countries (CI active) + platform role
 php artisan db:seed --class=LocalAccountsSeeder          # SA, organizer, judge, artist, fan from SEED_* (local only)
 php artisan db:seed --class=DemoCompetitionSeeder        # demo competitions (local only), then re-run LocalAccountsSeeder
+php artisan db:seed --class=LocationSeeder               # optional starter places (SA creates them in the console)
+php artisan demo:purge [--accounts]                      # remove seeded rows (seed_kind), also from the SA dashboard; seeders must tag what they create
 php artisan stages:process | matches:close-expired       # scheduler jobs (every minute in production)
 php artisan scores:recompute {slug}                      # rebuild derived scores
 composer dev                                             # server + queue + logs + Vite + Socket.IO (npm run realtime)

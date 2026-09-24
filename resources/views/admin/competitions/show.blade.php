@@ -102,9 +102,9 @@
                     @if (! $phase->isFrozen())
                         <x-ui.empty icon="clock" title="Pas encore démarrée" description="Les matchs seront générés au démarrage par l'organisateur." />
                     @elseif ($phase->type === PhaseType::Groups)
-                        <div class="grid gap-5 lg:grid-cols-2">
-                            @foreach ($phase->groups as $group)
-                                <x-bo.standings :group="$group" :qualifiers="$phase->qualifiers_per_group" />
+                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            @foreach ($phase->matches->whereNotNull('group_id')->sortBy('bracket_position') as $match)
+                                <x-bo.group-card :match="$match" :phase="$phase" :organizer="$organizer" :competition="$competition" />
                             @endforeach
                         </div>
                     @else

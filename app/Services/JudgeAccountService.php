@@ -40,7 +40,7 @@ class JudgeAccountService
 
         $judge = DB::transaction(function () use ($competition, $country, $phone, $name, &$user, &$password): Judge {
             if ($user === null) {
-                $password = Str::password(10, symbols: false);
+                $password = self::temporaryPassword();
                 $user = User::create(['name' => $name, 'country_id' => $country->id, 'phone' => $phone, 'password' => $password]);
                 // The organizer knows this number: no SMS verification needed to score.
                 $user->forceFill(['must_change_password' => true, 'phone_verified_at' => now()])->save();
@@ -54,5 +54,15 @@ class JudgeAccountService
             : "Battle Game : vous êtes juré de « {$competition->name} ». Retrouvez la compétition dans l'espace juré de l'application.");
 
         return [$judge, $password];
+    }
+
+    /**
+     * The shared default password until SMS delivery exists (never in production), else a random one.
+     */
+    public static function temporaryPassword(): string
+    {
+        $default = config('accounts.judge_default_password');
+
+        return filled($default) && ! app()->isProduction() ? (string) $default : Str::password(10, symbols: false);
     }
 }

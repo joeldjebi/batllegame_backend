@@ -7,7 +7,9 @@ use App\Enums\OrganizerRole;
 use App\Models\Competition;
 use App\Models\Country;
 use App\Models\User;
+use App\Services\JudgeAccountService;
 use App\Services\Sms\SmsSender;
+use Illuminate\Support\Facades\Hash;
 
 require_once __DIR__.'/../Stages/helpers.php';
 
@@ -110,4 +112,19 @@ it('lists the matches a judge has to score with the criteria', function () {
         ->assertOk()
         ->assertJsonPath('criteria.0.name', 'Flow')
         ->assertJsonPath('matches.0.id', $match->id);
+});
+
+it('gives new judges the default temporary password while no SMS service exists', function () {
+    config(['accounts.judge_default_password' => '12345678']);
+    $competition = Competition::factory()->create();
+
+    [$judge, $password] = app(JudgeAccountService::class)->assign($competition, $this->country, '0501010101', 'Juge Défaut');
+
+    expect($password)->toBe('12345678')
+        ->and(Hash::check('12345678', $judge->user->password))->toBeTrue()
+        ->and($judge->user->must_change_password)->toBeTrue();
+
+    config(['accounts.judge_default_password' => null]);
+    [, $random] = app(JudgeAccountService::class)->assign($competition, $this->country, '0501010102', 'Juge Aléatoire');
+    expect($random)->not->toBe('12345678')->toHaveLength(10);
 });

@@ -23,6 +23,9 @@ class CompetitionResource extends JsonResource
             // Sanitized HTML (bold, italic, headings, lists, quotes, links).
             'description' => $this->description,
             'prizes' => $this->prizeList(),
+            // Written by the organizer: ordered steps (date in the competition time zone) and sanitized HTML.
+            'schedule' => $this->scheduleList(),
+            'regulations' => $this->regulations,
             'discipline' => $this->discipline,
             'mode' => $this->mode,
             'status' => $this->status,
@@ -31,11 +34,12 @@ class CompetitionResource extends JsonResource
             'max_participants' => $this->max_participants,
             'entry_fee' => $this->entry_fee,
             'currency' => $this->currency,
+            'location' => $this->locationData(),
             'organizer' => $this->whenLoaded('organizer', fn () => [
                 'name' => $this->organizer->name,
                 'slug' => $this->organizer->slug,
                 'logo_path' => $this->organizer->logo_path,
-                'city' => $this->organizer->city,
+                'location' => $this->organizer->locationData(),
             ]),
             'phases' => PhaseResource::collection($this->whenLoaded('phases')),
             'criteria' => $this->whenLoaded('criteria', fn () => $this->criteria->map(fn ($c) => [

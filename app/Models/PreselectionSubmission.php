@@ -95,7 +95,8 @@ class PreselectionSubmission extends Model implements ReviewableMedia
 
     public function submissionWindow(): array
     {
-        return [$this->preselection?->starts_at, $this->preselection?->ends_at];
+        // Open from its creation (no opening date) to the submission deadline.
+        return [$this->preselection?->created_at, $this->preselection?->ends_at];
     }
 
     public function requiresReview(): bool

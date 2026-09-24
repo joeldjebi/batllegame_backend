@@ -1,7 +1,8 @@
 @php
     $fmt = fn ($n) => number_format($n, 0, ',', ' ');
     $member = auth('member')->user();
-    $featured = $live->first();
+    // The hero shows a battle (1 vs 1); groups only appear in the live list.
+    $featured = $live->first(fn ($match) => ! $match->isGroupMatch());
     $words = ['rap', 'chant', 'freestyle', 'slam', 'beatbox'];
     $band = collect(['Rap', 'Chant', 'Freestyle', 'Slam', 'Beatbox', 'En ligne', 'Sur scène', 'Jury', 'Vote du public'])
         ->merge($artistNames)->values();
@@ -76,6 +77,9 @@
                         <div class="my-1 h-px bg-slate-100 dark:bg-white/10"></div>
                         <p class="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Avec mon email</p>
                         <x-ui.dropdown-item :href="route('login')" icon="building-office-2">Organisateur — back-office</x-ui.dropdown-item>
+                        @if (config('organizers.self_signup'))
+                            <x-ui.dropdown-item :href="route('organizers.signup')" icon="rocket-launch">Créer un espace organisateur</x-ui.dropdown-item>
+                        @endif
                     </x-ui.dropdown>
                     <x-ui.button size="sm" :href="route('fan.register')" class="hidden sm:inline-flex">Créer un compte</x-ui.button>
                 @endif
@@ -165,7 +169,7 @@
                     <div class="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
                         @foreach ([0, 1] as $i)
                             @if ($i === 1)<span class="font-display text-xl font-extrabold text-slate-300">VS</span>@endif
-                            @php($artist = $featuredSlots->get($i)?->participant->stage_name ?? ($i ? 'Artiste B' : 'Artiste A'))
+                            @php $artist = $featuredSlots->get($i)?->participant->stage_name ?? ($i ? 'Artiste B' : 'Artiste A'); @endphp
                             <div><x-ui.avatar :name="$artist" size="lg" class="mx-auto" /><p class="mt-2 truncate text-sm font-semibold">{{ $artist }}</p></div>
                         @endforeach
                     </div>
@@ -265,13 +269,27 @@
                                     <span class="text-slate-500">{{ $fmt($match->public_votes_count) }} vote(s)</span>
                                 </div>
                                 <div class="mt-6 flex items-center justify-center gap-4">
-                                    @foreach ($match->slots->filter->participant->values() as $i => $slot)
-                                        @if ($i === 1)<span class="font-display text-sm font-extrabold text-slate-300">VS</span>@endif
-                                        <div class="text-center transition duration-300 group-hover:scale-105">
-                                            <x-ui.avatar :name="$slot->participant->stage_name" size="lg" class="mx-auto" />
-                                            <p class="mt-2 max-w-24 truncate text-sm font-semibold">{{ $slot->participant->stage_name }}</p>
+                                    @if ($match->isGroupMatch())
+                                        @php
+                                            $artists = $match->slots->filter(fn ($slot) => $slot->participant && ! $slot->is_forfeit)->values();
+                                        @endphp
+                                        <div class="text-center">
+                                            <div class="flex justify-center -space-x-3">
+                                                @foreach ($artists->take(4) as $slot)<x-ui.avatar :name="$slot->participant->stage_name" class="ring-2 ring-white dark:ring-slate-900" />@endforeach
+                                                @if ($artists->count() > 4)<span class="grid size-10 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 ring-2 ring-white dark:bg-white/10 dark:text-slate-300 dark:ring-slate-900">+{{ $artists->count() - 4 }}</span>@endif
+                                            </div>
+                                            <p class="mt-3 font-display text-lg font-bold">{{ $match->group?->name }}</p>
+                                            <p class="text-sm text-slate-500">{{ $artists->count() }} artistes · 1 vote par phase</p>
                                         </div>
-                                    @endforeach
+                                    @else
+                                        @foreach ($match->slots->filter->participant->values() as $i => $slot)
+                                            @if ($i === 1)<span class="font-display text-sm font-extrabold text-slate-300">VS</span>@endif
+                                            <div class="text-center transition duration-300 group-hover:scale-105">
+                                                <x-ui.avatar :name="$slot->participant->stage_name" size="lg" class="mx-auto" />
+                                                <p class="mt-2 max-w-24 truncate text-sm font-semibold">{{ $slot->participant->stage_name }}</p>
+                                            </div>
+                                        @endforeach
+                                    @endif
                                 </div>
                                 <p class="mt-6 text-sm text-slate-500">{{ $match->competition->name }} · {{ $match->stage?->name }}</p>
                                 <span class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 dark:text-brand-300">Voter maintenant <x-ui.icon name="arrow-right" variant="m" class="size-4 transition group-hover:translate-x-1" /></span>
@@ -307,7 +325,7 @@
                                 </div>
                                 <div class="p-6">
                                     <p class="font-display text-lg font-semibold group-hover:text-brand-700 dark:group-hover:text-brand-300">{{ $competition->name }}</p>
-                                    <p class="mt-1 text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }} · {{ $competition->mode->label() }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }} · {{ $competition->mode->label() }}{{ $competition->locationLabel() ? ' · '.$competition->locationLabel() : '' }}</p>
                                     <p class="mt-4 flex items-center gap-1.5 text-xs text-slate-400"><x-ui.icon name="users" variant="m" class="size-4" /> {{ $competition->participants_count }} artiste(s)</p>
                                 </div>
                             </a>
@@ -393,7 +411,7 @@
                                 </div>
                                 <p class="mt-5 font-display text-lg font-semibold">{{ $competition->name }}</p>
                                 <p class="mt-1 text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }}</p>
-                                @php($fill = $competition->max_participants ? min(1, $competition->participants_count / $competition->max_participants) : 0.3)
+                                @php $fill = $competition->max_participants ? min(1, $competition->participants_count / $competition->max_participants) : 0.3; @endphp
                                 <div class="mt-5">
                                     <div class="flex justify-between text-xs text-slate-500">
                                         <span>{{ $competition->participants_count }}{{ $competition->max_participants ? ' / '.$competition->max_participants : '' }} inscrits</span>
@@ -460,9 +478,14 @@
             <div class="reveal flex flex-wrap items-center justify-between gap-6 rounded-3xl bg-slate-900 px-8 py-10 text-white sm:px-12 dark:bg-white/5" x-data x-intersect.once="$el.classList.add('is-visible')">
                 <div class="max-w-xl">
                     <h2 class="font-display text-2xl font-bold">Vous organisez des battles ?</h2>
-                    <p class="mt-2 text-white/70">Poules, brackets, jury, vote du public et soumissions en ligne : {{ $fmt($stats['organizers']) }} organisateur(s) pilotent déjà leurs compétitions sur Battle Game. Les espaces organisateurs sont ouverts par notre équipe.</p>
+                    <p class="mt-2 text-white/70">Poules, brackets, jury, vote du public et soumissions en ligne : {{ $fmt($stats['organizers']) }} organisateur(s) pilotent déjà leurs compétitions sur Battle Game.{{ config('organizers.self_signup') ? ' Créez votre espace gratuitement, en quelques minutes.' : ' Les espaces organisateurs sont ouverts par notre équipe.' }}</p>
                 </div>
-                <x-ui.button size="lg" :href="route('login')" class="!bg-white !text-slate-900 hover:!bg-slate-100" icon="building-office-2">Espace organisateur</x-ui.button>
+                <div class="flex flex-wrap gap-3">
+                    @if (config('organizers.self_signup'))
+                        <x-ui.button size="lg" :href="route('organizers.signup')" class="!bg-white !text-slate-900 hover:!bg-slate-100" icon="rocket-launch">Créer mon espace</x-ui.button>
+                    @endif
+                    <x-ui.button size="lg" :href="route('login')" variant="secondary" class="!bg-transparent !text-white !ring-white/30 hover:!bg-white/10" icon="building-office-2">Se connecter</x-ui.button>
+                </div>
             </div>
         </section>
     </main>

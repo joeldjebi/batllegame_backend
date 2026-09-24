@@ -11,7 +11,9 @@ use App\Enums\ParticipantStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\PhaseType;
+use App\Enums\SeedKind;
 use App\Models\BattleMatch;
+use App\Models\City;
 use App\Models\Competition;
 use App\Models\Country;
 use App\Models\JuryScore;
@@ -21,6 +23,7 @@ use App\Models\Payment;
 use App\Models\Phase;
 use App\Models\PublicVote;
 use App\Models\User;
+use App\Services\Competition\GroupResultsService;
 use App\Services\Competition\MatchCloser;
 use App\Services\Competition\PhaseLauncher;
 use App\Services\Competition\StageService;
@@ -68,12 +71,11 @@ class DemoCompetitionSeeder extends Seeder
             return;
         }
 
-        $users = collect(self::ARTISTS)->map(fn (string $name, int $i) => User::query()->firstOrCreate(
-            ['phone' => $country->toE164('07'.str_pad((string) (10000000 + $i), 8, '0', STR_PAD_LEFT))],
-            ['name' => $name, 'country_id' => $country->id, 'password' => $this->password(), 'phone_verified_at' => now()],
+        $users = collect(self::ARTISTS)->map(fn (string $name, int $i) => $this->demoUser(
+            $country->toE164('07'.str_pad((string) (10000000 + $i), 8, '0', STR_PAD_LEFT)), $name, $country->id,
         ));
 
-        // 1. Running competition: groups (played) then single elimination (in progress).
+        // 1. Running competition: groups (ranking rounds, results published) then single elimination (in progress).
         $battle = $this->competition($organizer, 'Abidjan Rap Battle 2026', Discipline::Rap, CompetitionMode::Hybrid, CompetitionStatus::Registration, 16);
 
         $users->take(8)->each(fn (User $user, int $i) => $battle->participants()->create([
@@ -87,10 +89,7 @@ class DemoCompetitionSeeder extends Seeder
             ->map(fn ($c, $i) => $battle->criteria()->create(['name' => $c[0], 'max_points' => $c[1], 'weight' => $c[2], 'position' => $i]));
 
         $judges = collect(['Juge Didi B', 'Juge Suspect 95'])->map(function (string $name, int $i) use ($battle, $country) {
-            $user = User::query()->firstOrCreate(
-                ['phone' => $country->toE164('05'.str_pad((string) (20000000 + $i), 8, '0', STR_PAD_LEFT))],
-                ['name' => $name, 'country_id' => $country->id, 'password' => $this->password(), 'phone_verified_at' => now()],
-            );
+            $user = $this->demoUser($country->toE164('05'.str_pad((string) (20000000 + $i), 8, '0', STR_PAD_LEFT)), $name, $country->id);
 
             return $battle->judges()->create(['user_id' => $user->id, 'status' => JudgeStatus::Accepted]);
         });
@@ -109,6 +108,8 @@ class DemoCompetitionSeeder extends Seeder
 
         $launcher->start($groups);
         $this->playAll($groups->fresh(), $judges, $criteria, $closer);
+        // Groups are ranking rounds: the organizer publishes their results before the final phase.
+        app(GroupResultsService::class)->publish($groups->fresh());
 
         $launcher->start($final);
         $this->playAll($final->fresh(), $judges, $criteria, $closer, limit: 1);
@@ -138,10 +139,7 @@ class DemoCompetitionSeeder extends Seeder
         $competition = $this->competition($organizer, 'Abidjan Talents en ligne', Discipline::Singing, CompetitionMode::Online, CompetitionStatus::Registration, 8);
 
         collect(['Awa Voice', 'Dj Kiff', 'Maman Soul', 'Petit Yodé'])->each(function (string $name, int $i) use ($competition, $country): void {
-            $user = User::query()->firstOrCreate(
-                ['phone' => $country->toE164('01'.str_pad((string) (30000000 + $i), 8, '0', STR_PAD_LEFT))],
-                ['name' => $name, 'country_id' => $country->id, 'password' => $this->password(), 'phone_verified_at' => now()],
-            );
+            $user = $this->demoUser($country->toE164('01'.str_pad((string) (30000000 + $i), 8, '0', STR_PAD_LEFT)), $name, $country->id);
             $competition->participants()->create(['user_id' => $user->id, 'stage_name' => $name, 'seed' => $i + 1, 'status' => ParticipantStatus::Validated]);
         });
 
@@ -170,7 +168,6 @@ class DemoCompetitionSeeder extends Seeder
         }
 
         app(PreselectionService::class)->configure($competition, [
-            'starts_at' => now()->subHour(),
             'ends_at' => now()->addDays(5),
             'vote_ends_at' => now()->addDays(6),
             'deliberation_hours' => 24,
@@ -224,6 +221,21 @@ class DemoCompetitionSeeder extends Seeder
         return User::query()->whereIn('phone', $phones)->pluck('id')->all();
     }
 
+    /**
+     * A generated account, tagged so the super-admin can remove the demo data.
+     */
+    private function demoUser(string $phone, string $name, int $countryId): User
+    {
+        $user = User::query()->firstOrNew(['phone' => $phone]);
+
+        if (! $user->exists) {
+            $user->fill(['name' => $name, 'country_id' => $countryId, 'password' => $this->password()]);
+            $user->forceFill(['phone_verified_at' => now(), 'seed_kind' => SeedKind::Demo])->save();
+        }
+
+        return $user;
+    }
+
     private function password(): string
     {
         static $hash = null;
@@ -258,6 +270,12 @@ class DemoCompetitionSeeder extends Seeder
             'status' => $status, 'max_participants' => $max, 'entry_fee' => $fee, 'registration_ends_at' => now()->addWeeks(2),
             ...self::presentation($name, $discipline),
         ]);
+        $competition->forceFill(['seed_kind' => SeedKind::Demo]);
+
+        // Venue when the reference places exist (php artisan db:seed --class=LocationSeeder).
+        $abidjan = City::query()->where('name', 'Abidjan')->first();
+        $competition->city_id = $abidjan?->id;
+        $competition->commune_id = $abidjan?->communes()->inRandomOrder()->value('id');
         $competition->organizer()->associate($organizer);
         $competition->creator()->associate($organizer->users()->first());
         $competition->save();
@@ -304,10 +322,7 @@ class DemoCompetitionSeeder extends Seeder
             }
 
             foreach (range(1, random_int(3, 6) + $strength) as $i) {
-                $voter = User::query()->firstOrCreate(
-                    ['phone' => '+22501'.str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT)],
-                    ['name' => 'Fan '.$i, 'country_id' => $slot->participant->user->country_id, 'password' => $this->password(), 'phone_verified_at' => now()],
-                );
+                $voter = $this->demoUser('+22501'.str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT), 'Fan '.$i, $slot->participant->user->country_id);
                 $vote = new PublicVote(['match_id' => $match->id, 'participant_id' => $slot->participant_id]);
                 $vote->forceFill(['user_id' => $voter->id, 'device_id' => 'demo-'.$voter->id]);
                 $vote->save();

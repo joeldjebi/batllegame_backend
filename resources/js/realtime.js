@@ -66,6 +66,17 @@ const isPublic = (channel) => channel === 'live' || /^competition\.\d+$/.test(ch
 
 let refreshing = false;
 
+/**
+ * Re-render the live regions now (after an AJAX action): the region of the form just sent is
+ * no longer « being edited ».
+ */
+export async function refreshLive(Alpine, source = null) {
+    source?.closest?.('[data-live]')?.removeAttribute('data-dirty');
+    document.querySelectorAll('[data-live="modals"]').forEach((region) => region.removeAttribute('data-dirty'));
+    while (refreshing) await new Promise((resolve) => setTimeout(resolve, 50));
+    return refresh(Alpine);
+}
+
 async function refresh(Alpine) {
     const regions = [...document.querySelectorAll('[data-live]')];
     if (!regions.length || refreshing || document.hidden) return;
@@ -90,6 +101,9 @@ async function refresh(Alpine) {
 
             Alpine.morph(region, next, { key: (el) => el.id || el.dataset?.key });
         });
+
+        // Components holding server state (e.g. likes) re-read it from the refreshed markup.
+        window.dispatchEvent(new CustomEvent('live:refreshed'));
     } catch {
         // Network hiccup: the next update will try again.
     } finally {

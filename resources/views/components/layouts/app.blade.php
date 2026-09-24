@@ -26,6 +26,7 @@
     </script>
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
 </head>
 <body class="h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100" x-data="{ sidebar: false }">
     {{-- Mobile sidebar --}}
@@ -102,9 +103,10 @@
     </div>
 
     {{-- Toasts --}}
-    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 p-4 sm:items-end sm:p-6">
+    {{-- Toasts: top-right, under the header. --}}
+    <div x-data="toaster(@js($toasts))" class="pointer-events-none fixed inset-x-0 top-16 z-[60] flex flex-col items-center gap-2 p-4 sm:left-auto sm:items-end sm:px-6">
         <template x-for="toast in toasts" :key="toast.id">
-            <div x-show="toast.visible" x-transition:enter="transform ease-out duration-300" x-transition:enter-start="translate-y-2 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+            <div x-show="toast.visible" x-transition:enter="transform ease-out duration-300" x-transition:enter-start="-translate-y-2 opacity-0 sm:translate-x-4 sm:translate-y-0" x-transition:enter-end="translate-x-0 translate-y-0 opacity-100"
                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                 class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-900/10 dark:bg-slate-800 dark:ring-white/10">
                 <span :class="toast.type === 'error' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300'" class="grid size-8 shrink-0 place-items-center rounded-full">

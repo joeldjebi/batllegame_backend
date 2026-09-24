@@ -1,5 +1,5 @@
 <x-layouts.portal :title="'Notation · '.$competition->name">
-    <x-ui.page-header :title="$match->slots->map(fn ($s) => $s->participant?->stage_name ?? '—')->implode(' vs ')"
+    <x-ui.page-header :title="$match->title()"
         :breadcrumbs="['Mes compétitions' => route('jury.dashboard'), $competition->name => route('jury.competitions.show', $competition), $match->stage?->name ?? 'Match' => null]">
         <x-slot:description>
             <x-ui.badge :value="$match->status" />
@@ -25,7 +25,7 @@
     @endunless
 
     <div class="grid gap-6 lg:grid-cols-2">
-        @foreach ($match->slots->filter->participant as $slot)
+        @foreach ($match->slots->filter(fn ($slot) => $slot->participant && ! $slot->is_forfeit) as $slot)
             @php($participant = $slot->participant)
             @php($mine = $myScores->get($participant->id, collect())->keyBy('criterion_id'))
             <x-ui.card :title="$participant->stage_name" icon="microphone">

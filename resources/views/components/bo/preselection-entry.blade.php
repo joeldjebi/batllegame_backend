@@ -15,7 +15,7 @@
     $judged = $entry->scores->pluck('judge_id')->unique()->count();
 @endphp
 
-<li x-show="(filter === 'all' || filter === @js($filter)) && @js(mb_strtolower($entry->participant->stage_name)).includes(q.trim().toLowerCase())"
+<li
     @class([
         'grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 px-4 py-4 sm:px-5 lg:grid-cols-[2.5rem_minmax(0,1.6fr)_minmax(0,1.5fr)_4.5rem_4.5rem_4.5rem_auto] lg:gap-4',
         'bg-emerald-50/60 dark:bg-emerald-500/5' => $selectedZone,
@@ -27,19 +27,22 @@
         'bg-slate-100 text-slate-500 dark:bg-white/10' => ! $selectedZone,
     ])>{{ $entry->rank ?? '–' }}</span>
 
-    <div class="min-w-0">
+    <div class="flex min-w-0 items-start gap-3">
+        <x-ui.avatar :name="$entry->participant->stage_name" :src="$entry->participant->user?->avatarUrl()" size="md" />
+        <div class="min-w-0">
         <button type="button" x-on:click="$dispatch('open-modal', @js($modal))" class="block max-w-full truncate text-left font-semibold text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">{{ $entry->participant->stage_name }}</button>
         <div class="mt-1 flex flex-wrap gap-1">
             <x-ui.badge :value="$entry->status" />
             @unless ($paid)<x-ui.badge tone="red" icon="banknotes" :dot="false">Frais non payés</x-ui.badge>@endunless
             @if ($entry->selected === true)<x-ui.badge tone="green" icon="trophy" :dot="false">Retenu</x-ui.badge>@elseif ($entry->selected === false)<x-ui.badge tone="gray" :dot="false">Non retenu</x-ui.badge>@endif
         </div>
+        </div>
     </div>
 
     {{-- Actions: top-right on mobile, last column on desktop --}}
     <div class="col-start-3 row-start-1 flex items-center justify-end gap-1.5 lg:col-start-7">
         @if ($reviewable && $paid)
-            <form method="POST" action="{{ $review }}" class="hidden sm:block">
+            <form method="POST" action="{{ $review }}" class="hidden sm:block" x-data="ajaxForm" x-on:submit.prevent="send">
                 @csrf @method('PATCH')<input type="hidden" name="decision" value="approve">
                 <x-ui.button type="submit" size="sm" icon="check">Valider</x-ui.button>
             </form>
@@ -83,12 +86,44 @@
             </div>
 
             <div class="space-y-4 md:col-span-2">
+                {{-- The artist: opens their « fiche » (participants tab, same page) --}}
+                <button type="button" x-on:click="$dispatch('close-modal', @js($modal)); $dispatch('open-modal', @js('participant-'.$entry->participant_id))"
+                    class="flex w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left ring-1 ring-slate-900/5 transition hover:ring-brand-300 dark:bg-white/5 dark:ring-white/10">
+                    <x-ui.avatar :name="$entry->participant->stage_name" :src="$entry->participant->user?->avatarUrl()" />
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate text-sm font-semibold">{{ $entry->participant->user?->name }}</span>
+                        <span class="block truncate text-xs text-slate-500">{{ $entry->participant->user?->phone }}{{ $entry->participant->user?->locationLabel() ? ' · '.$entry->participant->user->locationLabel() : '' }}</span>
+                    </span>
+                    <span class="text-xs font-semibold text-brand-600 dark:text-brand-300">Fiche</span>
+                </button>
                 <dl class="grid grid-cols-2 gap-3">
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-white/5"><dt class="text-xs text-slate-500">Rang</dt><dd class="font-display text-xl font-bold">{{ $entry->rank ?? '—' }}<span class="text-sm font-medium text-slate-400"> / {{ $rules->selectionSize }} retenus</span></dd></div>
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-white/5"><dt class="text-xs text-slate-500">Likes</dt><dd class="font-display text-xl font-bold">{{ $entry->likes_count }}</dd></div>
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-white/5"><dt class="text-xs text-slate-500">Note du jury</dt><dd class="font-display text-xl font-bold">{{ $number($entry->jury_score) }}</dd><dd class="text-xs text-slate-400">{{ $judged }} / {{ $judgesCount }} juré(s)</dd></div>
                     <div class="rounded-xl bg-slate-50 p-3 dark:bg-white/5"><dt class="text-xs text-slate-500">Score final</dt><dd class="font-display text-xl font-bold">{{ $number($entry->final_score) }}</dd></div>
                 </dl>
+
+                {{-- Notes of each judge (final), with « Rouvrir » after a mistake --}}
+                @if ($entry->scores->isNotEmpty())
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase">Notes des jurés</p>
+                        @foreach ($entry->scores->groupBy('judge_id') as $judgeId => $rows)
+                            @php
+                                $scorer = $competition->judges->firstWhere('id', $judgeId);
+                            @endphp
+                            <div class="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-white/5">
+                                <span class="min-w-0 flex-1 truncate font-medium">{{ $scorer?->user?->name ?? 'Juré' }}</span>
+                                <span class="font-display font-bold tabular-nums">{{ rtrim(rtrim(number_format($rows->sum('score'), 1, ',', ''), '0'), ',') }} pts</span>
+                                @if ($canRun && $scorer && $entry->preselection->acceptsScores())
+                                    <form method="POST" action="{{ route('organizers.competitions.preselection.entries.scores.destroy', [$organizer, $competition, $entry, $scorer]) }}" x-data="ajaxForm" x-on:submit.prevent="if (confirm(@js('Effacer la note de '.$scorer->user->name.' pour qu\'il la refasse ?'))) send()">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-white dark:text-brand-300 dark:hover:bg-white/10">Rouvrir</button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
                 @unless ($paid)
                     <p class="flex items-start gap-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"><x-ui.icon name="banknotes" variant="m" class="mt-0.5 size-4 shrink-0" /> Frais d'inscription non payés : validation possible après paiement.</p>
@@ -103,13 +138,13 @@
                 @if ($reviewable)
                     <div class="space-y-3 border-t border-slate-100 pt-4 dark:border-white/10" x-data="{ rejecting: false }">
                         @if ($paid)
-                            <form method="POST" action="{{ $review }}" x-show="! rejecting">
+                            <form method="POST" action="{{ $review }}" x-show="! rejecting" x-data="ajaxForm({ modal: @js($modal) })" x-on:submit.prevent="send">
                                 @csrf @method('PATCH')<input type="hidden" name="decision" value="approve">
                                 <x-ui.button type="submit" size="lg" icon="check" class="w-full">Valider la prestation</x-ui.button>
                             </form>
                         @endif
                         <x-ui.button variant="danger-soft" icon="x-mark" class="w-full" x-show="! rejecting" x-on:click="rejecting = true">Rejeter…</x-ui.button>
-                        <form method="POST" action="{{ $review }}" x-show="rejecting" x-cloak class="space-y-2">
+                        <form method="POST" action="{{ $review }}" x-show="rejecting" x-cloak class="space-y-2" x-data="ajaxForm({ modal: @js($modal) })" x-on:submit.prevent="send">
                             @csrf @method('PATCH')<input type="hidden" name="decision" value="reject">
                             <label class="text-sm font-medium text-slate-700 dark:text-slate-200" for="reason-{{ $entry->id }}">Motif (visible par l'artiste)</label>
                             <textarea id="reason-{{ $entry->id }}" name="reason" required rows="3" maxlength="250" placeholder="Ex. vidéo téléchargée depuis TikTok, enregistrement antérieur à la compétition…"

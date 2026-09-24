@@ -5,7 +5,7 @@
 | Area | Routes file | Prefix / names | Guard | Login | Middleware |
 |---|---|---|---|---|---|
 | Public landing | `routes/web.php` | `/` (`home`, `LandingController`) | — | — | none (reads `auth('member')` for the CTA) |
-| Organizer back-office | `routes/web.php` | `/tableau-de-bord` (`dashboard`), `organizers.*`, `login`, `password.edit|update` | `web` | email | `auth:web`, `organizer.area` (DenyPlatformAdmins), `fresh.password:password.edit` |
+| Organizer back-office | `routes/web.php` | `/tableau-de-bord` (`dashboard`), `organizers.*`, `login`, `organizers.signup` (`/creer-mon-espace`, guest or signed in, `config('organizers.self_signup')`), `password.edit|update` | `web` | email | `auth:web`, `organizer.area` (DenyPlatformAdmins), `fresh.password:password.edit` |
 | Super-admin console | `routes/admin.php` | `config('admin.path')`, `admin.*` | `admin` | email | `auth:admin`, `platform.admin`, `admin.idle` |
 | Jury portal | `routes/portals.php` | `/jury`, `jury.*` | `jury` | phone | `auth:jury`, `deny.admins`, `jury.access` |
 | Artist portal | `routes/portals.php` | `/artiste`, `artist.*` | `member` | phone | `auth:member`, `deny.admins` |
@@ -31,7 +31,7 @@ registration / logout for all three.
   `organizers.competitions.judges.store|destroy`, `organizers.competitions.participants.update`.
 - There is **no** `organizers.store` in the back-office: organizers are created by `admin.organizers.store`.
 - Admin: `admin.dashboard`, `admin.organizers.index|store|show|status` (`?creer=1` opens the create panel), `admin.competitions.index`,
-  `admin.organizers.competitions.show`, `admin.users.index|show`, `admin.login|logout`.
+  `admin.organizers.competitions.show`, `admin.users.index|show`, `admin.locations.*` (countries / cities / communes), `admin.login|logout`.
 - Pre-selection (back-office): `organizers.competitions.preselection.update|rank|publish`,
   `organizers.competitions.preselection.entries.review` (`{entry}` via `$competition->entries()`).
 - Payments / pre-selection (portals): `artist.competitions.payment` (GET/POST simulated checkout),

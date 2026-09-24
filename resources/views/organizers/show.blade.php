@@ -17,16 +17,17 @@
         </x-slot:leading>
         <x-slot:description>
             <x-ui.badge :value="$organizer->status" />
-            @if ($organizer->city)<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $organizer->city }}</span>@endif
+            @if ($organizer->locationLabel())<span class="inline-flex items-center gap-1"><x-ui.icon name="map-pin" variant="m" class="size-4" />{{ $organizer->locationLabel() }}</span>@endif
             <span class="inline-flex items-center gap-1"><x-ui.icon name="user-group" variant="m" class="size-4" />{{ $members->count() }} membre(s)</span>
         </x-slot:description>
         <x-slot:actions>
             @if ($canCreate)
-                <x-ui.button variant="primary" icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Nouvelle compétition</x-ui.button>
+                <x-ui.button variant="primary" icon="plus" :href="route('organizers.competitions.create', $organizer)">Nouvelle compétition</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
 
+    <div data-live="organizer-status">
     @if ($organizer->status === \App\Enums\OrganizerStatus::Pending)
         <div class="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200">
             <x-ui.icon name="clock" class="size-5 shrink-0" />
@@ -38,6 +39,7 @@
             <p><strong>Organisateur suspendu.</strong> Les compétitions restent consultables mais aucune modification n'est possible.</p>
         </div>
     @endif
+    </div>
 
     <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.stat label="Compétitions" :value="$competitions->count()" icon="trophy" />
@@ -55,7 +57,7 @@
             <div data-live="organizer-competitions">
             @if ($competitions->isEmpty())
                 <x-ui.empty icon="trophy" title="Aucune compétition" description="Créez votre première compétition, ajoutez ses phases puis ouvrez les inscriptions.">
-                    @if ($canCreate)<x-ui.button icon="plus" x-data x-on:click="$dispatch('open-modal', 'create-competition')">Créer une compétition</x-ui.button>@endif
+                    @if ($canCreate)<x-ui.button icon="plus" :href="route('organizers.competitions.create', $organizer)">Créer une compétition</x-ui.button>@endif
                 </x-ui.empty>
             @else
                 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -150,7 +152,7 @@
                     @csrf @method('PUT')
                     <fieldset @disabled(! $canEdit) class="contents">
                         <x-ui.input name="name" label="Nom" :value="$organizer->name" required />
-                        <x-ui.input name="city" label="Ville" icon="map-pin" :value="$organizer->city" />
+                        <x-location-select :city="$organizer->city_id" :commune="$organizer->commune_id" :required="\App\Support\Locations::tree() !== []" />
                         <x-ui.textarea name="description" label="Description" :value="$organizer->description" class="sm:col-span-2" />
                         <x-ui.field label="Logo" class="sm:col-span-2">
                             <div class="flex items-center gap-4">
@@ -166,10 +168,6 @@
             </x-ui.card>
         </x-ui.tab-panel>
     </x-ui.tabs>
-
-    @if ($canCreate)
-        <x-bo.create-competition :organizer="$organizer" />
-    @endif
 
     @if ($canManageMembers)
         <x-ui.modal name="add-member" title="Ajouter un manager" description="Si l'email n'a pas encore de compte, il est créé : la personne reçoit un mot de passe provisoire par SMS, à changer à sa première connexion." icon="user-plus" max-width="xl">

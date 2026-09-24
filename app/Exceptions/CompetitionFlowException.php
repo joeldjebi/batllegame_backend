@@ -37,6 +37,21 @@ class CompetitionFlowException extends DomainException
         return new self("La compétition n'est ni en inscriptions ni en cours.");
     }
 
+    public static function groupsNotClosed(int $open): self
+    {
+        return new self("{$open} poule(s) pas encore close(s) : attendez la fin de la délibération (ou clôturez-les) avant de publier.");
+    }
+
+    public static function groupResultsPublished(): self
+    {
+        return new self('Les résultats de cette phase sont déjà publiés.');
+    }
+
+    public static function groupFormat(string $problem): self
+    {
+        return new self("{$problem} Modifiez le nombre de poules ou de qualifiés de la phase.");
+    }
+
     public static function notEnoughEntrants(int $required, int $actual): self
     {
         return new self("Il faut au moins {$required} participants validés (actuellement {$actual}).");
@@ -125,6 +140,21 @@ class CompetitionFlowException extends DomainException
     public static function preselectionClosed(): self
     {
         return new self("La présélection n'est pas ouverte.");
+    }
+
+    public static function scoreLocked(): self
+    {
+        return new self("Tes notes pour cette prestation sont déjà enregistrées : elles sont définitives. En cas d'erreur, demande à l'organisateur de les rouvrir.");
+    }
+
+    public static function entryNotAssigned(): self
+    {
+        return new self("Cette prestation n'est pas attribuée à ta liste de notation.");
+    }
+
+    public static function registrationNotApproved(): self
+    {
+        return new self("Ton inscription attend la validation de l'organisateur : tu pourras envoyer ta prestation dès qu'elle sera validée.");
     }
 
     public static function preselectionNotEligible(): self

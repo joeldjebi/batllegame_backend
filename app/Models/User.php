@@ -6,6 +6,8 @@ use App\Enums\JudgeStatus;
 use App\Enums\OrganizerPermission;
 use App\Enums\OrganizerRole;
 use App\Enums\PlatformRole;
+use App\Enums\SeedKind;
+use App\Models\Concerns\HasLocation;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,26 +18,36 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'country_id', 'phone', 'email', 'password'])]
+#[Fillable(['name', 'country_id', 'phone', 'email', 'password', 'city_id', 'commune_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasLocation, HasRoles, Notifiable;
 
     /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
      */
+    /**
+     * Public URL of the profile photo, if any.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null;
+    }
+
     protected function casts(): array
     {
         return [
             'phone_verified_at' => 'datetime',
+            'seed_kind' => SeedKind::class,
             'password' => 'hashed',
             'must_change_password' => 'boolean',
         ];

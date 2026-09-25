@@ -2,6 +2,7 @@
 
 use App\Enums\CompetitionMode;
 use App\Enums\MatchStatus;
+use App\Enums\MediaType;
 use App\Enums\ParticipantStatus;
 use App\Enums\PerformanceStatus;
 use App\Enums\PhaseStatus;
@@ -106,6 +107,15 @@ it('validates submissions against the phase media rules', function () {
     submitAs($participants[0], $stage, fakeVideo())->assertJsonValidationErrors('media');
     submitAs($participants[0], $stage, UploadedFile::fake()->create('song.mp3', 2048, 'audio/mpeg'))->assertJsonValidationErrors('media');
     submitAs($participants[0], $stage, UploadedFile::fake()->create('song.mp3', 300, 'audio/mpeg'))->assertCreated();
+});
+
+it('accepts an M4V video (MP4 from Apple devices) as a video', function () {
+    ['phase' => $phase, 'participants' => $participants] = startedCompetition(CompetitionMode::Online, rules: ['media_types' => ['video']]);
+    $stage = openStage($phase->stages()->first());
+
+    submitAs($participants[0], $stage, UploadedFile::fake()->create('clip.m4v', 300, 'video/x-m4v'))->assertCreated();
+
+    expect($participants[0]->performances()->first()->media_type)->toBe(MediaType::Video);
 });
 
 it('rejects a media longer than allowed', function () {

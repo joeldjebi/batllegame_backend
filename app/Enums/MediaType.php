@@ -30,7 +30,8 @@ enum MediaType: string
     public function mimeTypes(): array
     {
         return match ($this) {
-            self::Video => ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp'],
+            // video/x-m4v: MP4 as written by Apple devices and many encoders.
+            self::Video => ['video/mp4', 'video/x-m4v', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp'],
             self::Audio => ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm'],
         };
     }

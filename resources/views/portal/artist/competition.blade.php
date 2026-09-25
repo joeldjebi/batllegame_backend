@@ -21,9 +21,7 @@
             <x-ui.badge :value="$participant->status" />
             <span>{{ $competition->organizer->name }}</span>
             <a href="{{ route('fan.competitions.show', $competition) }}" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Page publique</a>
-            @if (filled($competition->regulations) || $competition->scheduleList() !== [])
-                <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Déroulé & règlement</a>
-            @endif
+            <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Déroulé & règlement</a>
         </x-slot:description>
     </x-ui.page-header>
 

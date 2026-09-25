@@ -30,7 +30,7 @@ class OrganizerController extends Controller
         $organizer->fill([...$request->safe()->except('logo'), 'commune_id' => $request->validated('commune_id')]);
 
         if ($request->hasFile('logo')) {
-            $organizer->logo_path = $request->file('logo')->store('organizers', 'public');
+            $organizer->forceFill(['logo_path' => $request->file('logo')->store('organizers', config('media.disk')), 'logo_disk' => config('media.disk')]);
         }
 
         $organizer->save();

@@ -13,26 +13,64 @@ use App\Services\Competition\PhaseCalendar;
 use Carbon\CarbonInterface;
 
 /**
- * A first draft of the schedule and the regulations, written from what the organizer
- * configured (pre-selection, phases, criteria, fees). The organizer then edits it
- * freely: nothing here is shown to the public until saved.
+ * The automatic schedule (from the pre-selection and the planned calendar of every stage)
+ * and a first draft of the regulations, written from what the organizer configured. The
+ * draft is edited freely: nothing is shown to the public until saved.
  */
 class CompetitionGuideDraft
 {
     private string $timezone = 'UTC';
 
     /**
-     * @return array{schedule: list<array{title: string, date: ?string, details: ?string}>, regulations: string}
+     * @return array{regulations: string}
      */
     public function make(Competition $competition): array
     {
         $competition->loadMissing(['phases.stages', 'preselection', 'criteria']);
         $this->timezone = $competition->settings->timezone ?: config('app.timezone');
 
-        return [
-            'schedule' => $this->schedule($competition),
-            'regulations' => $this->regulations($competition),
-        ];
+        // The schedule is automatic (fullSchedule): only the regulations need a draft.
+        return ['regulations' => $this->regulations($competition)];
+    }
+
+    /**
+     * The schedule shown to artists and the public: the steps known from the configuration
+     * (registrations, pre-selection, each stage up to the final, always up to date) with the
+     * organizer's own steps slotted in by date (undated ones at the end).
+     *
+     * @return list<array{title: string, date: ?string, details: ?string, auto: bool}>
+     */
+    public function fullSchedule(Competition $competition): array
+    {
+        $this->timezone = $competition->settings->timezone ?: config('app.timezone');
+        $steps = array_map(fn (array $step) => [...$step, 'auto' => true], $this->schedule($competition->loadMissing(['phases.stages', 'preselection'])));
+
+        foreach ($competition->scheduleList() as $custom) {
+            $custom = [...$custom, 'auto' => false];
+            $position = count($steps);
+            if ($custom['date']) {
+                // After the last step dated before it.
+                foreach ($steps as $i => $step) {
+                    if ($step['date'] && $step['date'] > $custom['date']) {
+                        $position = $i;
+                        break;
+                    }
+                }
+            }
+            array_splice($steps, $position, 0, [$custom]);
+        }
+
+        return $steps;
+    }
+
+    /**
+     * @return list<array{title: string, date: ?string, details: ?string}>
+     */
+    public function automaticSchedule(Competition $competition): array
+    {
+        $this->timezone = $competition->settings->timezone ?: config('app.timezone');
+
+        return $this->schedule($competition->loadMissing(['phases.stages', 'preselection']));
     }
 
     /**

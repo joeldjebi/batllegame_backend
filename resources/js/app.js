@@ -79,7 +79,7 @@ Alpine.data('rotator', (words, interval = 2200) => ({
 
 // Theme: "light" | "dark" | "system", persisted per browser.
 Alpine.store('theme', {
-    mode: localStorage.getItem('theme') ?? 'system',
+    mode: localStorage.getItem('theme') ?? 'light',
 
     init() {
         this.apply();

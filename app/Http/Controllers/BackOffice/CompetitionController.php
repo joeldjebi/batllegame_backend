@@ -194,7 +194,7 @@ class CompetitionController extends Controller
 
         return redirect()->to(route('organizers.competitions.show', [$organizer, $competition]).'#settings')
             ->withInput($draft->make($competition))
-            ->with('status', 'Brouillon prêt dans les paramètres : relisez-le, complétez-le puis enregistrez.');
+            ->with('status', 'Brouillon du règlement prêt dans les paramètres : relisez-le, complétez-le puis enregistrez.');
     }
 
     public function destroy(Organizer $organizer, Competition $competition): RedirectResponse

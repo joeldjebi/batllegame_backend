@@ -2,7 +2,7 @@
 
 {{-- Schedule and regulations written by the organizer (public page, anchor #reglement). --}}
 @php
-    $steps = $competition->scheduleList();
+    $steps = app(\App\Services\CompetitionGuideDraft::class)->fullSchedule($competition);
     $timezone = $competition->settings->timezone;
 @endphp
 

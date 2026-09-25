@@ -32,7 +32,7 @@
             <div class="space-y-1 p-2">
                 @forelse ($organizers as $organizer)
                     <a href="{{ route('organizers.show', $organizer) }}" class="group flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50 dark:hover:bg-white/[0.03]">
-                        <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" square />
+                        <x-ui.avatar :name="$organizer->name" :src="$organizer->logoUrl()" square />
                         <span class="min-w-0 flex-1">
                             <span class="flex items-center justify-between gap-2">
                                 <span class="truncate text-sm font-semibold text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300">{{ $organizer->name }}</span>

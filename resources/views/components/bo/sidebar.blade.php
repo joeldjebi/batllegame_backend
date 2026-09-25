@@ -41,7 +41,7 @@
                             'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-white' => $isCurrent,
                             'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white' => ! $isCurrent,
                         ])>
-                            <x-ui.avatar :name="$navOrganizer->name" :src="$navOrganizer->logo_path ? Storage::url($navOrganizer->logo_path) : null" size="xs" square />
+                            <x-ui.avatar :name="$navOrganizer->name" :src="$navOrganizer->logoUrl()" size="xs" square />
                             <span class="flex-1 truncate">{{ $navOrganizer->name }}</span>
                             @unless ($navOrganizer->isVerified())
                                 <span @class(['size-2 rounded-full', 'bg-amber-400' => ! $navOrganizer->isSuspended(), 'bg-rose-500' => $navOrganizer->isSuspended()]) title="{{ $navOrganizer->status->label() }}"></span>

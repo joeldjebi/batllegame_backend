@@ -38,11 +38,12 @@ class AvatarService
         imagedestroy($source);
         imagedestroy($square);
 
+        $disk = config('media.disk');
         $path = 'avatars/'.$user->id.'-'.Str::random(8).($webp ? '.webp' : '.jpg');
-        Storage::disk('public')->put($path, $binary);
+        Storage::disk($disk)->put($path, $binary, ['ContentType' => $webp ? 'image/webp' : 'image/jpeg']);
 
         $this->delete($user);
-        $user->forceFill(['avatar_path' => $path])->save();
+        $user->forceFill(['avatar_path' => $path, 'avatar_disk' => $disk])->save();
 
         return $path;
     }
@@ -74,8 +75,8 @@ class AvatarService
     public function delete(User $user): void
     {
         if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
-            $user->forceFill(['avatar_path' => null])->save();
+            rescue(fn () => Storage::disk($user->avatar_disk ?? 'public')->delete($user->avatar_path), report: false);
+            $user->forceFill(['avatar_path' => null, 'avatar_disk' => null])->save();
         }
     }
 }

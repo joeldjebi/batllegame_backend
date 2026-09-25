@@ -7,6 +7,7 @@ use App\Enums\OrganizerStatus;
 use App\Enums\SeedKind;
 use App\Models\Concerns\HasLocation;
 use App\Models\Concerns\HasUniqueSlug;
+use App\Support\MediaUrl;
 use Database\Factories\OrganizerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\RouteKey;
@@ -69,6 +70,11 @@ class Organizer extends Model
     public function competitions(): HasMany
     {
         return $this->hasMany(Competition::class);
+    }
+
+    public function logoUrl(): ?string
+    {
+        return MediaUrl::for($this->logo_disk ?? 'public', $this->logo_path);
     }
 
     public function isVerified(): bool

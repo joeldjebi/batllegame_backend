@@ -8,6 +8,7 @@ use App\Enums\OrganizerRole;
 use App\Enums\PlatformRole;
 use App\Enums\SeedKind;
 use App\Models\Concerns\HasLocation;
+use App\Support\MediaUrl;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -18,7 +19,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
@@ -40,7 +40,7 @@ class User extends Authenticatable
      */
     public function avatarUrl(): ?string
     {
-        return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null;
+        return MediaUrl::for($this->avatar_disk ?? 'public', $this->avatar_path);
     }
 
     protected function casts(): array

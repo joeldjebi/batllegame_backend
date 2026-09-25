@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Competition;
+use App\Services\CompetitionGuideDraft;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,8 +24,8 @@ class CompetitionResource extends JsonResource
             // Sanitized HTML (bold, italic, headings, lists, quotes, links).
             'description' => $this->description,
             'prizes' => $this->prizeList(),
-            // Written by the organizer: ordered steps (date in the competition time zone) and sanitized HTML.
-            'schedule' => $this->scheduleList(),
+            // Automatic steps (configuration) + the organizer's own ones (auto: false), date in the competition time zone.
+            'schedule' => app(CompetitionGuideDraft::class)->fullSchedule($this->resource),
             'regulations' => $this->regulations,
             'discipline' => $this->discipline,
             'mode' => $this->mode,
@@ -39,6 +40,7 @@ class CompetitionResource extends JsonResource
                 'name' => $this->organizer->name,
                 'slug' => $this->organizer->slug,
                 'logo_path' => $this->organizer->logo_path,
+                'logo_url' => $this->organizer->logoUrl(),
                 'location' => $this->organizer->locationData(),
             ]),
             'phases' => PhaseResource::collection($this->whenLoaded('phases')),

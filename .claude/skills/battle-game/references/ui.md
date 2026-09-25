@@ -138,3 +138,8 @@ communes posts no `commune_id`: set it to null explicitly on update. Display wit
 `<x-ui.dropdown>` teleports its menu to `<body>` and anchors it to the trigger (`@alpinejs/anchor`): it is never
 clipped by an `overflow-hidden` card or table and flips above the trigger near the bottom of the screen. Keep menu
 content self-contained (forms, `x-ui.confirm` triggers work; do not rely on a parent `x-data` of the page).
+
+## Theme
+
+Light by default everywhere (`localStorage.theme ?? 'light'` in the four layouts and the Alpine `theme` store);
+dark or « Système » only when the user picks it. Keep every `dark:` variant working.

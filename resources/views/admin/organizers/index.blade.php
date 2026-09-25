@@ -48,7 +48,7 @@
                         <tr>
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" square />
+                                    <x-ui.avatar :name="$organizer->name" :src="$organizer->logoUrl()" square />
                                     <div>
                                         <a href="{{ route('admin.organizers.show', $organizer) }}" class="font-semibold text-slate-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-300">{{ $organizer->name }}</a>
                                         <p class="text-xs text-slate-500">{{ $organizer->locationLabel() ?? '—' }} · créé le {{ $organizer->created_at->translatedFormat('d M Y') }}</p>

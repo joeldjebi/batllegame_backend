@@ -47,6 +47,22 @@ return [
             'report' => false,
         ],
 
+        // Wasabi (S3 compatible): media, profile photos and logos in production.
+        // Private bucket: files are served through temporary signed URLs (App\Support\MediaUrl).
+        'wasabi' => [
+            'driver' => 's3',
+            'key' => env('WAS_ACCESS_KEY'),
+            'secret' => env('WAS_SECRET_KEY'),
+            'region' => env('WASABI_REGION', 'us-east-1'),
+            'bucket' => env('WASABI_BUCKET'),
+            'url' => env('WASABI_URL'),
+            'endpoint' => env('WASABI_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

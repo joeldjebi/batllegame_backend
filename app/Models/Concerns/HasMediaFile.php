@@ -4,6 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Enums\MediaOrigin;
 use App\Enums\RecordingPeriod;
+use App\Support\MediaUrl;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,7 +29,7 @@ trait HasMediaFile
 
     public function mediaUrl(): ?string
     {
-        return $this->media_path ? Storage::disk($this->media_disk ?? config('media.disk'))->url($this->media_path) : null;
+        return MediaUrl::for($this->media_disk, $this->media_path);
     }
 
     public function deleteMedia(): void

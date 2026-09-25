@@ -144,7 +144,7 @@
                                     <a href="{{ route('artist.competitions.show', $competition) }}" class="line-clamp-2 font-display text-base leading-snug font-bold hover:text-brand-700 sm:text-lg dark:hover:text-brand-300">{{ $competition->name }}</a>
                                     <p class="mt-0.5 truncate text-xs text-slate-500">
                                         {{ $competition->organizer->name }} · {{ $competition->discipline->label() }}
-                                        @if (filled($competition->regulations) || $competition->scheduleList() !== []) · <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 hover:underline dark:text-brand-300">Déroulé & règlement</a>@endif
+                                        · <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 hover:underline dark:text-brand-300">Déroulé & règlement</a>
                                     </p>
                                 </div>
                                 <x-ui.badge :value="$participant->status" class="shrink-0" />

@@ -24,7 +24,7 @@ sont toujours résolues à travers leur compétition.
 | Méthode | URL | Notes |
 |---|---|---|
 | GET | `/competitions` | Filtres `status`, `discipline` ; les brouillons ne sont jamais exposés |
-| GET | `/competitions/{slug}` | Phases, critères, `description` (HTML nettoyé), `prizes` (`[{rank, reward}]`), `location` (lieu de la compétition), `organizer.location`, `schedule` (`[{title, date, details}]`, date locale `Y-m-d\TH:i` dans le fuseau de la compétition), `regulations` (HTML nettoyé) |
+| GET | `/competitions/{slug}` | Phases, critères, `description` (HTML nettoyé), `prizes` (`[{rank, reward}]`), `location` (lieu de la compétition), `organizer.location`, `schedule` (`[{title, date, details, auto}]` : étapes automatiques + étapes ajoutées par l'organisateur (`auto: false`), date locale `Y-m-d\TH:i` dans le fuseau de la compétition), `regulations` (HTML nettoyé) |
 | GET | `/competitions/{slug}/matches/{id}` | `is_group` (poule : tous les artistes de la poule dans `slots`, `title` « Poule A »), slots avec `rank` et `is_forfeit`, scores (après clôture — pour une poule après la publication des résultats de la phase — ou si résultats en direct), `media` publiés, `vote_code_required`, étape, `voting_open`, `deliberation_ends_at`, `jury_scoring_open` |
 | POST | `/competitions/{slug}/matches/{id}/votes` | `participant_id`, `vote_code` (présentiel avec code) ; en-tête `X-Device-Id` ; 409 si déjà voté (poules : **un seul vote par phase**, 403 pour les artistes de la phase) |
 

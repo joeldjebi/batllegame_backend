@@ -3,7 +3,7 @@
 <x-layouts.app :title="$organizer->name">
     <x-ui.page-header :title="$organizer->name" :breadcrumbs="['Console' => route('admin.dashboard'), 'Organisateurs' => route('admin.organizers.index'), $organizer->name => null]">
         <x-slot:leading>
-            <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" size="lg" square />
+            <x-ui.avatar :name="$organizer->name" :src="$organizer->logoUrl()" size="lg" square />
         </x-slot:leading>
         <x-slot:description>
             <x-ui.badge :value="$organizer->status" />

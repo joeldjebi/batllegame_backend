@@ -492,8 +492,8 @@
                     @if ($canUpdate)
                         <x-slot:actions>
                             <x-ui.confirm :action="route('organizers.competitions.guide.draft', [$organizer, $competition])" :danger="false" icon="sparkles"
-                                title="Générer un brouillon ?" message="Le déroulé et le règlement sont pré-remplis à partir de vos phases, de la présélection et des critères. Rien n'est enregistré : relisez, modifiez puis enregistrez. Ce que vous avez déjà écrit dans ces deux champs sera remplacé dans le formulaire." confirm="Générer">
-                                <x-ui.button size="sm" variant="secondary" icon="sparkles">Générer un brouillon</x-ui.button>
+                                title="Générer un brouillon du règlement ?" message="Le règlement est pré-rempli à partir de vos phases, de la présélection et des critères. Rien n'est enregistré : relisez, modifiez puis enregistrez. Ce que vous avez déjà écrit dans ce champ sera remplacé dans le formulaire." confirm="Générer">
+                                <x-ui.button size="sm" variant="secondary" icon="sparkles">Générer un brouillon du règlement</x-ui.button>
                             </x-ui.confirm>
                         </x-slot:actions>
                     @endif
@@ -502,9 +502,27 @@
                     </fieldset>
                 </x-ui.card>
 
-                @php $scheduleRows = old('schedule', $competition->scheduleList() ?: [['title' => '', 'date' => null, 'details' => '']]); @endphp
-                <x-ui.card title="Déroulé" icon="calendar-days" description="Les grandes étapes, dans l'ordre.">
+                @php
+                    $scheduleRows = old('schedule', $competition->scheduleList());
+                    $autoSteps = app(\App\Services\CompetitionGuideDraft::class)->automaticSchedule($competition);
+                @endphp
+                <x-ui.card title="Déroulé" icon="calendar-days" description="Mis à jour automatiquement depuis les inscriptions, la présélection et le calendrier de chaque tour.">
+                    <ol class="mb-5 space-y-2">
+                        @foreach ($autoSteps as $step)
+                            <li class="flex items-start gap-2.5 rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5">
+                                <span class="mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg bg-brand-100 text-[11px] font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{{ $loop->iteration }}</span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm font-semibold">{{ $step['title'] }}</span>
+                                    <span class="block text-xs text-slate-500">{{ $step['date'] ? \Illuminate\Support\Carbon::parse($step['date'])->translatedFormat('d M Y · H:i') : 'Date à planifier' }}{{ $step['details'] ? ' · '.$step['details'] : '' }}</span>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ol>
+                    <p class="mb-3 text-xs font-semibold tracking-wide text-slate-400 uppercase">Étapes supplémentaires (facultatif)</p>
+                    <p class="-mt-2 mb-3 text-xs text-slate-500">Ex. conférence de presse, soirée de remise des prix : elles se placent selon leur date.</p>
                     <fieldset @disabled(! $canUpdate) x-data="{ steps: @js(array_values($scheduleRows)) }" class="space-y-3">
+                        {{-- No extra step left: still send the field so the list can be emptied. --}}
+                        <input type="hidden" name="schedule" value="" x-bind:disabled="steps.length > 0">
                         <template x-for="(step, index) in steps" :key="index">
                             <div class="flex items-start gap-2 rounded-xl bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
                                 <span class="mt-1.5 grid size-7 shrink-0 place-items-center rounded-lg bg-brand-100 text-xs font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300" x-text="index + 1"></span>
@@ -518,13 +536,13 @@
                                 </div>
                                 <div class="flex flex-col gap-0.5">
                                     <button type="button" x-on:click="index > 0 && steps.splice(index - 1, 0, steps.splice(index, 1)[0])" x-show="index > 0" class="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-brand-600 dark:hover:bg-white/10" title="Monter"><x-ui.icon name="chevron-up" variant="m" class="size-4" /></button>
-                                    <button type="button" x-on:click="steps.splice(index, 1)" x-show="steps.length > 1" class="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" title="Retirer"><x-ui.icon name="trash" variant="m" class="size-4" /></button>
+                                    <button type="button" x-on:click="steps.splice(index, 1)" class="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" title="Retirer"><x-ui.icon name="trash" variant="m" class="size-4" /></button>
                                 </div>
                             </div>
                         </template>
                         <button type="button" x-on:click="steps.push({ title: '', date: null, details: '' })" x-show="steps.length < 30"
                             class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 dark:border-white/15 dark:text-slate-300">
-                            <x-ui.icon name="plus" variant="m" class="size-4" /> Ajouter une étape
+                            <x-ui.icon name="plus" variant="m" class="size-4" /> Ajouter une étape supplémentaire
                         </button>
                         @error('schedule.*')<p class="text-sm text-rose-600">{{ $message }}</p>@enderror
                     </fieldset>

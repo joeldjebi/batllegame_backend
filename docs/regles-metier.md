@@ -172,11 +172,13 @@ créé d'un coup, en brouillon : la présélection, la première phase et, pour 
 prévu jusqu'à la finale). Le calendrier de la première phase ne peut pas commencer avant la fin de la délibération
 de la présélection.
 
-**Déroulé & règlement**, écrits par l'organisateur (Paramètres) : le déroulé est une liste d'étapes ordonnées
-(intitulé, date facultative dans le fuseau de la compétition, précisions) ; le règlement est un texte mis en forme
-(nettoyé). « Générer un brouillon » les pré-remplit à partir de la configuration (frais, présélection, phases,
-pondérations, votes, médias, départage, critères) **dans le formulaire seulement** : rien n'est enregistré ni
-public avant que l'organisateur relise et enregistre. Affichés sur la page publique (ancre `#reglement`), rappelés
+**Déroulé** (automatique) : calculé en permanence depuis la configuration — clôture des inscriptions, présélection
+(date limite, fin du vote, annonce), chaque tour des phases avec son calendrier prévu ou réel (« Date à planifier »
+sinon), résultats. L'organisateur peut y ajouter des **étapes supplémentaires** (ex. conférence de presse), placées
+selon leur date (sans date : à la fin). **Règlement** : texte mis en forme (nettoyé) écrit par l'organisateur ;
+« Générer un brouillon du règlement » le pré-remplit depuis la configuration (frais, présélection, phases,
+pondérations, votes, médias, départage, critères) **dans le formulaire seulement** : rien n'est enregistré ni public
+avant que l'organisateur relise et enregistre. Affichés sur la page publique (ancre `#reglement`), rappelés
 dans l'espace artiste (« En t'inscrivant, tu acceptes le règlement ») et exposés par l'API (`schedule`,
 `regulations`). Copiés à la duplication.
 Démarrer la première phase fait passer la compétition `en_cours`. La fin de la dernière

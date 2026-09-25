@@ -18,7 +18,7 @@
     <title>{{ $title ? $title.' · ' : '' }}Battle Game{{ $admin ? ' Admin' : '' }}</title>
     <script>
         (() => {
-            const mode = localStorage.getItem('theme') ?? 'system';
+            const mode = localStorage.getItem('theme') ?? 'light';
             if (mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             }

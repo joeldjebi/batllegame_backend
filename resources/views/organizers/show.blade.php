@@ -13,7 +13,7 @@
 <x-layouts.app :title="$organizer->name">
     <x-ui.page-header :title="$organizer->name" :breadcrumbs="['Tableau de bord' => route('dashboard'), $organizer->name => null]">
         <x-slot:leading>
-            <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" size="lg" square />
+            <x-ui.avatar :name="$organizer->name" :src="$organizer->logoUrl()" size="lg" square />
         </x-slot:leading>
         <x-slot:description>
             <x-ui.badge :value="$organizer->status" />
@@ -156,7 +156,7 @@
                         <x-ui.textarea name="description" label="Description" :value="$organizer->description" class="sm:col-span-2" />
                         <x-ui.field label="Logo" class="sm:col-span-2">
                             <div class="flex items-center gap-4">
-                                <x-ui.avatar :name="$organizer->name" :src="$organizer->logo_path ? Storage::url($organizer->logo_path) : null" size="lg" square />
+                                <x-ui.avatar :name="$organizer->name" :src="$organizer->logoUrl()" size="lg" square />
                                 <input type="file" name="logo" accept="image/*" class="block text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-brand-500/10 dark:file:text-brand-300">
                             </div>
                         </x-ui.field>

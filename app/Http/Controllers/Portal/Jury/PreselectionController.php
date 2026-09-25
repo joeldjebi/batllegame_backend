@@ -51,7 +51,7 @@ class PreselectionController extends Controller
             'search' => $search,
             'total' => $total,
             'scored' => $scored,
-            'next' => $this->entries($judge, $preselection, false)->orderBy('id')->value('id'),
+            'next' => $this->workload->nextToScore($judge, $preselection),
             'myScores' => PreselectionScore::query()->where('judge_id', $judge->id)->whereIn('submission_id', $entries->getCollection()->modelKeys())->get()->groupBy('submission_id'),
         ]);
     }
@@ -65,7 +65,6 @@ class PreselectionController extends Controller
         abort_unless($this->workload->entriesFor($judge, $preselection)->whereKey($entry->id)->exists(), 404);
 
         $mine = PreselectionScore::query()->where('judge_id', $judge->id)->where('submission_id', $entry->id)->get()->keyBy('criterion_id');
-        $toScore = $this->entries($judge, $preselection, false)->orderBy('id');
 
         return view('portal.jury.preselection-entry', [
             'competition' => $competition,
@@ -74,7 +73,7 @@ class PreselectionController extends Controller
             'criteria' => $competition->criteria()->get(),
             'mine' => $mine,
             'canScore' => $preselection->acceptsScores() && $mine->isEmpty(),
-            'next' => (clone $toScore)->whereKeyNot($entry->id)->where('id', '>', $entry->id)->value('id') ?? (clone $toScore)->whereKeyNot($entry->id)->value('id'),
+            'next' => $this->workload->nextToScore($judge, $preselection, $entry->id),
             'total' => $this->workload->entriesFor($judge, $preselection)->count(),
             'scored' => $this->entries($judge, $preselection, true)->count(),
         ]);
@@ -88,7 +87,7 @@ class PreselectionController extends Controller
         $preselections->score($judge, $entry, $request->all());
 
         // Straight to the next entry to score.
-        $next = $this->entries($judge, $preselection, false)->orderByRaw('id > ? desc', [$entry->id])->orderBy('id')->value('id');
+        $next = $this->workload->nextToScore($judge, $preselection, $entry->id);
         $message = "Notes enregistrées pour {$entry->participant->stage_name}.";
 
         return $next
@@ -109,15 +108,10 @@ class PreselectionController extends Controller
     }
 
     /**
-     * The judge's entries, already scored by them or not.
-     *
      * @return Builder<PreselectionSubmission>
      */
     private function entries(Judge $judge, Preselection $preselection, bool $scored): Builder
     {
-        $mine = PreselectionScore::query()->where('judge_id', $judge->id)->select('submission_id');
-
-        return $this->workload->entriesFor($judge, $preselection)
-            ->when($scored, fn (Builder $q) => $q->whereIn('id', $mine), fn (Builder $q) => $q->whereNotIn('id', $mine));
+        return $this->workload->entriesScoredBy($judge, $preselection, $scored);
     }
 }

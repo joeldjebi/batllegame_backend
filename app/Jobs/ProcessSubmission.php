@@ -5,22 +5,26 @@ namespace App\Jobs;
 use App\Enums\PerformanceStatus;
 use App\Models\Contracts\ReviewableMedia;
 use App\Services\Media\MediaInspector;
+use App\Services\Media\MediaOptimization;
 use App\Services\Media\MediaProvenance;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Checks an uploaded media (stage submission or pre-selection entry) against
  * its rules (real duration via ffprobe), reads its provenance (hidden metadata),
- * then publishes it or leaves it for the organizer's review.
+ * optimizes it for streaming (lossless when possible, poster image), then
+ * publishes it or leaves it for the organizer's review.
  */
 class ProcessSubmission implements ShouldQueue
 {
     use Queueable;
 
     public int $tries = 3;
+
+    /** Re-encoding a long HD video can take minutes (keep below the queue retry_after). */
+    public int $timeout = 600;
 
     /**
      * A few seconds of tolerance for encoders rounding the duration.
@@ -32,7 +36,7 @@ class ProcessSubmission implements ShouldQueue
      */
     public function __construct(public Model $media) {}
 
-    public function handle(MediaInspector $inspector, MediaProvenance $provenance): void
+    public function handle(MediaInspector $inspector, MediaProvenance $provenance, MediaOptimization $optimization): void
     {
         /** @var (Model&ReviewableMedia)|null $media */
         $media = $this->media->fresh();
@@ -41,61 +45,39 @@ class ProcessSubmission implements ShouldQueue
             return;
         }
 
-        $maxDuration = $media->maxMediaDuration();
-        [$duration, $origin] = $this->withLocalCopy($media, fn (string $path) => [
-            $inspector->duration($path),
+        MediaOptimization::withLocalCopy($media, function (string $path) use ($media, $inspector, $provenance, $optimization): void {
+            $duration = $inspector->duration($path);
             // Hidden metadata: an indication for the organizer, never blocking.
-            rescue(fn () => $provenance->analyze($path), null),
-        ]);
+            $origin = rescue(fn () => $provenance->analyze($path), null);
 
-        if ($origin !== null) {
-            $media->forceFill([
-                'recorded_at' => $origin['recorded_at'],
-                'media_origin' => $origin['origin'],
-                'media_metadata' => [...$origin['metadata'], 'uploaded_at' => $media->media_metadata['uploaded_at'] ?? now()->toIso8601String()],
-            ]);
-        }
+            if ($origin !== null) {
+                $media->forceFill([
+                    'recorded_at' => $origin['recorded_at'],
+                    'media_origin' => $origin['origin'],
+                    'media_metadata' => [...$origin['metadata'], 'uploaded_at' => $media->media_metadata['uploaded_at'] ?? now()->toIso8601String()],
+                ]);
+            }
 
-        if ($duration !== null && $duration > $maxDuration + self::DURATION_TOLERANCE) {
+            $maxDuration = $media->maxMediaDuration();
+
+            if ($duration !== null && $duration > $maxDuration + self::DURATION_TOLERANCE) {
+                $media->forceFill([
+                    'duration_seconds' => (int) round($duration),
+                    'status' => PerformanceStatus::Rejected,
+                    'rejection_reason' => sprintf('Durée de %d s : la limite est de %d s.', round($duration), $maxDuration),
+                ])->save();
+
+                return;
+            }
+
+            $media->forceFill(['duration_seconds' => $duration !== null ? (int) round($duration) : null])->save();
+
+            // Still « en traitement » meanwhile: the organizer reviews the final file.
+            $optimization->apply($media, $path);
+
             $media->forceFill([
-                'duration_seconds' => (int) round($duration),
-                'status' => PerformanceStatus::Rejected,
-                'rejection_reason' => sprintf('Durée de %d s : la limite est de %d s.', round($duration), $maxDuration),
+                'status' => $media->requiresReview() ? PerformanceStatus::Pending : PerformanceStatus::Approved,
             ])->save();
-
-            return;
-        }
-
-        $media->forceFill([
-            'duration_seconds' => $duration !== null ? (int) round($duration) : null,
-            'status' => $media->requiresReview() ? PerformanceStatus::Pending : PerformanceStatus::Approved,
-        ])->save();
-    }
-
-    /**
-     * ffprobe needs a local file: remote disks (S3) are copied to a temp file.
-     *
-     * @template T
-     *
-     * @param  callable(string): T  $callback
-     * @return T
-     */
-    private function withLocalCopy(Model $media, callable $callback): mixed
-    {
-        $diskName = $media->media_disk ?? config('media.disk');
-        $disk = Storage::disk($diskName);
-
-        if (config("filesystems.disks.{$diskName}.driver") === 'local') {
-            return $callback($disk->path($media->media_path));
-        }
-
-        $temp = tempnam(sys_get_temp_dir(), 'media');
-        file_put_contents($temp, $disk->readStream($media->media_path));
-
-        try {
-            return $callback($temp);
-        } finally {
-            @unlink($temp);
-        }
+        });
     }
 }

@@ -16,7 +16,7 @@ app/
 ├── Enums/                Tous les statuts et types (valeurs en français, label(), tone() pour les badges)
 ├── Events/MatchClosed    Émis après commit quand un match est décidé
 ├── Listeners/            AdvanceBracket (élimination), QueueGroupStandingsRecalculation (poules)
-├── Jobs/                 RecalculateGroupStandings, ProcessSubmission (durée via ffprobe)
+├── Jobs/                 RecalculateGroupStandings, ProcessSubmission (durée via ffprobe, optimisation ffmpeg), OptimizeMedia (captations, rattrapage)
 ├── Exceptions/           CompetitionFlowException (règle métier → 422 / erreur de formulaire)
 ├── Http/
 │   ├── Controllers/BackOffice   Back-office organisateur (Blade)
@@ -34,7 +34,7 @@ app/
 │   ├── VotingService, JuryScoringService, RegistrationService, SubmissionService (partagés API + web)
 │   ├── JudgeAccountService, BackOfficeAccountService (comptes créés par un tiers), PhoneVerificationService
 │   ├── PaymentService (frais d'inscription, paiement simulé), PreselectionService (soumissions, likes, notes, classement, publication)
-│   ├── Media/            MediaInspector (ffprobe)
+│   ├── Media/            MediaInspector (ffprobe), MediaOptimizer / MediaOptimization (ffmpeg : streaming, miniature)
 │   └── Sms/              SmsSender (LogSmsSender en local)
 └── Support/Portal        Définition des 3 portails web
 routes/

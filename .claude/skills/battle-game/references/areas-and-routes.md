@@ -42,7 +42,8 @@ registration / logout for all three.
 - Artist: `artist.dashboard`, `artist.competitions.register`, `artist.competitions.stages.submit`.
 - Public: `fan.dashboard`, `fan.competitions.show`, `fan.competitions.matches.votes.store`,
   `fan.verification.show|send|verify`.
-- API: see `docs/api.md`.
+- API: see `docs/api.md` (mobile: `/feed`, `/me/participations/{slug}` journey, `/competitions/{slug}/preselection/entries`,
+  `/judge/competitions/{slug}/preselection[/entries/{entry}]`).
 
 Scoped bindings everywhere: `{organizer}` by slug (RouteKey attribute), `{competition}` by id in the
 back-office/admin and by `:slug` in the API/portals; children (`{phase}`, `{stage}`, `{match}`,

@@ -276,7 +276,8 @@ it('shows the pre-selection to the public, the artists and the judges', function
     $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection', $competition))->assertOk()->assertSee('Commencer la notation')->assertSee($entry->participant->stage_name);
     $this->actingAs($judge, 'jury')->get(route('jury.competitions.preselection.entries.show', [$competition, $entry]))->assertOk()->assertSee('Flow');
 
-    $this->getJson("/api/competitions/{$competition->slug}/preselection")->assertOk()->assertJsonPath('data.state', 'ouverte')->assertJsonCount(1, 'data.entries');
+    $this->getJson("/api/competitions/{$competition->slug}/preselection")->assertOk()->assertJsonPath('data.state', 'ouverte')->assertJsonPath('data.entries_count', 1);
+    $this->getJson("/api/competitions/{$competition->slug}/preselection/entries")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $entry->id);
 });
 
 it('freezes the rules once a performance is sent but keeps dates editable', function () {

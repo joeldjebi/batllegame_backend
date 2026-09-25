@@ -25,7 +25,7 @@ it('always shows an artist the likes of their own entry, not the others', functi
 
     $this->actingAs($artist, 'member')->get(route('artist.dashboard'))->assertOk()->assertSeeInOrder(['Ma prestation de présélection', '2']);
 
-    $entries = collect($this->actingAs($artist, 'sanctum')->getJson("/api/competitions/{$competition->slug}/preselection")->assertOk()->json('data.entries'))->keyBy('id');
+    $entries = collect($this->actingAs($artist, 'sanctum')->getJson("/api/competitions/{$competition->slug}/preselection/entries")->assertOk()->json('data'))->keyBy('id');
     expect($entries[$mine->id]['likes'])->toBe(2)
         ->and($entries[$other->id]['likes'])->toBeNull();
 });

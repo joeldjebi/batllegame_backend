@@ -18,9 +18,11 @@ use App\Models\PublicVote;
 use App\Models\Stage;
 use App\Realtime\BroadcastModelChanges;
 use App\Realtime\Realtime;
+use App\Services\Media\FfmpegMediaOptimizer;
 use App\Services\Media\FfprobeMediaInspector;
 use App\Services\Media\FfprobeTagReader;
 use App\Services\Media\MediaInspector;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Media\MediaTagReader;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsSender;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         // Replace with a real SMS provider binding in production.
         $this->app->bind(SmsSender::class, LogSmsSender::class);
         $this->app->bind(MediaInspector::class, FfprobeMediaInspector::class);
+        $this->app->bind(MediaOptimizer::class, FfmpegMediaOptimizer::class);
         $this->app->bind(MediaTagReader::class, FfprobeTagReader::class);
         $this->app->singleton(Realtime::class);
     }

@@ -60,9 +60,18 @@ Inside one transaction (phase row locked):
 - `submit(participant, stage, file)`: one per participant and stage (replaces the file and resets review),
   stored on `config('media.disk')` under `submissions/{competition}/stage-{id}/`, status `Processing`,
   job dispatched after commit.
-- `ProcessSubmission`: duration via `MediaInspector` (ffprobe; copies remote files locally), rejects above
-  `media_max_duration` + 2 s, else `Pending` (review on) or `Approved`.
-- `captation(match, participant, file, uploader)`: on-site recording, `Approved`.
+- `ProcessSubmission`: duration via `MediaInspector` (ffprobe; one local copy of remote files), rejects above
+  `media_max_duration` + 2 s, then `MediaOptimization::apply()` (still `Processing`), else `Pending` (review on) or `Approved`.
+- **Optimization** (`MediaOptimizer` → `FfmpegMediaOptimizer`, `config('media.optimize')`, off in phpunit.xml):
+  H.264 8-bit + AAC/MP3 in MP4/MOV is remuxed `-c copy -movflags +faststart` (lossless); anything else re-encoded
+  H.264 CRF 20, long side ≤ `media.max_video_size`, never upscaled; JPEG poster. The new file replaces the upload
+  (`{uuid}.mp4` + `{uuid}-poster.jpg`, same directory), columns `poster_path`, `width`/`height` (display size,
+  rotation applied), `optimized_at`. Never blocks: failure/missing ffmpeg = original kept. A result for a file
+  replaced meanwhile is dropped. `OptimizeMedia` job: captations + `media:optimize` backfill. `deleteMedia()`
+  also removes the poster and resets these columns.
+- `published_at` (both media tables) follows the status in `HasMediaFile::bootHasMediaFile()`: set when it becomes
+  `Approved`, cleared otherwise. Stable order of the mobile feed (index `status, published_at, id`).
+- `captation(match, participant, file, uploader)`: on-site recording, `Approved`, then `OptimizeMedia`.
 - `approve()` / `reject(reason)`.
 
 ## Events, jobs, scheduler

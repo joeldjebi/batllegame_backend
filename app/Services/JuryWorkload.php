@@ -82,6 +82,30 @@ class JuryWorkload
             ->when($preselection->splitsJudging(), fn (Builder $q) => $q->whereIn('id', DB::table('preselection_assignments')->where('judge_id', $judge->id)->select('submission_id')));
     }
 
+    /**
+     * The judge's entries, already scored by them or still to score.
+     *
+     * @return Builder<PreselectionSubmission>
+     */
+    public function entriesScoredBy(Judge $judge, Preselection $preselection, bool $scored): Builder
+    {
+        $mine = PreselectionScore::query()->where('judge_id', $judge->id)->select('submission_id');
+
+        return $this->entriesFor($judge, $preselection)
+            ->when($scored, fn (Builder $q) => $q->whereIn('id', $mine), fn (Builder $q) => $q->whereNotIn('id', $mine));
+    }
+
+    /**
+     * Next entry to score after $afterId (wrapping to the first one), or null when all are scored.
+     */
+    public function nextToScore(Judge $judge, Preselection $preselection, ?int $afterId = null): ?int
+    {
+        $toScore = $this->entriesScoredBy($judge, $preselection, false)->when($afterId, fn (Builder $q) => $q->whereKeyNot($afterId));
+
+        return ($afterId ? (clone $toScore)->where('id', '>', $afterId)->orderBy('id')->value('id') : null)
+            ?? $toScore->orderBy('id')->value('id');
+    }
+
     public function isAssigned(Judge $judge, PreselectionSubmission $entry): bool
     {
         return ! $entry->preselection->splitsJudging()

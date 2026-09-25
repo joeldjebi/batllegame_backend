@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\MatchStatus;
+use App\Enums\PerformanceStatus;
 use App\Enums\PlatformRole;
 use App\Exceptions\CompetitionFlowException;
+use App\Jobs\OptimizeMedia;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Performance;
@@ -12,6 +14,7 @@ use App\Services\Competition\GroupStandingsCalculator;
 use App\Services\Competition\MatchCloser;
 use App\Services\Competition\StageService;
 use App\Services\DemoDataPurger;
+use App\Services\Media\MediaOptimization;
 use App\Services\Media\MediaProvenance;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
@@ -80,6 +83,35 @@ Artisan::command('media:provenance {--force : Re-analyze media already analyzed}
 
     $this->info("{$count} média(s) analysé(s).");
 })->purpose('Read the hidden metadata (recording date, origin) of media uploaded before the analysis existed');
+
+Artisan::command('media:optimize {--limit=500 : Maximum number of media queued} {--sync : Process now instead of queueing}', function () {
+    if (! MediaOptimization::enabled()) {
+        $this->warn('Optimisation désactivée (MEDIA_OPTIMIZE=false).');
+
+        return;
+    }
+
+    $count = 0;
+    $limit = max(1, (int) $this->option('limit'));
+
+    foreach ([Performance::class, PreselectionSubmission::class] as $model) {
+        $model::query()->whereNotNull('media_path')->whereNull('optimized_at')
+            ->where('status', '!=', PerformanceStatus::Processing)
+            ->lazyById()
+            ->each(function ($media) use (&$count, $limit): bool {
+                if ($count >= $limit) {
+                    return false;
+                }
+
+                $this->option('sync') ? OptimizeMedia::dispatchSync($media) : OptimizeMedia::dispatch($media);
+                $count++;
+
+                return true;
+            });
+    }
+
+    $this->info($this->option('sync') ? "{$count} média(s) traité(s)." : "{$count} média(s) mis en file d'attente (worker requis).");
+})->purpose('Optimize for streaming (poster, faststart) the media uploaded before optimization existed');
 
 Artisan::command('stages:process', function (StageService $stages) {
     ['forfeits' => $forfeits, 'opened' => $opened] = $stages->processDue();

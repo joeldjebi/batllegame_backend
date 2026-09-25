@@ -123,7 +123,12 @@ Human documentation (French) lives in `docs/` (`README`, `architecture`, `regles
   cannot be approved and are left out of `PreselectionService::rank()`.
 - Uploaded media are served from `/storage`: run `php artisan storage:link` once per machine (otherwise every player
   shows « Lecture impossible »).
-- Local machine: Node 18 by default (use `/opt/homebrew/bin` Node 22), no ffmpeg (duration check skipped),
+- Mobile API contract (see `docs/api.md` › Cache, hors ligne et médias): every API GET gets an ETag/304
+  (`ConditionalJsonResponse`), writes accept `Idempotency-Key` (`IdempotentRequests`, per user, 24 h); lists for the
+  app are cursor-paginated (`/feed` via `App\Services\Feed`, pre-selection entries, judge pre-selection). Keep new
+  app endpoints cursor-paginated and media payloads with `poster_url`/`width`/`height`.
+- `Eloquent\Collection::merge()` re-keys by model id: `->toBase()` before merging collections keyed by strings.
+- Local machine: Node 18 by default (use `/opt/homebrew/bin` Node 22), ffmpeg in /opt/homebrew/bin (not on PHP's PATH: tests find it, the app skips optimization unless FFMPEG_PATH is set),
   PHP upload limit 2 MB, SMS written to `storage/logs/laravel.log`, login throttling is 6/min per IP.
 
 ## Useful commands
@@ -136,6 +141,7 @@ php artisan db:seed --class=LocationSeeder               # optional starter plac
 php artisan demo:purge [--accounts]                      # remove seeded rows (seed_kind), also from the SA dashboard; seeders must tag what they create
 php artisan stages:process | matches:close-expired       # scheduler jobs (every minute in production)
 php artisan scores:recompute {slug}                      # rebuild derived scores
+php artisan media:optimize [--sync]                      # streaming optimization + posters of media uploaded before it existed
 composer dev                                             # server + queue + logs + Vite + Socket.IO (npm run realtime)
 php artisan route:list --except-vendor                   # 90+ routes across the 6 areas
 ```

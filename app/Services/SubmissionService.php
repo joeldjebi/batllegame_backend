@@ -6,6 +6,7 @@ use App\Enums\MediaType;
 use App\Enums\PerformanceSource;
 use App\Enums\PerformanceStatus;
 use App\Exceptions\CompetitionFlowException;
+use App\Jobs\OptimizeMedia;
 use App\Jobs\ProcessSubmission;
 use App\Models\BattleMatch;
 use App\Models\Participant;
@@ -105,6 +106,9 @@ class SubmissionService
             'status' => PerformanceStatus::Approved,
         ]);
         $performance->forceFill(['reviewed_by' => $uploader->id, 'reviewed_at' => now()])->save();
+
+        // Published at once: optimized in the background (the original plays meanwhile).
+        OptimizeMedia::dispatch($performance)->afterCommit();
 
         return $performance;
     }

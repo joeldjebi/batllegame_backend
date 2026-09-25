@@ -10,6 +10,7 @@ use App\Http\Resources\StageResource;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\Judge;
+use App\Services\JuryWorkload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,12 +20,12 @@ use Illuminate\Http\Request;
  */
 class CompetitionController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, JuryWorkload $workload): JsonResponse
     {
         $assignments = $request->user()->judgeAssignments()
             ->where('status', JudgeStatus::Accepted)
             ->whereHas('competition')
-            ->with(['competition' => fn ($q) => $q->with('organizer')->withCount([
+            ->with(['competition' => fn ($q) => $q->with(['organizer', 'preselection.competition'])->withCount([
                 'matches as matches_to_score_count' => fn ($q) => $q->where('status', MatchStatus::Voting),
             ])])
             ->get();
@@ -39,6 +40,12 @@ class CompetitionController extends Controller
                 'mode' => $judge->competition->mode,
                 'organizer' => $judge->competition->organizer->name,
                 'matches_to_score' => $judge->competition->matches_to_score_count,
+                'preselection' => ($preselection = $judge->competition->preselection) ? [
+                    'state' => $preselection->state(),
+                    'accepts_scores' => $preselection->acceptsScores(),
+                    'total' => $workload->entriesFor($judge, $preselection)->count(),
+                    'scored' => $workload->entriesScoredBy($judge, $preselection, true)->count(),
+                ] : null,
             ]),
         ]);
     }
@@ -49,7 +56,7 @@ class CompetitionController extends Controller
 
         $matches = $competition->matches()
             ->whereIn('status', [MatchStatus::Voting, MatchStatus::Closed])
-            ->with(['phase', 'stage', 'slots.participant', 'competition'])
+            ->with(['phase', 'stage', 'slots.participant.user', 'competition', 'group'])
             ->orderByRaw("case status when 'vote' then 0 else 1 end")
             ->orderBy('stage_id')
             ->get();
@@ -77,7 +84,7 @@ class CompetitionController extends Controller
         $judge = $this->judgeOf($request, $competition);
 
         return response()->json([
-            'match' => new MatchResource($match->load(['phase', 'stage', 'slots.participant', 'competition'])),
+            'match' => new MatchResource($match->load(['phase', 'stage', 'slots.participant.user', 'competition', 'group'])),
             'criteria' => $competition->criteria()->get(['id', 'name', 'max_points', 'weight']),
             'my_scores' => $judge->scores()->where('match_id', $match->id)->get(['participant_id', 'criterion_id', 'score', 'comment']),
         ]);

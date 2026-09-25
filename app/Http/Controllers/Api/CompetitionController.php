@@ -49,6 +49,6 @@ class CompetitionController extends Controller
     {
         abort_unless($competition->status->isPublic(), 404);
 
-        return new MatchResource($match->load(['phase', 'slots.participant', 'competition']));
+        return new MatchResource($match->load(['phase', 'slots.participant.user', 'competition', 'group']));
     }
 }

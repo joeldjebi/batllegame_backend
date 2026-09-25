@@ -44,11 +44,14 @@ class MatchResource extends JsonResource
             'is_forfeit' => $this->is_forfeit,
             'stage' => $this->stage ? ['id' => $this->stage->id, 'name' => $this->stage->name, 'status' => $this->stage->status] : null,
             'winner_id' => $this->winner_id,
+            // Web page with a preview, for the share sheet of the app.
+            'share_url' => route('fan.competitions.show', $this->competition).'#match-'.$this->id,
             'slots' => $this->whenLoaded('slots', fn () => $this->slots->map(fn (MatchParticipant $slot) => [
                 'slot' => $slot->slot,
                 'participant' => $slot->participant ? [
                     'id' => $slot->participant->id,
                     'stage_name' => $slot->participant->stage_name,
+                    'avatar_url' => $slot->participant->relationLoaded('user') ? $slot->participant->user?->avatarUrl() : null,
                 ] : null,
                 'jury_score' => $showScores ? $slot->jury_score : null,
                 'public_score' => $showScores ? $slot->public_score : null,

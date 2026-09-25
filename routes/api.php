@@ -3,7 +3,10 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\CountryController;
+use App\Http\Controllers\Api\FeedController;
+use App\Http\Controllers\Api\JourneyController;
 use App\Http\Controllers\Api\Judge\CompetitionController as JudgeCompetitionController;
+use App\Http\Controllers\Api\Judge\PreselectionController as JudgePreselectionController;
 use App\Http\Controllers\Api\JuryScoreController;
 use App\Http\Controllers\Api\ParticipationController;
 use App\Http\Controllers\Api\PaymentController;
@@ -24,6 +27,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('countries', [CountryController::class, 'index'])->name('api.countries.index');
 Route::get('locations', [CountryController::class, 'locations'])->name('api.locations.index');
+
+// Mobile « Pour toi » feed (public; like state of the viewer when a token is sent).
+Route::get('feed', FeedController::class)->middleware('throttle:120,1')->name('api.feed');
 
 // Socket.IO: server URL + signed token for the private channels of the user.
 Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');
@@ -50,6 +56,7 @@ Route::scopeBindings()
         Route::get('{competition:slug}', [CompetitionController::class, 'show'])->name('show');
         Route::get('{competition:slug}/matches/{match}', [CompetitionController::class, 'showMatch'])->name('matches.show');
         Route::get('{competition:slug}/preselection', [PreselectionController::class, 'show'])->name('preselection.show');
+        Route::get('{competition:slug}/preselection/entries', [PreselectionController::class, 'entries'])->name('preselection.entries');
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('{competition:slug}/registrations', [RegistrationController::class, 'store'])->name('registrations.store');
@@ -80,6 +87,7 @@ Route::scopeBindings()
 
 // Participant area.
 Route::middleware('auth:sanctum')->get('me/participations', [ParticipationController::class, 'index'])->name('api.me.participations');
+Route::middleware('auth:sanctum')->get('me/participations/{competition:slug}', [JourneyController::class, 'show'])->name('api.me.participations.show');
 
 // Judge area: only the competitions the judge is assigned to.
 Route::middleware(['auth:sanctum', 'password.changed'])
@@ -90,4 +98,6 @@ Route::middleware(['auth:sanctum', 'password.changed'])
         Route::get('competitions', [JudgeCompetitionController::class, 'index'])->name('competitions.index');
         Route::get('competitions/{competition:slug}', [JudgeCompetitionController::class, 'show'])->name('competitions.show');
         Route::get('competitions/{competition:slug}/matches/{match}', [JudgeCompetitionController::class, 'match'])->name('competitions.matches.show');
+        Route::get('competitions/{competition:slug}/preselection', [JudgePreselectionController::class, 'index'])->name('competitions.preselection.index');
+        Route::get('competitions/{competition:slug}/preselection/entries/{entry}', [JudgePreselectionController::class, 'show'])->name('competitions.preselection.show');
     });

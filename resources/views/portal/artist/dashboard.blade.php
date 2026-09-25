@@ -160,7 +160,9 @@
                             @if ($media?->media_path)
                                 <div class="mx-4 mt-3 flex items-center gap-3 rounded-2xl p-2 ring-1 ring-slate-100 sm:mx-5 dark:ring-white/10">
                                     <button type="button" x-data x-on:click="$dispatch('open-modal', '{{ $modal }}')" class="group relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-slate-900" aria-label="Revoir ma prestation">
-                                        @if ($media->media_type === \App\Enums\MediaType::Video)
+                                        @if ($media->poster_path)
+                                            <img src="{{ $media->posterUrl() }}" alt="" loading="lazy" class="pointer-events-none size-full object-cover opacity-80">
+                                        @elseif ($media->media_type === \App\Enums\MediaType::Video)
                                             <video src="{{ $media->mediaUrl() }}#t=0.5" preload="metadata" muted playsinline class="pointer-events-none size-full object-cover opacity-80"></video>
                                         @endif
                                         <span class="absolute inset-0 grid place-items-center"><span class="grid size-9 place-items-center rounded-full bg-white/90 text-slate-900 shadow transition group-active:scale-95"><x-ui.icon name="play" variant="s" class="size-4" /></span></span>

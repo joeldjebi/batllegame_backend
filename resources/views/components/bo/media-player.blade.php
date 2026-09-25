@@ -5,7 +5,7 @@
     @if ($performance->media_type === \App\Enums\MediaType::Audio)
         <audio controls preload="none" src="{{ $performance->mediaUrl() }}" x-show="! failed" x-on:error="failed = true" class="w-full"></audio>
     @else
-        <video controls playsinline preload="{{ $preload }}" src="{{ $performance->mediaUrl() }}" x-show="! failed" x-on:error="failed = true"
+        <video controls playsinline preload="{{ $preload }}" src="{{ $performance->mediaUrl() }}" @if ($performance->poster_path) poster="{{ $performance->posterUrl() }}" @endif x-show="! failed" x-on:error="failed = true"
             class="aspect-video w-full rounded-lg bg-slate-900 object-contain"></video>
     @endif
     <div x-show="failed" x-cloak class="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-slate-100 p-4 text-center text-sm text-slate-500 dark:bg-white/5">

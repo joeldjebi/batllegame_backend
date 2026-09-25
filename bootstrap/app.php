@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Middleware\AdminIdleTimeout;
+use App\Http\Middleware\ConditionalJsonResponse;
 use App\Http\Middleware\DenyPlatformAdmins;
 use App\Http\Middleware\EnsureJudgeAccess;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsurePhoneIsVerified;
 use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\IdempotentRequests;
 use App\Http\Middleware\RequireFreshPassword;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -39,6 +41,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'jury.access' => EnsureJudgeAccess::class,
             'fresh.password' => RequireFreshPassword::class,
         ]);
+
+        // Mobile app: ETag + 304 on API reads, safe replays of queued writes (Idempotency-Key).
+        $middleware->appendToGroup('api', [ConditionalJsonResponse::class, IdempotentRequests::class]);
 
         // Each area sends guests to its own login page.
         $middleware->redirectGuestsTo(fn (Request $request) => route(match (true) {

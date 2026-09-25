@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Fan\PreselectionController as FanPreselectionController;
 use App\Models\Competition;
 use App\Models\PreselectionSubmission;
+use App\Services\JuryWorkload;
 use App\Services\PreselectionService;
 use App\Services\SubmissionService;
 use Illuminate\Http\JsonResponse;
@@ -19,19 +20,18 @@ use Illuminate\Http\Request;
  */
 class PreselectionController extends Controller
 {
+    /**
+     * State, dates, rules and weights; the entries are paged by entries().
+     */
     public function show(Request $request, Competition $competition): JsonResponse
     {
         abort_unless($competition->status->isPublic(), 404);
         $preselection = $competition->preselection ?? abort(404);
-        $state = $preselection->state();
-        $myLike = $request->user('sanctum') ? $preselection->likes()->where('user_id', $request->user('sanctum')->id)->value('submission_id') : null;
-        // Counts: after the viewer's own like, with live results, or once published.
-        $showCounts = FanPreselectionController::showsAllCounts($preselection, $myLike);
-        $viewerId = $request->user('sanctum')?->id;
+        $viewer = $request->user('sanctum');
 
         return response()->json([
             'data' => [
-                'state' => $state,
+                'state' => $preselection->state(),
                 'ends_at' => $preselection->ends_at,
                 'vote_ends_at' => $preselection->voteEndsAt(),
                 'deliberation_ends_at' => $preselection->deliberationEndsAt(),
@@ -46,17 +46,51 @@ class PreselectionController extends Controller
                     'max_duration_seconds' => $preselection->rules->mediaMaxDuration,
                     'max_size_mb' => $preselection->rules->mediaMaxSizeMb,
                 ],
-                'my_like' => $myLike,
-                'entries' => $preselection->entries()->where('status', PerformanceStatus::Approved)->with('participant')->get()->map(fn (PreselectionSubmission $entry) => [
-                    'id' => $entry->id,
-                    'stage_name' => $entry->participant->stage_name,
-                    'media' => ['type' => $entry->media_type, 'url' => $entry->mediaUrl(), 'duration_seconds' => $entry->duration_seconds],
-                    // An artist always sees the count of their own entry.
-                    'likes' => $showCounts || ($viewerId && $entry->participant->user_id === $viewerId) ? $entry->likes_count : null,
-                    'rank' => $state === PreselectionState::Published ? $entry->rank : null,
-                    'selected' => $state === PreselectionState::Published ? $entry->selected : null,
-                ]),
+                'entries_count' => $preselection->entries()->where('status', PerformanceStatus::Approved)->count(),
+                'my_like' => $viewer ? $preselection->likes()->where('user_id', $viewer->id)->value('submission_id') : null,
             ],
+        ]);
+    }
+
+    /**
+     * Public entries, cursor-paginated: newest first, by rank once the selection is published.
+     */
+    public function entries(Request $request, Competition $competition): JsonResponse
+    {
+        abort_unless($competition->status->isPublic(), 404);
+        $preselection = $competition->preselection ?? abort(404);
+        $validated = $request->validate(['limit' => ['nullable', 'integer', 'min:1', 'max:50'], 'q' => ['nullable', 'string', 'max:80']]);
+
+        $published = $preselection->state() === PreselectionState::Published;
+        $viewerId = $request->user('sanctum')?->id;
+        $myLike = $viewerId ? $preselection->likes()->where('user_id', $viewerId)->value('submission_id') : null;
+        // Counts: after the viewer's own like, with live results, or once published.
+        $showCounts = FanPreselectionController::showsAllCounts($preselection, $myLike);
+        $search = trim((string) ($validated['q'] ?? ''));
+
+        $page = $preselection->entries()
+            ->where('status', PerformanceStatus::Approved)
+            ->when($published, fn ($q) => $q->whereNotNull('rank')->orderBy('rank')->orderBy('id'), fn ($q) => $q->orderByDesc('id'))
+            ->when($search !== '', fn ($q) => $q->whereHas('participant', fn ($p) => $p->whereLike('stage_name', "%{$search}%")))
+            ->with('participant.user')
+            ->cursorPaginate((int) ($validated['limit'] ?? 20))
+            ->withQueryString();
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn (PreselectionSubmission $entry) => [
+                'id' => $entry->id,
+                'participant_id' => $entry->participant_id,
+                'stage_name' => $entry->participant->stage_name,
+                'avatar_url' => $entry->participant->user?->avatarUrl(),
+                'media' => ['type' => $entry->media_type, 'url' => $entry->mediaUrl(), 'poster_url' => $entry->posterUrl(), 'width' => $entry->width, 'height' => $entry->height, 'duration_seconds' => $entry->duration_seconds],
+                // An artist always sees the count of their own entry.
+                'likes' => $showCounts || ($viewerId && $entry->participant->user_id === $viewerId) ? $entry->likes_count : null,
+                'liked' => $myLike === $entry->id,
+                'rank' => $published ? $entry->rank : null,
+                'selected' => $published ? $entry->selected : null,
+                'share_url' => route('fan.competitions.preselection.entry', [$competition, $entry]),
+            ])->all(),
+            'meta' => ['next_cursor' => $page->nextCursor()?->encode(), 'my_like' => $myLike],
         ]);
     }
 
@@ -104,6 +138,9 @@ class PreselectionController extends Controller
 
         $preselections->score($judge, $entry, $request->all());
 
-        return response()->json(['message' => 'Notes enregistrées.'], 201);
+        return response()->json([
+            'message' => 'Notes enregistrées.',
+            'next_entry_id' => app(JuryWorkload::class)->nextToScore($judge, $competition->preselection, $entry->id),
+        ], 201);
     }
 }

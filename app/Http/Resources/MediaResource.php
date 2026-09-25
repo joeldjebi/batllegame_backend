@@ -22,6 +22,10 @@ class MediaResource extends JsonResource
             'type' => $this->media_type,
             'source' => $this->source,
             'url' => $this->mediaUrl(),
+            // Poster and display size (rotation applied) once optimized; null before.
+            'poster_url' => $this->posterUrl(),
+            'width' => $this->width,
+            'height' => $this->height,
             'duration_seconds' => $this->duration_seconds,
         ];
     }

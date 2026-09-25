@@ -5,6 +5,7 @@ use App\Enums\CompetitionStatus;
 use App\Enums\MatchStatus;
 use App\Models\BattleMatch;
 use App\Models\User;
+use App\Services\Competition\StageService;
 use App\Services\VotingService;
 use Illuminate\Support\Facades\Storage;
 
@@ -62,4 +63,30 @@ it('shows nothing when no vote is open', function () {
     startedCompetition(CompetitionMode::Online, 2);
 
     $this->getJson('/api/live')->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('lists the battles coming next with the time their vote opens', function () {
+    ['competition' => $competition, 'phase' => $phase] = startedCompetition(CompetitionMode::Online, 4);
+    $stage = $phase->stages()->orderBy('position')->first();
+    app(StageService::class)->schedule($stage, ['submission_deadline' => now()->addMinutes(20), 'voting_closes_at' => now()->addDays(2)]);
+    app(StageService::class)->openSubmissions($stage);
+
+    // Jury only: the public never votes, not listed.
+    ['phase' => $juryPhase] = startedCompetition(CompetitionMode::Online, 2, rules: ['vote_mode' => 'jury']);
+    $juryStage = $juryPhase->stages()->first();
+    app(StageService::class)->schedule($juryStage, ['submission_deadline' => now()->addMinutes(5), 'voting_closes_at' => now()->addDay()]);
+    app(StageService::class)->openSubmissions($juryStage);
+
+    $response = $this->getJson('/api/live')->assertOk()->assertJsonCount(0, 'data');
+
+    expect($response->json('upcoming'))->toHaveCount(2)
+        ->and($response->json('upcoming.0.competition.slug'))->toBe($competition->slug)
+        ->and($response->json('upcoming.0.submissions_open'))->toBeTrue()
+        ->and($response->json('upcoming.0.artists'))->toHaveCount(2)
+        ->and(Carbon\Carbon::parse($response->json('upcoming.0.voting_opens_at'))->diffInMinutes(now(), true))->toBeLessThan(21);
+
+    // Deadline passed: no longer upcoming.
+    $this->travel(21)->minutes();
+    app(StageService::class)->processDue();
+    $this->getJson('/api/live')->assertJsonCount(0, 'upcoming');
 });

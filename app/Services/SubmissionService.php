@@ -35,6 +35,8 @@ class SubmissionService
             throw CompetitionFlowException::paymentRequired();
         }
 
+        self::ensureAvatar($participant);
+
         return DB::transaction(function () use ($participant, $stage, $file, $clientModifiedAt): Performance {
             $performance = Performance::query()->firstOrNew([
                 'stage_id' => $stage->id,
@@ -57,6 +59,18 @@ class SubmissionService
 
             return $performance;
         });
+    }
+
+    /**
+     * The artist is shown with their photo next to every performance: required to submit.
+     *
+     * @throws CompetitionFlowException
+     */
+    public static function ensureAvatar(Participant $participant): void
+    {
+        if ($participant->user?->avatar_path === null) {
+            throw CompetitionFlowException::avatarRequired();
+        }
     }
 
     /**

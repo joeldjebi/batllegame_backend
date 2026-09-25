@@ -89,6 +89,9 @@ statut, motif de refus, remplacement jusqu'à la limite), résultat (rang, quali
 
 - Compétition **gratuite** : l'artiste est inscrit directement (validé, ou « inscrit » si une présélection ou
   une validation manuelle est prévue).
+- **Photo de profil obligatoire** pour envoyer une prestation (présélection et étapes, app et web) : elle représente
+  l'artiste auprès du public et du jury. Sans photo, l'envoi est refusé (`reason: avatar_required` dans l'API) et
+  l'espace artiste affiche « Ajoute ta photo de profil » à la place du formulaire.
 - **Envoi de la prestation de présélection** : frais payés **et**, si « Valider les inscriptions » est activé,
   inscription **validée par l'organisateur** (statut `valide`) ; sans validation manuelle, un artiste « inscrit »
   payé peut envoyer directement. En attendant, l'espace artiste affiche « Inscription en attente de validation ».

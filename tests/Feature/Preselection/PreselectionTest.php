@@ -16,6 +16,7 @@ use App\Services\Competition\PhaseLauncher;
 use App\Services\PaymentService;
 use App\Services\PreselectionService;
 use App\Services\RegistrationService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -297,7 +298,7 @@ it('freezes the rules once a performance is sent but keeps dates editable', func
 
 it('shows the payment pitch instead of any upload while the fee is unpaid', function () {
     ['competition' => $competition] = competitionWithPreselection(0, fee: 5000);
-    $artist = User::factory()->create();
+    $artist = User::factory()->withAvatar()->create();
     Participant::factory()->for($competition)->create(['user_id' => $artist->id, 'status' => ParticipantStatus::PaymentPending]);
 
     $this->actingAs($artist, 'member')->get(route('artist.dashboard'))
@@ -321,7 +322,7 @@ it('refuses a submission from an artist who has not paid, whatever the status', 
 
 it('unlocks the upload once the fee is paid', function () {
     ['competition' => $competition] = competitionWithPreselection(0, fee: 5000);
-    $artist = User::factory()->create();
+    $artist = User::factory()->withAvatar()->create();
     $participant = Participant::factory()->for($competition)->create(['user_id' => $artist->id, 'status' => ParticipantStatus::PaymentPending]);
 
     app(PaymentService::class)->simulate($participant, PaymentMethod::OrangeMoney);
@@ -508,4 +509,27 @@ it('updates the jury score and the ranking as soon as a judge scores', function 
     app(PreselectionService::class)->score($judge, $entry, ['scores' => [['criterion_id' => $criterion->id, 'score' => 8]]]);
 
     expect($entry->fresh())->jury_score->toBe(80.0)->rank->toBe(1);
+});
+
+it('requires a profile photo to send the pre-selection entry, in the app and on the web', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1);
+    $artist = $artists[0];
+    $artist->user->forceFill(['avatar_path' => null])->save();
+    $file = fn () => UploadedFile::fake()->create('take.mp4', 300, 'video/mp4');
+
+    $this->actingAs($artist->user, 'sanctum')
+        ->postJson(route('api.competitions.preselection.submit', $competition), ['media' => $file()])
+        ->assertStatus(422)
+        ->assertJsonPath('reason', 'avatar_required');
+
+    $this->actingAs($artist->user, 'member')
+        ->post(route('artist.competitions.preselection.submit', $competition), ['media' => $file()])
+        ->assertSessionHasErrors(['flow' => 'Ajoutez une photo de profil pour envoyer votre prestation : elle vous représente auprès du public et du jury.']);
+
+    expect($artist->fresh()->preselectionEntry)->toBeNull();
+
+    // The artist area asks for the photo instead of showing the upload.
+    $this->actingAs($artist->user->fresh(), 'member')->get(route('artist.dashboard'))->assertOk()
+        ->assertSee('Ajoute ta photo de profil pour envoyer ta prestation')
+        ->assertDontSee(route('artist.competitions.preselection.submit', $competition));
 });

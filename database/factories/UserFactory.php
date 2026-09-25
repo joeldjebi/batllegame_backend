@@ -48,6 +48,17 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * With a profile photo (required to submit a performance).
+     */
+    public function withAvatar(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'avatar_disk' => 'public',
+            'avatar_path' => 'avatars/'.Str::uuid().'.jpg',
+        ]);
+    }
+
     public function platformAdmin(): static
     {
         return $this->afterCreating(function (User $user): void {

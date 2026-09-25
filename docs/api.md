@@ -1,7 +1,7 @@
 # API mobile (`/api`)
 
 Authentification **Sanctum** par token : `Authorization: Bearer {token}`. Réponses JSON,
-erreurs de validation en 422 (messages en français), règles métier en 422 `{"message": …}`.
+erreurs de validation en 422 (messages en français), règles métier en 422 `{"message": …}`, avec `reason` quand l'app peut réagir (`avatar_required` : photo de profil à ajouter avant d'envoyer une prestation).
 
 ## Cache, hors ligne et médias (app mobile)
 

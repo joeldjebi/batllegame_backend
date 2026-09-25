@@ -82,12 +82,16 @@
                                 <p class="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300"><strong>Prestation refusée :</strong> {{ $current->rejection_reason }}. Envoie une nouvelle version.</p>
                             @endif
 
-                            <form method="POST" enctype="multipart/form-data" class="mt-5"
-                                action="{{ $isPreselection ? route('artist.competitions.preselection.submit', $journey['competition']) : route('artist.competitions.stages.submit', [$journey['competition'], $journey['stage']]) }}">
-                                @csrf
-                                <x-portal.dropzone :accept="implode(',', $mediaRules->acceptedMimeTypes())" :max-mb="$mediaRules->mediaMaxSizeMb"
-                                    :hint="collect($mediaRules->mediaTypes)->map->label()->implode(' ou ').' · '.gmdate('i:s', $mediaRules->mediaMaxDuration).' max · '.$mediaRules->mediaMaxSizeMb.' Mo max'" />
-                            </form>
+                            @if (request()->user()?->avatar_path === null)
+                                <x-portal.photo-required class="mt-5" />
+                            @else
+                                <form method="POST" enctype="multipart/form-data" class="mt-5"
+                                    action="{{ $isPreselection ? route('artist.competitions.preselection.submit', $journey['competition']) : route('artist.competitions.stages.submit', [$journey['competition'], $journey['stage']]) }}">
+                                    @csrf
+                                    <x-portal.dropzone :accept="implode(',', $mediaRules->acceptedMimeTypes())" :max-mb="$mediaRules->mediaMaxSizeMb"
+                                        :hint="collect($mediaRules->mediaTypes)->map->label()->implode(' ou ').' · '.gmdate('i:s', $mediaRules->mediaMaxDuration).' max · '.$mediaRules->mediaMaxSizeMb.' Mo max'" />
+                                </form>
+                            @endif
                         </div>
                     @endif
                 @endforeach

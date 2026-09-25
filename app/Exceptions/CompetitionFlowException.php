@@ -13,10 +13,18 @@ use Illuminate\Http\Request;
  */
 class CompetitionFlowException extends DomainException
 {
+    /**
+     * @param  string|null  $reason  Machine-readable cause, for the apps to react (e.g. open the profile).
+     */
+    public function __construct(string $message, public readonly ?string $reason = null)
+    {
+        parent::__construct($message);
+    }
+
     public function render(Request $request): JsonResponse|RedirectResponse
     {
         if ($request->expectsJson()) {
-            return response()->json(['message' => $this->getMessage()], 422);
+            return response()->json(array_filter(['message' => $this->getMessage(), 'reason' => $this->reason]), 422);
         }
 
         return back()->withErrors(['flow' => $this->getMessage()]);
@@ -185,5 +193,10 @@ class CompetitionFlowException extends DomainException
     public static function paymentRequired(): self
     {
         return new self("Réglez d'abord vos frais d'inscription pour envoyer votre prestation.");
+    }
+
+    public static function avatarRequired(): self
+    {
+        return new self('Ajoutez une photo de profil pour envoyer votre prestation : elle vous représente auprès du public et du jury.', 'avatar_required');
     }
 }

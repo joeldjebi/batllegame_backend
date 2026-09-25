@@ -79,6 +79,8 @@ class PreselectionService
                 : CompetitionFlowException::preselectionNotEligible();
         }
 
+        SubmissionService::ensureAvatar($participant);
+
         return DB::transaction(function () use ($participant, $preselection, $file, $clientModifiedAt): PreselectionSubmission {
             $entry = PreselectionSubmission::query()
                 ->where('preselection_id', $preselection->id)

@@ -109,6 +109,19 @@ it('validates submissions against the phase media rules', function () {
     submitAs($participants[0], $stage, UploadedFile::fake()->create('song.mp3', 300, 'audio/mpeg'))->assertCreated();
 });
 
+it('requires a profile photo to submit, and says so to the app', function () {
+    ['phase' => $phase, 'participants' => $participants] = startedCompetition(CompetitionMode::Online);
+    $stage = openStage($phase->stages()->first());
+    $participants[0]->user->forceFill(['avatar_path' => null])->save();
+
+    submitAs($participants[0]->fresh(), $stage)->assertStatus(422)
+        ->assertJsonPath('reason', 'avatar_required')
+        ->assertJsonPath('message', fn (string $message) => str_contains($message, 'photo de profil'));
+
+    $participants[0]->user->forceFill(['avatar_path' => 'avatars/me.jpg'])->save();
+    submitAs($participants[0]->fresh(), $stage)->assertCreated();
+});
+
 it('accepts an M4V video (MP4 from Apple devices) as a video', function () {
     ['phase' => $phase, 'participants' => $participants] = startedCompetition(CompetitionMode::Online, rules: ['media_types' => ['video']]);
     $stage = openStage($phase->stages()->first());

@@ -163,11 +163,15 @@
                                     @php
                                         $rules = $phase->rules;
                                     @endphp
-                                    <form method="POST" enctype="multipart/form-data" class="mt-4" action="{{ route('artist.competitions.stages.submit', [$competition, $stageModel]) }}">
-                                        @csrf
-                                        <x-portal.dropzone :accept="implode(',', $rules->acceptedMimeTypes())" :max-mb="$rules->mediaMaxSizeMb"
-                                            :hint="($row['action']['type'] === 'sent' ? 'Remplacer ma prestation · ' : '').collect($rules->mediaTypes)->map->label()->implode(' ou ').' · '.gmdate('i:s', $rules->mediaMaxDuration).' max · '.$rules->mediaMaxSizeMb.' Mo max'" />
-                                    </form>
+                                    @if (request()->user()?->avatar_path === null)
+                                        <x-portal.photo-required class="mt-4" />
+                                    @else
+                                        <form method="POST" enctype="multipart/form-data" class="mt-4" action="{{ route('artist.competitions.stages.submit', [$competition, $stageModel]) }}">
+                                            @csrf
+                                            <x-portal.dropzone :accept="implode(',', $rules->acceptedMimeTypes())" :max-mb="$rules->mediaMaxSizeMb"
+                                                :hint="($row['action']['type'] === 'sent' ? 'Remplacer ma prestation · ' : '').collect($rules->mediaTypes)->map->label()->implode(' ou ').' · '.gmdate('i:s', $rules->mediaMaxDuration).' max · '.$rules->mediaMaxSizeMb.' Mo max'" />
+                                        </form>
+                                    @endif
                                 @endif
                             </div>
                         </li>

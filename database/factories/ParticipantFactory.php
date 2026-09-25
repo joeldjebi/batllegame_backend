@@ -17,7 +17,8 @@ class ParticipantFactory extends Factory
     {
         return [
             'competition_id' => Competition::factory(),
-            'user_id' => User::factory(),
+            // Artists have a photo: it is required to submit a performance.
+            'user_id' => User::factory()->withAvatar(),
             'stage_name' => 'MC '.fake()->unique()->firstName(),
             'seed' => null,
             'status' => ParticipantStatus::Validated,

@@ -8,6 +8,8 @@ use App\Http\Resources\CompetitionResource;
 use App\Http\Resources\MatchResource;
 use App\Models\BattleMatch;
 use App\Models\Competition;
+use App\Models\MatchParticipant;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
@@ -40,6 +42,55 @@ class CompetitionController extends Controller
         abort_unless($competition->status->isPublic(), 404);
 
         return new CompetitionResource($competition->load(['organizer', 'phases', 'criteria']));
+    }
+
+    /**
+     * Matches of a competition for the app's groups and bracket views, light (no media):
+     * one phase at a time (`phase` id, default the first), ordered like the back-office.
+     */
+    public function matches(Request $request, Competition $competition): JsonResponse
+    {
+        abort_unless($competition->status->isPublic(), 404);
+        $validated = $request->validate(['phase' => ['nullable', 'integer']]);
+
+        $phase = $competition->phases()
+            ->when($validated['phase'] ?? null, fn ($q, $id) => $q->whereKey($id))
+            ->firstOr(fn () => abort(404));
+
+        $matches = $phase->matches()
+            ->with(['group', 'stage', 'slots.participant.user', 'competition', 'phase'])
+            ->orderBy('group_id')->orderBy('bracket')->orderBy('round')->orderBy('bracket_position')
+            ->get();
+
+        return response()->json([
+            'phase' => ['id' => $phase->id, 'position' => $phase->position, 'type' => $phase->type, 'status' => $phase->status],
+            'data' => $matches->map(function (BattleMatch $match) {
+                $public = $match->resultsArePublic();
+
+                return [
+                    'id' => $match->id,
+                    'is_group' => $match->isGroupMatch(),
+                    'title' => $match->title(),
+                    'group' => $match->group?->name,
+                    'bracket' => $match->bracket,
+                    'round' => $match->round,
+                    'bracket_position' => $match->bracket_position,
+                    'status' => $match->status,
+                    'stage' => $match->stage?->name,
+                    'voting_open' => $match->isVotingOpen(),
+                    'voting_closes_at' => $match->voting_closes_at,
+                    'winner_id' => $public ? $match->winner_id : null,
+                    'slots' => $match->slots->sortBy('slot')->values()->map(fn (MatchParticipant $slot) => [
+                        'participant_id' => $slot->participant_id,
+                        'stage_name' => $slot->participant?->stage_name,
+                        'avatar_url' => $slot->participant?->user?->avatarUrl(),
+                        'final_score' => $public && $slot->final_score !== null ? (float) $slot->final_score : null,
+                        'rank' => $public ? $slot->rank : null,
+                        'is_forfeit' => $slot->is_forfeit,
+                    ]),
+                ];
+            }),
+        ]);
     }
 
     /**

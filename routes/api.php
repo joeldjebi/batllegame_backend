@@ -54,6 +54,7 @@ Route::scopeBindings()
     ->group(function () {
         Route::get('/', [CompetitionController::class, 'index'])->name('index');
         Route::get('{competition:slug}', [CompetitionController::class, 'show'])->name('show');
+        Route::get('{competition:slug}/matches', [CompetitionController::class, 'matches'])->name('matches.index');
         Route::get('{competition:slug}/matches/{match}', [CompetitionController::class, 'showMatch'])->name('matches.show');
         Route::get('{competition:slug}/preselection', [PreselectionController::class, 'show'])->name('preselection.show');
         Route::get('{competition:slug}/preselection/entries', [PreselectionController::class, 'entries'])->name('preselection.entries');

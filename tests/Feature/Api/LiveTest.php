@@ -67,7 +67,7 @@ it('shows nothing when no vote is open', function () {
 
 it('lists the battles coming next with the time their vote opens', function () {
     ['competition' => $competition, 'phase' => $phase] = startedCompetition(CompetitionMode::Online, 4);
-    $stage = $phase->stages()->orderBy('position')->first();
+    $stage = $phase->stages()->first();
     app(StageService::class)->schedule($stage, ['submission_deadline' => now()->addMinutes(20), 'voting_closes_at' => now()->addDays(2)]);
     app(StageService::class)->openSubmissions($stage);
 

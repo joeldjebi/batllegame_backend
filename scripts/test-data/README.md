@@ -18,3 +18,14 @@ MODE=approve php artisan tinker --execute "$(cat scripts/test-data/two-organizer
 
 Comptes : organisateurs `orga.rap@test.ci` / `orga.danse@test.ci` (back-office), artistes `0798100001`–`0798100020`
 et `0798200001`–`0798200020`, jurés `0797100001`–`2` et `0797200001`–`2`.
+
+## `replace-videos.php`
+
+Remplace les vidéos des artistes d'une compétition (prestations d'étape et de présélection) par des vidéos
+locales, une par artiste (la même pour les deux), en gardant leur statut de validation ; l'optimisation
+(miniature, lecture rapide) repasse en file d'attente.
+
+```bash
+COMPETITION="Compétition Démo 2026 (copie)" VIDEO_DIR=/tmp/bg-videos VIDEO_IDS="50487,45441,482" \
+  php artisan tinker --execute "$(cat scripts/test-data/replace-videos.php)"
+```

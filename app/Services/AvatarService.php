@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Http\Requests\Portal\ProfileRequest;
 use App\Models\User;
+use App\Support\MediaUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -76,6 +77,7 @@ class AvatarService
     {
         if ($user->avatar_path) {
             rescue(fn () => Storage::disk($user->avatar_disk ?? 'public')->delete($user->avatar_path), report: false);
+            MediaUrl::forget($user->avatar_disk ?? 'public', $user->avatar_path);
             $user->forceFill(['avatar_path' => null, 'avatar_disk' => null])->save();
         }
     }

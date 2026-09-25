@@ -5,6 +5,7 @@ use App\Models\Competition;
 use App\Models\Organizer;
 use App\Models\Participant;
 use App\Models\User;
+use App\Support\MediaUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -52,4 +53,14 @@ it('shows the organizer the photo and the personal details of each participant',
     $other = User::factory()->create();
     Organizer::factory()->withMember(OrganizerRole::Owner, $other)->create();
     $this->actingAs($other, 'web')->get(route('organizers.competitions.show', [$organizer, $competition]))->assertNotFound();
+});
+
+it('signs the links of a private bucket and keeps the same link across renders', function () {
+    config(['filesystems.disks.wasabi' => ['driver' => 's3', 'key' => 'k', 'secret' => 's', 'region' => 'us-central-1', 'bucket' => 'battle-game', 'endpoint' => 'https://s3.us-central-1.wasabisys.com', 'use_path_style_endpoint' => true]]);
+
+    $first = MediaUrl::for('wasabi', 'avatars/1.webp');
+
+    expect($first)->toContain('X-Amz-Signature')->toContain('battle-game/avatars/1.webp')
+        ->and(MediaUrl::for('wasabi', 'avatars/1.webp'))->toBe($first)
+        ->and(MediaUrl::for('public', 'avatars/1.webp'))->toEndWith('/storage/avatars/1.webp');
 });

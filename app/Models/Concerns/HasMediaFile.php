@@ -36,6 +36,7 @@ trait HasMediaFile
     {
         if ($this->media_path) {
             Storage::disk($this->media_disk ?? config('media.disk'))->delete($this->media_path);
+            MediaUrl::forget($this->media_disk, $this->media_path);
         }
     }
 

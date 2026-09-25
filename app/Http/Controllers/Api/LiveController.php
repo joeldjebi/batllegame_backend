@@ -113,13 +113,13 @@ class LiveController extends Controller
             ->whereIn('status', [MatchStatus::Submissions, MatchStatus::Scheduled])
             ->whereDoesntHave('slots', fn ($q) => $q->whereNull('participant_id'))
             ->whereHas('competition', fn ($q) => $q->where('status', '!=', CompetitionStatus::Draft))
-            ->whereHas('stage', fn ($q) => $q->where(fn ($q) => $q->where('voting_opens_at', '>', now())
-                ->orWhere(fn ($q) => $q->whereNull('voting_opens_at')->where('submission_deadline', '>', now()))))
+            // The vote never opens before the end of the submissions: the later of both dates.
+            ->whereHas('stage', fn ($q) => $q->where(fn ($q) => $q->where('voting_opens_at', '>', now())->orWhere('submission_deadline', '>', now())))
             ->with(['competition', 'stage', 'group', 'phase', 'slots.participant.user'])
             ->limit(self::UPCOMING_LIMIT * 4)
             ->get()
             ->reject(fn (BattleMatch $match) => $match->phase->rules->voteMode === VoteMode::Jury)
-            ->map(fn (BattleMatch $match) => ['match' => $match, 'opens_at' => $match->stage->voting_opens_at ?? $match->stage->submission_deadline])
+            ->map(fn (BattleMatch $match) => ['match' => $match, 'opens_at' => max(array_filter([$match->stage->voting_opens_at, $match->stage->submission_deadline]))])
             ->sortBy(fn (array $row) => $row['opens_at']->getTimestamp())
             ->take(self::UPCOMING_LIMIT)
             ->values();

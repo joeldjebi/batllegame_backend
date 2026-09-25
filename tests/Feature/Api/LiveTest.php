@@ -85,6 +85,11 @@ it('lists the battles coming next with the time their vote opens', function () {
         ->and($response->json('upcoming.0.artists'))->toHaveCount(2)
         ->and(Carbon\Carbon::parse($response->json('upcoming.0.voting_opens_at'))->diffInMinutes(now(), true))->toBeLessThan(21);
 
+    // Deadline moved after the planned opening: the vote opens with the deadline.
+    $stage->forceFill(['voting_opens_at' => now()->subMinutes(10)])->save();
+    $opensAt = $this->getJson('/api/live')->assertJsonCount(2, 'upcoming')->json('upcoming.0.voting_opens_at');
+    expect(Carbon\Carbon::parse($opensAt)->timestamp)->toBe($stage->submission_deadline->timestamp);
+
     // Deadline passed: no longer upcoming.
     $this->travel(21)->minutes();
     app(StageService::class)->processDue();

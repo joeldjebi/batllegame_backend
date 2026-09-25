@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\BackOffice;
 
+use App\Enums\PhaseType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BackOffice\PhaseRequest;
 use App\Models\Competition;
@@ -126,7 +127,13 @@ class PhaseController extends Controller
     {
         $this->authorize('update', $competition);
 
-        $launcher->start($phase);
+        $planned = [$phase->rules->groupCount, $phase->qualifiers_per_group];
+        $phase = $launcher->start($phase);
+
+        // Groups adapted to the real participants: say which format was played.
+        if ($phase->type === PhaseType::Groups && $planned !== [$phase->rules->groupCount, $phase->qualifiers_per_group]) {
+            return back()->with('status', "Phase démarrée : format adapté aux {$phase->rules->expectedEntrants} artistes, {$phase->rules->groupCount} poule(s) et {$phase->qualifiers_per_group} qualifié(s) par poule.");
+        }
 
         return back()->with('status', 'Phase démarrée : les matchs ont été générés.');
     }

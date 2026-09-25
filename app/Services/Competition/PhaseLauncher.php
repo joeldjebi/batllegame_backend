@@ -122,11 +122,18 @@ class PhaseLauncher
             return;
         }
 
-        // Same rules as the back-office preview (GroupPlan): each group plays and qualifies fewer than its members.
-        $problems = GroupPlan::problems($entrants->count(), (int) $phase->rules->groupCount, $phase->qualifiers_per_group ?? 1);
+        // The format was sized on the planned participants: it adapts to the real ones.
+        $format = GroupPlan::fit($entrants->count(), (int) $phase->rules->groupCount, $phase->qualifiers_per_group ?? 1, $phase->rules->expectedEntrants);
 
-        if ($problems !== []) {
-            throw CompetitionFlowException::groupFormat($problems[0]);
+        if ($format === null) {
+            throw CompetitionFlowException::notEnoughEntrants(2, $entrants->count());
+        }
+
+        if ($format['groups'] !== $phase->rules->groupCount || $format['qualifiers'] !== $phase->qualifiers_per_group) {
+            $phase->forceFill([
+                'rules' => $phase->rules->with(['group_count' => $format['groups'], 'expected_entrants' => max(2, $entrants->count())]),
+                'qualifiers_per_group' => $format['qualifiers'],
+            ])->save();
         }
     }
 }

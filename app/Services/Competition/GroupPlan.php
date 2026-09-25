@@ -58,6 +58,34 @@ class GroupPlan
     }
 
     /**
+     * The playable format closest to the planned one, for the real entrants: the planned
+     * group size is kept (fewer groups when fewer artists came), then the qualifiers
+     * are capped below the smallest group. Null when nothing can be played (< 2 entrants).
+     *
+     * @return array{groups: int, qualifiers: int}|null
+     */
+    public static function fit(int $entrants, int $groups, int $qualifiers, ?int $planned = null): ?array
+    {
+        $groups = max(1, $groups);
+        $qualifiers = max(1, $qualifiers);
+
+        if (self::problems($entrants, $groups, $qualifiers) === []) {
+            return ['groups' => $groups, 'qualifiers' => $qualifiers];
+        }
+
+        if ($entrants < 2) {
+            return null;
+        }
+
+        $plannedSize = $planned ? (int) round($planned / $groups) : 0;
+        $size = max(2, $qualifiers + 1, $plannedSize);
+        $groups = max(1, min($groups, intdiv($entrants, 2), (int) round($entrants / $size)));
+        $qualifiers = max(1, min($qualifiers, min(self::sizes($entrants, $groups)) - 1));
+
+        return ['groups' => $groups, 'qualifiers' => $qualifiers];
+    }
+
+    /**
      * Entrants expected in a new phase, to size its groups before registrations close:
      * the pre-selection size, otherwise the qualifiers of the previous group phase,
      * the maximum of participants or the validated participants.

@@ -47,11 +47,6 @@ class CompetitionFlowException extends DomainException
         return new self('Les résultats de cette phase sont déjà publiés.');
     }
 
-    public static function groupFormat(string $problem): self
-    {
-        return new self("{$problem} Modifiez le nombre de poules ou de qualifiés de la phase.");
-    }
-
     public static function notEnoughEntrants(int $required, int $actual): self
     {
         return new self("Il faut au moins {$required} participants validés (actuellement {$actual}).");

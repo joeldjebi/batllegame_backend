@@ -218,7 +218,10 @@ pas la compétition : l'organisateur peut encore ajouter la phase suivante). Sup
   Qualifiés croisés dans le bracket suivant : 1A–2B, 1B–2A…
 - **Assistant de format** (BO) : participants attendus pré-remplis (présélection, poules précédentes, maximum ou
   validés), formules conseillées, aperçu (tailles des poules, qualifiés, tour suivant, exemptés) ; un format
-  injouable (trop de poules, autant de qualifiés que d'artistes) est refusé à l'enregistrement et au lancement.
+  injouable (trop de poules, autant de qualifiés que d'artistes) est refusé à l'enregistrement.
+- **Au lancement**, le format s'**adapte automatiquement** aux artistes réellement en lice (présélection publiée,
+  qualifiés, absents) : même taille de poule que prévu (moins de poules si moins d'artistes), qualifiés ramenés
+  sous la plus petite poule ; l'organisateur voit le format joué. Seul un effectif sous 2 artistes bloque.
 - **Élimination** : bracket complet généré au démarrage, **byes aux meilleures têtes de série**,
   résolus en « exempt ». **Double élimination** : tableau des perdants, grande finale, reset optionnel
   (joué seulement si le finaliste du tableau des perdants gagne la première finale).

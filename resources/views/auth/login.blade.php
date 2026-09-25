@@ -1,5 +1,5 @@
 <x-layouts.auth title="Connexion">
-    <h1 class="mt-10 font-display text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Bon retour 👋</h1>
+    <h1 class="mt-10 font-display text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Bon retour</h1>
     <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Connectez-vous à l'espace organisateur pour piloter vos compétitions.</p>
 
     @if (session('status'))

@@ -75,3 +75,11 @@ it('is only open to the artists of the competition', function () {
     auth()->forgetGuards();
     $this->getJson("/api/me/participations/{$competition->slug}")->assertUnauthorized();
 });
+
+it('lists my competitions with their id (realtime events carry competition_id)', function () {
+    ['competition' => $competition, 'artists' => $artists] = competitionWithPreselection(1);
+
+    $this->actingAs($artists[0]->user, 'sanctum')->getJson('/api/me/participations')->assertOk()
+        ->assertJsonPath('data.0.competition.id', $competition->id)
+        ->assertJsonPath('data.0.competition.slug', $competition->slug);
+});

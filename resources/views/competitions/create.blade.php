@@ -304,7 +304,7 @@
                                 <li class="relative flex gap-3 pb-4 last:pb-0">
                                     <span x-show="index < structure.length - 1" class="absolute top-7 left-3.5 h-[calc(100%-1.75rem)] w-px bg-white/15"></span>
                                     <span class="relative grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold"
-                                        x-bind:class="index === structure.length - 1 ? 'bg-amber-400 text-slate-950' : 'bg-white/10 text-white'" x-text="index === structure.length - 1 && type !== 'plus_tard' ? '★' : index + 1"></span>
+                                        x-bind:class="index === structure.length - 1 ? 'bg-amber-400 text-slate-950' : 'bg-white/10 text-white'" x-text="index + 1"></span>
                                     <span class="min-w-0 pt-0.5">
                                         <span class="block text-sm font-semibold" x-text="item.title"></span>
                                         <span class="block text-xs text-white/60" x-show="item.detail" x-text="item.detail"></span>

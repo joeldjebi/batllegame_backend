@@ -92,7 +92,7 @@ class PreselectionController extends Controller
 
         return $next
             ? redirect()->route('jury.competitions.preselection.entries.show', [$competition, $next])->with('status', $message)
-            : redirect()->route('jury.competitions.preselection', [$competition, 'onglet' => 'notees'])->with('status', $message.' Toutes tes prestations sont notées 🎉');
+            : redirect()->route('jury.competitions.preselection', [$competition, 'onglet' => 'notees'])->with('status', $message.' Toutes tes prestations sont notées.');
     }
 
     /**

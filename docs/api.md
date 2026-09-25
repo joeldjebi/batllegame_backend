@@ -37,6 +37,7 @@ sont toujours résolues à travers leur compétition.
 
 | Méthode | URL | Notes |
 |---|---|---|
+| GET | `/live` | Onglet « Battles » de l'app (pas de vidéo en direct) : les matchs dont le vote est ouvert, les plus proches de la fermeture d'abord (30 max). Élément : `id`, `is_group`, `title`, `stage`, `competition` (`id`, `slug`, `name`), `voting_closes_at`, `vote_code_required`, `share_url`, `my_vote` (participant voté), `voted_in_phase` (poule : vote déjà donné ailleurs dans la phase), `is_mine` (l'utilisateur joue ce match), `artists[]` (`participant_id`, `stage_name`, `avatar_url`, `media`). Jeton facultatif |
 | GET | `/feed` | Fil « Pour toi » : prestations publiques les plus récentes (présélection validée + prestations d'étapes / captations validées), pagination par curseur `cursor` (`meta.next_cursor`, `null` à la fin), `limit` (10, max 30), filtres `competition` (slug), `discipline`. Élément : `key` (`preselection-12` / `performance-34`), `kind`, `id`, `published_at`, `media`, `artist` (`participant_id`, `stage_name`, `avatar_url`), `competition` (`slug`, `name`, `discipline`, `status`), `context` (`label`, `entry_id`, `match_id`, `stage_id`), `likes` (présélection : `enabled`, `open`, `liked`, `count` selon les règles de visibilité) ou `vote` (`match_id`, `open`, `closes_at`), `share_url`. Jeton facultatif (état du like) |
 
 | Méthode | URL | Notes |
@@ -52,7 +53,7 @@ sont toujours résolues à travers leur compétition.
 | Méthode | URL | Notes |
 |---|---|---|
 | POST | `/competitions/{slug}/registrations` | `stage_name` |
-| GET | `/me/participations` | Compétitions, étape en cours, état de ma soumission |
+| GET | `/me/participations` | Compétitions (`competition.id`, `slug`, `name`, `status`, `organizer`), étape en cours, état de ma soumission |
 | GET | `/me/participations/{slug}` | « Mon parcours » (comme la page web) : `participant` (`status`, `paid`, `payment_required`, `awaits_approval`), `out`, `champion`, `next` (`type` : `submit`/`sent`/`vote`/`wait`/`stage`, `text`, `deadline`, `stage_id`, `match_id`), `preselection` (`state`, `ends_at`, `can_submit`, `media_rules`, `entry`, `result`), `phases[]` (`title`, `online`, `state`, `stages[]` : `name`, `state`, `label`, `dates`, `action`, `media_rules`, `match` (`is_group`, `title`, `others[]` avec photo, `my_score`, `my_rank`, `voting_open`), `submission`) ; 404 hors participants |
 | GET | `/competitions/{slug}/stages/{id}/submission` | Ma soumission pour l'étape |
 | POST | `/competitions/{slug}/stages/{id}/submission` | multipart `media` (vidéo ou audio selon les règles de la phase) |

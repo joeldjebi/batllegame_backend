@@ -11,7 +11,7 @@
         <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-950 uppercase">
             <x-ui.icon name="bolt" variant="m" class="size-3.5" /> Dernière étape
         </span>
-        <h3 class="mt-4 font-display text-2xl leading-tight font-extrabold sm:text-3xl">Plus qu'un pas pour monter sur scène 🎤</h3>
+        <h3 class="mt-4 font-display text-2xl leading-tight font-extrabold sm:text-3xl">Plus qu'un pas pour monter sur scène</h3>
         <p class="mt-2 text-sm text-white/70 sm:text-base">Confirme ton inscription à <strong class="text-white">« {{ $competition->name }} »</strong> pour débloquer l'envoi de ta prestation.</p>
 
         <ul class="mt-5 grid gap-2.5 text-sm sm:grid-cols-3">

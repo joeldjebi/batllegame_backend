@@ -42,7 +42,7 @@ it('guides an artist through the groups, the submission and the results, up to t
     $groups->matches->each(fn ($match) => $match->forceFill(['status' => MatchStatus::Voting])->save());
     $groups->matches()->get()->each(fn ($match) => app(MatchCloser::class)->close($match));
     app(GroupResultsService::class)->publish($groups->fresh());
-    $page()->assertSee('Qualifié !');
+    $page()->assertSee('Qualifié');
 
     // Another artist eliminated at the groups: their journey ends.
     $loser = $p->first(fn ($participant) => $participant->fresh()->status === ParticipantStatus::Eliminated);

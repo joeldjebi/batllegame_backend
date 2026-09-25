@@ -4,7 +4,7 @@
     $artist = $entry->participant->stage_name;
     $state = $preselection->state();
     $url = route('fan.competitions.preselection.entry', [$competition, $entry]);
-    $pitch = "Soutiens {$artist} dans « {$competition->name} » : un like peut tout changer ❤️";
+    $pitch = "Soutiens {$artist} dans « {$competition->name} » : un like peut tout changer.";
 @endphp
 
 <x-layouts.portal :title="$artist.' · '.$competition->name">

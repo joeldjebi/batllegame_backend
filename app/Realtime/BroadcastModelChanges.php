@@ -105,7 +105,7 @@ class BroadcastModelChanges implements ShouldHandleEventsAfterCommit
 
         $this->push($competition, [Channel::backOffice($competition->id), Channel::organizer($competition->organizer_id)], 'payment.paid',
             message: "Paiement reçu : {$payment->participant?->stage_name} · {$amount}");
-        $this->push($competition, [Channel::user($payment->user_id)], 'payment.paid', message: "Paiement de {$amount} confirmé 🎉");
+        $this->push($competition, [Channel::user($payment->user_id)], 'payment.paid', message: "Paiement de {$amount} confirmé.");
     }
 
     private function media(PreselectionSubmission|Performance $media, string $kind, bool $created): void
@@ -131,7 +131,7 @@ class BroadcastModelChanges implements ShouldHandleEventsAfterCommit
         } elseif ($media->status === PerformanceStatus::Rejected) {
             $this->push($competition, $bo, $type);
             $this->push($competition, $artistChannel, $type,
-                message: 'Ta prestation a été refusée'.($media->rejection_reason ? " : {$media->rejection_reason}" : '.').' Tu peux en envoyer une autre.');
+                message: 'Ta prestation a été refusée'.($media->rejection_reason ? ' : '.rtrim($media->rejection_reason, '. ').'.' : '.').' Tu peux en envoyer une autre.');
         } else {
             $this->push($competition, [...$bo, ...$artistChannel], $type);
         }
@@ -148,7 +148,7 @@ class BroadcastModelChanges implements ShouldHandleEventsAfterCommit
         // The artist sees their counter move, with a toast for each new like.
         $artistId = $like->exists ? $like->submission?->participant?->user_id : null;
         if ($artistId) {
-            $this->push($competition, [Channel::user($artistId)], 'preselection.like', message: 'Nouveau like sur ta prestation ❤️');
+            $this->push($competition, [Channel::user($artistId)], 'preselection.like', message: 'Nouveau like sur ta prestation.');
         }
     }
 
@@ -206,7 +206,7 @@ class BroadcastModelChanges implements ShouldHandleEventsAfterCommit
         if ($preselection->wasChanged('published_at') && $preselection->published_at !== null) {
             $users = $competition->participants()->pluck('user_id')->map(fn (int $id) => Channel::user($id))->all();
             $this->push($competition, [...$channels, Channel::organizer($competition->organizer_id)], 'preselection.published');
-            $this->push($competition, $users, 'preselection.published', message: "Résultats de la présélection « {$competition->name} » disponibles !");
+            $this->push($competition, $users, 'preselection.published', message: "Résultats de la présélection « {$competition->name} » disponibles.");
 
             return;
         }

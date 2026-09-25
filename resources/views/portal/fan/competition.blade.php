@@ -97,7 +97,7 @@
                                 </p>
                             </div>
                             <x-portal.share :url="route('fan.competitions.show', $competition).'#match-'.$match->id" :title="($match->group?->name ?? 'Poule').' · '.$competition->name"
-                                :text="'Vote pour ton artiste dans « '.$competition->name.' » 🔥'" label="Partager la poule" />
+                                :text="'Vote pour ton artiste dans « '.$competition->name.' »'" label="Partager la poule" />
                         </div>
                         <form method="POST" action="{{ route('fan.competitions.matches.votes.store', [$competition, $match]) }}">
                             @csrf
@@ -144,7 +144,7 @@
                             </p>
                         </div>
                         <x-portal.share :url="route('fan.competitions.show', $competition).'#match-'.$match->id" :title="$names.' · '.$competition->name"
-                            :text="'Vote pour ton artiste : '.$names.' dans « '.$competition->name.' » 🔥'" label="Partager le match" />
+                            :text="'Vote pour ton artiste : '.$names.' dans « '.$competition->name.' »'" label="Partager le match" />
                     </div>
                     <form method="POST" action="{{ route('fan.competitions.matches.votes.store', [$competition, $match]) }}" x-data="{ choice: null }">
                         @csrf
@@ -216,7 +216,7 @@
                     @foreach ($match->slots->filter->participant as $slot)
                         @php $won = $slot->participant_id === $match->winner_id; @endphp
                         <div @class(['flex items-center justify-between px-4 py-2.5 text-sm', 'bg-emerald-50/70 font-semibold dark:bg-emerald-500/10' => $won])>
-                            <span>@if ($won)🏆 @endif{{ $slot->participant->stage_name }}</span>
+                            <span>{{ $slot->participant->stage_name }}</span>
                             <span class="font-display tabular-nums">{{ $slot->final_score !== null ? number_format($slot->final_score, 1, ',', '') : '—' }}</span>
                         </div>
                     @endforeach

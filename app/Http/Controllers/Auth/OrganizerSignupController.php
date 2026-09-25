@@ -40,6 +40,6 @@ class OrganizerSignupController extends Controller
         }
 
         return redirect()->route('organizers.show', $organizer)
-            ->with('status', "Espace « {$organizer->name} » créé ! Préparez vos compétitions : les inscriptions pourront ouvrir dès que Battle Game aura vérifié votre organisateur.");
+            ->with('status', "Espace « {$organizer->name} » créé. Préparez vos compétitions : les inscriptions pourront ouvrir dès que Battle Game aura vérifié votre organisateur.");
     }
 }

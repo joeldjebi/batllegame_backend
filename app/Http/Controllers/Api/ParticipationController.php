@@ -31,6 +31,7 @@ class ParticipationController extends Controller
                     'stage_name' => $participant->stage_name,
                     'status' => $participant->status,
                     'competition' => [
+                        'id' => $participant->competition->id,
                         'slug' => $participant->competition->slug,
                         'name' => $participant->competition->name,
                         'status' => $participant->competition->status,

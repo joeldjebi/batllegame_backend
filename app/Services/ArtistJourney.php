@@ -103,11 +103,11 @@ class ArtistJourney
                 }
                 $qualified = $slot->rank !== null && $slot->rank <= ($match->phase->qualifiers_per_group ?? 1);
 
-                return [...$row, 'state' => $qualified ? 'won' : 'lost', 'label' => ($slot->rank ? $slot->rank.'e de la poule · ' : '').($qualified ? 'Qualifié !' : 'Non qualifié')];
+                return [...$row, 'state' => $qualified ? 'won' : 'lost', 'label' => ($slot->rank ? $slot->rank.'e de la poule · ' : '').($qualified ? 'Qualifié' : 'Non qualifié')];
             }
 
             return $match->winner_id === $participant->id
-                ? [...$row, 'state' => 'won', 'label' => 'Gagné !']
+                ? [...$row, 'state' => 'won', 'label' => 'Gagné']
                 : [...$row, 'state' => 'lost', 'label' => 'Éliminé'];
         }
 
@@ -121,7 +121,7 @@ class ArtistJourney
         }
 
         if ($match->isVotingOpen()) {
-            return [...$row, 'state' => 'current', 'label' => 'Vote du public en cours', 'action' => ['type' => 'vote', 'text' => 'Le vote est ouvert : partage pour récolter des votes !', 'deadline' => $match->voting_closes_at, 'match' => $match]];
+            return [...$row, 'state' => 'current', 'label' => 'Vote du public en cours', 'action' => ['type' => 'vote', 'text' => 'Le vote est ouvert : partage ta prestation pour recevoir des votes.', 'deadline' => $match->voting_closes_at, 'match' => $match]];
         }
 
         if ($online && $stage->acceptsSubmissions()) {

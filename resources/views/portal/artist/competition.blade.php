@@ -37,7 +37,7 @@
             <div class="min-w-0">
                 <p class="text-sm text-white/70">{{ $participant->stage_name }}</p>
                 <p class="font-display text-xl font-extrabold sm:text-2xl">
-                    @if ($champion) Vainqueur de la compétition 🏆
+                    @if ($champion) Vainqueur de la compétition
                     @elseif ($out) Parcours terminé
                     @elseif ($next) {{ $next['stage'] }}
                     @else En attente de la suite
@@ -59,7 +59,7 @@
                     <a href="#etape-{{ $next['stageModel']->id }}" class="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-soft">{{ $next['type'] === 'submit' ? 'Envoyer ma prestation' : 'Voir ma prestation' }}</a>
                 @elseif ($next['type'] === 'vote')
                     <x-portal.share :url="route('fan.competitions.show', $competition).'#match-'.$next['match']->id" :title="$participant->stage_name.' · '.$competition->name"
-                        :text="'Vote pour moi dans « '.$competition->name.' » 🔥'" label="Partager pour avoir des votes" variant="secondary" align="left" />
+                        :text="'Vote pour moi dans « '.$competition->name.' »'" label="Partager pour avoir des votes" variant="secondary" align="left" />
                 @endif
             </div>
         @elseif ($out)

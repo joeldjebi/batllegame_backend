@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\JourneyController;
 use App\Http\Controllers\Api\Judge\CompetitionController as JudgeCompetitionController;
 use App\Http\Controllers\Api\Judge\PreselectionController as JudgePreselectionController;
 use App\Http\Controllers\Api\JuryScoreController;
+use App\Http\Controllers\Api\LiveController;
 use App\Http\Controllers\Api\ParticipationController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneVerificationController;
@@ -30,6 +31,8 @@ Route::get('locations', [CountryController::class, 'locations'])->name('api.loca
 
 // Mobile « Pour toi » feed (public; like state of the viewer when a token is sent).
 Route::get('feed', FeedController::class)->middleware('throttle:120,1')->name('api.feed');
+// « Battles » tab: matches whose public vote is open now (duels and groups; no live video).
+Route::get('live', LiveController::class)->middleware('throttle:120,1')->name('api.live');
 
 // Socket.IO: server URL + signed token for the private channels of the user.
 Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');

@@ -109,7 +109,7 @@ class OrganizerController extends Controller
         ])->save();
 
         $realtime->push([Channel::organizer($organizer->id), Channel::ADMIN], 'organizer.status', ['organizer_id' => $organizer->id], match ($status) {
-            OrganizerStatus::Verified => "« {$organizer->name} » est vérifié : vous pouvez ouvrir les inscriptions 🎉",
+            OrganizerStatus::Verified => "« {$organizer->name} » est vérifié : vous pouvez ouvrir les inscriptions.",
             OrganizerStatus::Suspended => "« {$organizer->name} » a été suspendu par Battle Game.",
             default => null,
         });

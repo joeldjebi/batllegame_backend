@@ -20,7 +20,7 @@
             </a>
             <div class="min-w-0">
                 <p class="text-sm text-white/70">Espace artiste</p>
-                <h1 class="truncate font-display text-2xl font-extrabold sm:text-3xl">Salut, {{ Str::before($user->name, ' ') }} 🎤</h1>
+                <h1 class="truncate font-display text-2xl font-extrabold sm:text-3xl">Salut, {{ Str::before($user->name, ' ') }}</h1>
             </div>
         </div>
         <dl class="relative mt-7 grid grid-cols-3 gap-2 sm:max-w-lg sm:gap-3">
@@ -185,7 +185,7 @@
                                     <x-ui.button :href="route('artist.competitions.payment', $competition)" icon="credit-card" class="col-span-2">Débloquer · {{ $fmtFee($competition) }}</x-ui.button>
                                 @else
                                     <x-portal.share :url="$shareUrl" :title="$participant->stage_name.' · '.$competition->name"
-                                        :text="$likesOpen ? 'Soutiens-moi dans « '.$competition->name.' » : un like peut tout changer ❤️' : 'Suis « '.$competition->name.' » sur Battle Game 🎤'"
+                                        :text="$likesOpen ? 'Soutiens-moi dans « '.$competition->name.' » : un like peut tout changer.' : 'Suis « '.$competition->name.' » sur Battle Game'"
                                         :label="$likesOpen ? 'Partager' : 'Inviter'" :variant="$likesOpen ? 'primary' : 'secondary'" align="left" class="w-full [&>button]:w-full" />
                                     <x-ui.button variant="secondary" :href="route('artist.competitions.show', $competition)" icon="map" class="w-full">Mon parcours</x-ui.button>
                                 @endif

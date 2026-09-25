@@ -34,7 +34,7 @@
         </span>
         <div class="flex shrink-0 items-center gap-1.5">
             <x-portal.share :url="$shareUrl" icon :title="$entry->participant->stage_name.' · '.$competition->name"
-                :text="'Soutiens '.$entry->participant->stage_name.' dans « '.$competition->name.' » : un like peut tout changer ❤️'" />
+                :text="'Soutiens '.$entry->participant->stage_name.' dans « '.$competition->name.' » : un like peut tout changer.'" />
             @if ($likes['can_like'])
                 @if (! $user)
                     <x-ui.button size="sm" :href="route('fan.login')" icon="heart">J'aime</x-ui.button>

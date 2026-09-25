@@ -53,7 +53,7 @@ class GroupResultsService
         $this->realtime->push([Channel::competition($phase->competition_id), Channel::backOffice($phase->competition_id)], 'phase.published', ['competition_id' => $phase->competition_id, 'phase_id' => $phase->id]);
         foreach ($users as $participant) {
             $this->realtime->push([Channel::user($participant->user_id)], 'phase.published', ['competition_id' => $phase->competition_id, 'phase_id' => $phase->id],
-                in_array($participant->id, $qualified, true) ? 'Qualifié ! 🎉 Tu passes à la phase suivante.' : 'Résultats des poules publiés : tu n\'es pas qualifié cette fois.');
+                in_array($participant->id, $qualified, true) ? 'Qualifié : tu passes à la phase suivante.' : 'Résultats des poules publiés : tu n\'es pas qualifié cette fois.');
         }
 
         return $phase;

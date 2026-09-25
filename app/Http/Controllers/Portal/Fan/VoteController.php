@@ -28,6 +28,6 @@ class VoteController extends Controller
             return back()->withErrors(['vote' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Merci, votre vote a été enregistré !');
+        return back()->with('status', 'Votre vote a été enregistré.');
     }
 }

@@ -1,5 +1,5 @@
 <x-layouts.app title="Tableau de bord">
-    <x-ui.page-header :title="'Bonjour, '.Str::before(auth()->user()->name, ' ').' 👋'">
+    <x-ui.page-header :title="'Bonjour, '.Str::before(auth()->user()->name, ' ')">
         <x-slot:description>
             <span>{{ now()->translatedFormat('l d F Y') }}</span>
             <span class="text-slate-300 dark:text-slate-600">•</span>

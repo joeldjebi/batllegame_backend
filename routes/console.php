@@ -142,8 +142,8 @@ Artisan::command('demo:purge {--accounts : Also remove the test organizer and th
 Artisan::command('judges:default-password {--force : Really apply (without it: preview only)}', function () {
     $password = config('accounts.judge_default_password');
 
-    if (blank($password) || app()->isProduction()) {
-        $this->error('Définissez JUDGE_DEFAULT_PASSWORD dans .env (jamais en production).');
+    if (blank($password)) {
+        $this->error('Définissez JUDGE_DEFAULT_PASSWORD dans .env.');
 
         return 1;
     }
@@ -165,4 +165,4 @@ Artisan::command('judges:default-password {--force : Really apply (without it: p
     // Changed at their next login, like any temporary password.
     $judges->each(fn (User $u) => $u->forceFill(['password' => $password, 'must_change_password' => true])->save());
     $this->info("{$judges->count()} juré(s) : mot de passe par défaut appliqué, à changer à la prochaine connexion.");
-})->purpose('Give every judge account the default temporary password (local, until SMS delivery)');
+})->purpose('Give every judge account the default temporary password (until SMS delivery)');

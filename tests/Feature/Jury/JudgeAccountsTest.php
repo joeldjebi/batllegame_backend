@@ -116,6 +116,7 @@ it('lists the matches a judge has to score with the criteria', function () {
 
 it('gives new judges the default temporary password while no SMS service exists', function () {
     config(['accounts.judge_default_password' => '12345678']);
+    app()->detectEnvironment(fn () => 'production');
     $competition = Competition::factory()->create();
 
     [$judge, $password] = app(JudgeAccountService::class)->assign($competition, $this->country, '0501010101', 'Juge Défaut');

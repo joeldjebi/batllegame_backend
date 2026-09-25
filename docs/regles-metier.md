@@ -63,7 +63,7 @@ statut, motif de refus, remplacement jusqu'à la limite), résultat (rang, quali
 - Seuls les organisateurs **vérifiés** peuvent ouvrir des inscriptions.
 - Les **managers** (admin, staff) sont ajoutés par le propriétaire : compte existant retrouvé par email
   (ou par téléphone s'il s'agit d'un compte mobile sans email), sinon compte créé.
-- **Jurés, en attendant un service SMS** : `JUDGE_DEFAULT_PASSWORD` (.env, ignoré en production) donne à tout nouveau
+- **Jurés, en attendant un service SMS** : `JUDGE_DEFAULT_PASSWORD` (.env) donne à tout nouveau
   compte juré ce mot de passe provisoire (à changer à la première connexion) ; `php artisan judges:default-password --force`
   l'applique aux jurés existants (jamais aux comptes back-office ni aux super-admins).
 - **Mot de passe provisoire** : tout compte créé par un tiers (propriétaire, manager, juré) reçoit un mot de

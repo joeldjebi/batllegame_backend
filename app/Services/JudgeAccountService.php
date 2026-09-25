@@ -57,12 +57,13 @@ class JudgeAccountService
     }
 
     /**
-     * The shared default password until SMS delivery exists (never in production), else a random one.
+     * The shared default password until SMS delivery exists (JUDGE_DEFAULT_PASSWORD), else a random one.
+     * Changed at the first login either way.
      */
     public static function temporaryPassword(): string
     {
         $default = config('accounts.judge_default_password');
 
-        return filled($default) && ! app()->isProduction() ? (string) $default : Str::password(10, symbols: false);
+        return filled($default) ? (string) $default : Str::password(10, symbols: false);
     }
 }

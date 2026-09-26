@@ -23,6 +23,7 @@ class FeedController extends Controller
             'limit' => ['nullable', 'integer', 'min:1', 'max:'.Feed::MAX_LIMIT],
             'competition' => ['nullable', 'string', 'max:120'],
             'discipline' => ['nullable', Rule::enum(Discipline::class)],
+            'q' => ['nullable', 'string', 'max:80'],
         ]);
 
         $competitionId = null;
@@ -35,6 +36,7 @@ class FeedController extends Controller
         $page = $feed->page($request->user('sanctum'), $validated['cursor'] ?? null, (int) ($validated['limit'] ?? Feed::DEFAULT_LIMIT), [
             'competition_id' => $competitionId,
             'discipline' => $validated['discipline'] ?? null,
+            'q' => $validated['q'] ?? null,
         ]);
 
         return response()->json(['data' => $page['items'], 'meta' => ['next_cursor' => $page['next_cursor']]]);

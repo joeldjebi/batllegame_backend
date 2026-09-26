@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\PreselectionController;
 use App\Http\Controllers\Api\PublicVoteController;
 use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,7 @@ Route::get('locations', [CountryController::class, 'locations'])->name('api.loca
 Route::get('feed', FeedController::class)->middleware('throttle:120,1')->name('api.feed');
 // « Battles » tab: matches whose public vote is open now (duels and groups; no live video).
 Route::get('live', LiveController::class)->middleware('throttle:120,1')->name('api.live');
+Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('api.search');
 
 // Socket.IO: server URL + signed token for the private channels of the user.
 Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');

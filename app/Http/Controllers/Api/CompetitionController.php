@@ -9,6 +9,7 @@ use App\Http\Resources\MatchResource;
 use App\Models\BattleMatch;
 use App\Models\Competition;
 use App\Models\MatchParticipant;
+use App\Services\Feed;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -24,13 +25,17 @@ class CompetitionController extends Controller
         $request->validate([
             'status' => ['nullable', Rule::in(array_filter(CompetitionStatus::values(), fn ($s) => $s !== CompetitionStatus::Draft->value))],
             'discipline' => ['nullable', 'string'],
+            'q' => ['nullable', 'string', 'max:80'],
         ]);
+        $search = Feed::escapeLike((string) $request->query('q', ''));
 
         $competitions = Competition::query()
             ->with('organizer')
             ->where('status', '!=', CompetitionStatus::Draft)
             ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
             ->when($request->query('discipline'), fn ($q, $discipline) => $q->where('discipline', $discipline))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->whereLike('name', "%{$search}%")
+                ->orWhereHas('organizer', fn ($o) => $o->whereLike('name', "%{$search}%"))))
             ->latest()
             ->paginate(20);
 

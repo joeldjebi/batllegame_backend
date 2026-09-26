@@ -10,6 +10,7 @@ use App\Models\Competition;
 use App\Models\Country;
 use App\Models\Organizer;
 use App\Models\User;
+use App\Services\AvatarService;
 use App\Services\Competition\PhaseCreator;
 use App\Services\Competition\PhaseLauncher;
 use App\Services\Competition\StageService;
@@ -52,6 +53,18 @@ $account = function (string $national, string $name, ?string $email = null) use 
     $user->forceFill(['phone_verified_at' => $user->phone_verified_at ?? now(), 'must_change_password' => false, 'seed_kind' => $user->seed_kind ?? SeedKind::TestAccount])->save();
 
     return $user;
+};
+
+// A profile photo is required to submit: a square frame of the artist's own video.
+$avatarFrom = function (User $user, string $video): void {
+    if ($user->avatar_path !== null) {
+        return;
+    }
+    $frame = sys_get_temp_dir()."/bg-avatar-{$user->id}.jpg";
+    exec(escapeshellarg(config('media.ffmpeg')).' -y -loglevel error -ss 2 -i '.escapeshellarg($video).' -frames:v 1 '.escapeshellarg($frame));
+    if (is_file($frame)) {
+        app(AvatarService::class)->store($user, new UploadedFile($frame, 'photo.jpg', 'image/jpeg', null, true));
+    }
 };
 
 foreach ($setups as $setup) {
@@ -102,6 +115,7 @@ foreach ($setups as $setup) {
         $participant = $competition->participants()->where('user_id', $user->id)->first()
             ?? app(RegistrationService::class)->register($user, $competition, $name);
         $participant->update(['status' => ParticipantStatus::Validated, 'seed' => $i + 1]);
+        $avatarFrom($user, "{$videoDir}/{$setup['videos'][$i]}.mp4");
     }
 
     // 4. Two judges.

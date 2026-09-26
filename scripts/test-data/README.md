@@ -6,7 +6,8 @@ Scripts `tinker` (sans balise `<?php`) pour remplir un environnement de test. Ja
 
 Deux organisateurs vérifiés, une compétition en ligne chacun (20 artistes validés, 2 jurés, poules en cours),
 une vraie vidéo par artiste (clips [Mixkit](https://mixkit.co/license/#videoFree), licence libre, sans son).
-Mot de passe de tous les comptes : `12345678`. Relançable sans doublon.
+Mot de passe de tous les comptes : `12345678`. Relançable sans doublon. Chaque artiste reçoit une photo de profil (une image de sa vidéo),
+obligatoire pour envoyer une prestation (`ffmpeg` requis).
 
 ```bash
 # 1. Vidéos (ids dans le script) téléchargées dans $VIDEO_DIR/{id}.mp4
@@ -24,6 +25,8 @@ et `0798200001`–`0798200020`, jurés `0797100001`–`2` et `0797200001`–`2`.
 Remplace les vidéos des artistes d'une compétition (prestations d'étape et de présélection) par des vidéos
 locales, une par artiste (la même pour les deux), en gardant leur statut de validation ; l'optimisation
 (miniature, lecture rapide) repasse en file d'attente.
+**Ne touche jamais une vraie prestation** : seuls les médias envoyés par ces scripts (sans date de fichier de
+l'appareil, nom `prestation*.mp4` ou `{id}.mp4`) sont remplacés ; les autres sont listés comme conservés.
 
 ```bash
 COMPETITION="Compétition Démo 2026 (copie)" VIDEO_DIR=/tmp/bg-videos VIDEO_IDS="50487,45441,482" \

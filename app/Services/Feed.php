@@ -16,9 +16,14 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The mobile « Pour toi » feed: every public performance, newest first — approved
- * pre-selection entries and approved stage submissions / captations — in one stable
- * cursor-paginated stream (published_at, kind, id).
+ * The mobile « Pour toi » feed: every public performance — approved pre-selection
+ * entries and approved stage submissions / captations — in one stable
+ * cursor-paginated stream.
+ *
+ * Unfiltered (« Pour toi »): the performances of the running competitions first, any
+ * stage, in a random order drawn for each first page (the seed rides in the cursor),
+ * then the others, newest first. Filtered (a competition, an artist, a search):
+ * newest first (published_at, kind, id).
  */
 class Feed
 {
@@ -38,17 +43,28 @@ class Feed
     public function page(?User $viewer, ?string $cursor = null, int $limit = self::DEFAULT_LIMIT, array $filters = []): array
     {
         $limit = max(1, min(self::MAX_LIMIT, $limit));
-        $after = self::decodeCursor($cursor);
 
-        $rows = DB::query()
-            ->fromSub($this->source(self::ENTRY, 'preselection_submissions', $filters)->unionAll($this->source(self::PERFORMANCE, 'performances', $filters)), 'feed')
-            ->when($after, fn (Builder $q) => $q->where(fn (Builder $q) => $q
-                ->where('published_at', '<', $after['t'])
-                ->orWhere(fn (Builder $q) => $q->where('published_at', $after['t'])->where('kind', '>', $after['k']))
-                ->orWhere(fn (Builder $q) => $q->where('published_at', $after['t'])->where('kind', $after['k'])->where('id', '<', $after['i']))))
-            ->orderByDesc('published_at')->orderBy('kind')->orderByDesc('id')
-            ->limit($limit + 1)
-            ->get();
+        if (array_filter($filters, filled(...)) !== []) {
+            $rows = $this->newest($filters, self::decodeCursor($cursor), $limit + 1);
+            $hasMore = $rows->count() > $limit;
+            $rows = $rows->take($limit)->values();
+
+            return [
+                'items' => $this->hydrate($rows, $viewer),
+                'next_cursor' => $hasMore && $rows->last() ? self::encodeCursor($rows->last()) : null,
+            ];
+        }
+
+        // « Pour toi »: the running competitions (shuffled), then the rest (newest first).
+        $state = self::decodeMixedCursor($cursor) ?? ['s' => random_int(1, 1_000_000), 'live' => true, 'after' => null];
+        $rows = collect();
+        if ($state['live']) {
+            $rows = $this->shuffledLive($state['s'], $state['after'], $limit + 1);
+            $state['after'] = null;
+        }
+        if ($rows->count() <= $limit) {
+            $rows = $rows->concat($this->newest([], $state['after'], $limit + 1 - $rows->count(), live: false));
+        }
 
         $hasMore = $rows->count() > $limit;
         $rows = $rows->take($limit)->values();
@@ -56,14 +72,65 @@ class Feed
 
         return [
             'items' => $this->hydrate($rows, $viewer),
-            'next_cursor' => $hasMore && $last ? self::encodeCursor($last) : null,
+            'next_cursor' => $hasMore && $last ? self::encodeMixedCursor($state['s'], $last) : null,
         ];
     }
 
     /**
+     * Newest first, after the [$after] position.
+     *
      * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string, artist_id?: ?int}  $filters
+     * @param  ?array{t: string, k: string, i: int}  $after
+     * @param  ?bool  $live  true: running competitions only, false: the others, null: all.
+     * @return Collection<int, object>
      */
-    private function source(string $kind, string $table, array $filters): Builder
+    private function newest(array $filters, ?array $after, int $take, ?bool $live = null): Collection
+    {
+        return DB::query()
+            ->fromSub($this->source(self::ENTRY, 'preselection_submissions', $filters, $live)->unionAll($this->source(self::PERFORMANCE, 'performances', $filters, $live)), 'feed')
+            ->when($after, fn (Builder $q) => $q->where(fn (Builder $q) => $q
+                ->where('published_at', '<', $after['t'])
+                ->orWhere(fn (Builder $q) => $q->where('published_at', $after['t'])->where('kind', '>', $after['k']))
+                ->orWhere(fn (Builder $q) => $q->where('published_at', $after['t'])->where('kind', $after['k'])->where('id', '<', $after['i']))))
+            ->orderByDesc('published_at')->orderBy('kind')->orderByDesc('id')
+            ->limit($take)
+            ->get()
+            ->each(function (object $row): void {
+                $row->live = false;
+            });
+    }
+
+    /**
+     * The performances of the running competitions in the random order of [$seed]
+     * (a hash of the seed and the item, computed the same way by PostgreSQL and SQLite).
+     *
+     * @param  ?array{r: int, k: string, i: int}  $after
+     * @return Collection<int, object>
+     */
+    private function shuffledLive(int $seed, ?array $after, int $take): Collection
+    {
+        $rank = fn (string $table, int $kind) => "(((({$table}.id * 2 + {$kind} + {$seed}) * 48271) % 2147483647) * ((({$table}.id * 2 + {$kind} + {$seed}) * 48271) % 2147483647)) % 2147483647";
+
+        return DB::query()
+            ->fromSub($this->source(self::ENTRY, 'preselection_submissions', [], true)->selectRaw($rank('preselection_submissions', 0).' as rank')
+                ->unionAll($this->source(self::PERFORMANCE, 'performances', [], true)->selectRaw($rank('performances', 1).' as rank')), 'feed')
+            ->when($after, fn (Builder $q) => $q->where(fn (Builder $q) => $q
+                ->where('rank', '>', $after['r'])
+                ->orWhere(fn (Builder $q) => $q->where('rank', $after['r'])->where('kind', '>', $after['k']))
+                ->orWhere(fn (Builder $q) => $q->where('rank', $after['r'])->where('kind', $after['k'])->where('id', '>', $after['i']))))
+            ->orderBy('rank')->orderBy('kind')->orderBy('id')
+            ->limit($take)
+            ->get()
+            ->each(function (object $row): void {
+                $row->live = true;
+            });
+    }
+
+    /**
+     * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string, artist_id?: ?int}  $filters
+     * @param  ?bool  $live  true: running competitions only, false: the others, null: all.
+     */
+    private function source(string $kind, string $table, array $filters, ?bool $live = null): Builder
     {
         return DB::table($table)
             ->join('competitions', 'competitions.id', '=', "{$table}.competition_id")
@@ -72,6 +139,8 @@ class Feed
             ->whereNotNull("{$table}.published_at")
             ->whereNotNull("{$table}.media_path")
             ->where('competitions.status', '!=', CompetitionStatus::Draft->value)
+            ->when($live === true, fn (Builder $q) => $q->where('competitions.status', CompetitionStatus::InProgress->value))
+            ->when($live === false, fn (Builder $q) => $q->where('competitions.status', '!=', CompetitionStatus::InProgress->value))
             ->when($filters['competition_id'] ?? null, fn (Builder $q, int $id) => $q->where('competitions.id', $id))
             ->when($filters['discipline'] ?? null, fn (Builder $q, string $discipline) => $q->where('competitions.discipline', $discipline))
             // An artist's page: every performance of their account, all competitions.
@@ -219,6 +288,43 @@ class Feed
                 ->mapWithKeys(fn ($slot) => ["s{$match->stage_id}:{$slot->participant_id}" => $match]));
 
         return $byId->merge($byStage);
+    }
+
+    /**
+     * « Pour toi » position: the seed, then the last item (its rank while in the
+     * running competitions, its date after).
+     */
+    private static function encodeMixedCursor(int $seed, object $row): string
+    {
+        $data = $row->live
+            ? ['s' => $seed, 'r' => (int) $row->rank, 'k' => $row->kind, 'i' => (int) $row->id]
+            : ['s' => $seed, 't' => Carbon::parse($row->published_at)->format('Y-m-d H:i:s'), 'k' => $row->kind, 'i' => (int) $row->id];
+
+        return rtrim(strtr(base64_encode(json_encode($data)), '+/', '-_'), '=');
+    }
+
+    /**
+     * @return ?array{s: int, live: bool, after: ?array<string, int|string>}
+     */
+    private static function decodeMixedCursor(?string $cursor): ?array
+    {
+        if (blank($cursor)) {
+            return null;
+        }
+
+        $data = json_decode((string) base64_decode(strtr($cursor, '-_', '+/'), true), true);
+        if (! is_array($data) || ! is_int($data['s'] ?? null) || $data['s'] < 1 || $data['s'] > 1_000_000
+            || ! in_array($data['k'] ?? null, [self::ENTRY, self::PERFORMANCE], true) || ! is_int($data['i'] ?? null)) {
+            return null;
+        }
+
+        if (is_int($data['r'] ?? null)) {
+            return ['s' => $data['s'], 'live' => true, 'after' => ['r' => $data['r'], 'k' => $data['k'], 'i' => $data['i']]];
+        }
+
+        $after = self::decodeCursor($cursor);
+
+        return $after ? ['s' => $data['s'], 'live' => false, 'after' => $after] : null;
     }
 
     private static function encodeCursor(object $row): string

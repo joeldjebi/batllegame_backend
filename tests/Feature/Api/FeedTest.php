@@ -33,7 +33,7 @@ function approvedStagePerformance(): Performance
     return app(SubmissionService::class)->approve(app(SubmissionService::class)->submit($participants[0], $stage->fresh(), fakeVideo())->fresh(), User::factory()->create());
 }
 
-it('lists approved entries and stage performances of public competitions, newest first', function () {
+it('lists approved entries and stage performances of public competitions, the running ones first', function () {
     ['artists' => $artists, 'competition' => $competition] = competitionWithPreselection(3);
     [$old, $new, $pending] = $artists->map(fn ($artist) => preselectionEntry($artist))->all();
     $old->forceFill(['published_at' => now()->subHour()])->save();
@@ -48,17 +48,18 @@ it('lists approved entries and stage performances of public competitions, newest
 
     $response = $this->getJson('/api/feed')->assertOk();
 
-    expect($response->json('data.*.key'))->toBe(["preselection-{$new->id}", "performance-{$performance->id}", "preselection-{$old->id}"])
+    // The running competition first, then the others newest first.
+    expect($response->json('data.*.key'))->toBe(["performance-{$performance->id}", "preselection-{$new->id}", "preselection-{$old->id}"])
         ->and($response->json('meta.next_cursor'))->toBeNull();
 
-    $response->assertJsonPath('data.0.artist.stage_name', $new->participant->stage_name)
-        ->assertJsonPath('data.0.competition.slug', $competition->slug)
-        ->assertJsonPath('data.0.context.label', 'Présélection')
-        ->assertJsonPath('data.0.likes.liked', false)
-        ->assertJsonPath('data.0.share_url', route('fan.competitions.preselection.entry', [$competition, $new]))
-        ->assertJsonPath('data.1.vote.match_id', $performance->stage->matches()->first()->id)
-        ->assertJsonPath('data.1.likes', null);
-    expect($response->json('data.0.media'))->toHaveKeys(['url', 'poster_url', 'width', 'height', 'duration_seconds']);
+    $response->assertJsonPath('data.1.artist.stage_name', $new->participant->stage_name)
+        ->assertJsonPath('data.1.competition.slug', $competition->slug)
+        ->assertJsonPath('data.1.context.label', 'Présélection')
+        ->assertJsonPath('data.1.likes.liked', false)
+        ->assertJsonPath('data.1.share_url', route('fan.competitions.preselection.entry', [$competition, $new]))
+        ->assertJsonPath('data.0.vote.match_id', $performance->stage->matches()->first()->id)
+        ->assertJsonPath('data.0.likes', null);
+    expect($response->json('data.1.media'))->toHaveKeys(['url', 'poster_url', 'width', 'height', 'duration_seconds']);
 });
 
 it('pages with a stable cursor, without duplicates or gaps at the same second', function () {
@@ -83,6 +84,41 @@ it('pages with a stable cursor, without duplicates or gaps at the same second', 
 
     $this->getJson('/api/feed?cursor=garbage')->assertOk()->assertJsonCount(7, 'data');
     $this->getJson('/api/feed?limit=500')->assertStatus(422);
+});
+
+it('shuffles the running competitions (any stage) on each first page, then pages without duplicates', function () {
+    // Running: two stage performances and the pre-selection entries of a running competition.
+    $performances = collect([approvedStagePerformance(), approvedStagePerformance()]);
+    ['artists' => $artists, 'competition' => $running] = competitionWithPreselection(4);
+    $entries = $artists->map(fn ($artist) => preselectionEntry($artist));
+    $running->update(['status' => CompetitionStatus::InProgress]);
+    $live = [...$performances->map(fn ($p) => "performance-{$p->id}"), ...$entries->map(fn ($e) => "preselection-{$e->id}")];
+
+    // Not running (registrations): after, newest first.
+    ['artists' => $others] = competitionWithPreselection(2);
+    [$older, $newer] = $others->map(fn ($artist) => preselectionEntry($artist))->all();
+    $older->forceFill(['published_at' => now()->subHour()])->save();
+
+    $orders = [];
+    foreach (range(1, 8) as $_) {
+        $keys = [];
+        $cursor = null;
+        do {
+            $page = $this->getJson('/api/feed?limit=3'.($cursor ? "&cursor={$cursor}" : ''))->assertOk();
+            $keys = [...$keys, ...$page->json('data.*.key')];
+            $cursor = $page->json('meta.next_cursor');
+        } while ($cursor);
+
+        expect(array_slice($keys, 0, 6))->toEqualCanonicalizing($live)
+            ->and(array_slice($keys, 6))->toBe(["preselection-{$newer->id}", "preselection-{$older->id}"]);
+        $orders[] = implode(',', array_slice($keys, 0, 6));
+    }
+
+    // A new order each time the feed is opened (8 draws of 720 orders).
+    expect(count(array_unique($orders)))->toBeGreaterThan(1);
+
+    // The filtered feeds keep the newest first.
+    $this->getJson("/api/feed?competition={$running->slug}")->assertJsonPath('data.0.id', $entries->last()->id);
 });
 
 it('tells a signed-in viewer which entry they liked and shows the counts after their like', function () {

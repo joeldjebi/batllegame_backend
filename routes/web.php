@@ -88,6 +88,7 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                     Route::put('stages/{stage}', [StageController::class, 'update'])->name('stages.update');
                     Route::post('stages/{stage}/open-submissions', [StageController::class, 'openSubmissions'])->name('stages.open-submissions');
                     Route::post('stages/{stage}/open-voting', [StageController::class, 'openVoting'])->name('stages.open-voting');
+                    Route::post('stages/{stage}/publish-results', [StageController::class, 'publishResults'])->name('stages.publish-results');
 
                     Route::patch('performances/{performance}', [PerformanceController::class, 'review'])->name('performances.review');
                     Route::post('matches/{match}/captations', [PerformanceController::class, 'captation'])->name('matches.captations.store');

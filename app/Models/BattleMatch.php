@@ -246,13 +246,25 @@ class BattleMatch extends Model
      * Scores and ranks are public once the match is closed, and for a group once the
      * organizer published the phase results (or with live results).
      */
+    /**
+     * Jury notes, scores and ranking: public once the organizer published the results
+     * of the stage (a group: of its phase), after the deliberation. Never live.
+     */
     public function resultsArePublic(): bool
     {
-        if ($this->competition->settings->showLiveResults) {
-            return true;
+        if ($this->isGroupMatch()) {
+            return $this->phase->results_published_at !== null;
         }
 
-        return $this->isClosed() && (! $this->isGroupMatch() || $this->phase->results_published_at !== null);
+        return $this->isClosed() && $this->stage?->results_published_at !== null;
+    }
+
+    /**
+     * The public vote share: with the results, or live when the organizer shows live results.
+     */
+    public function publicScoreIsPublic(): bool
+    {
+        return $this->resultsArePublic() || $this->competition->settings->showLiveResults;
     }
 
     /**

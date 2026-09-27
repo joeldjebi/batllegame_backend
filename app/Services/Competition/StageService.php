@@ -5,11 +5,14 @@ namespace App\Services\Competition;
 use App\Enums\CompetitionMode;
 use App\Enums\MatchStatus;
 use App\Enums\PerformanceStatus;
+use App\Enums\PhaseType;
 use App\Enums\StageStatus;
 use App\Exceptions\CompetitionFlowException;
 use App\Models\BattleMatch;
 use App\Models\Phase;
 use App\Models\Stage;
+use App\Realtime\Channel;
+use App\Realtime\Realtime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -190,6 +193,39 @@ class StageService
         }
 
         return $match;
+    }
+
+    /**
+     * The organizer makes a finished stage's results public: jury notes, scores and
+     * ranking (group stages are published with their phase, GroupResultsService).
+     */
+    public function publishResults(Stage $stage): Stage
+    {
+        $stage = DB::transaction(function () use ($stage): Stage {
+            $stage = Stage::query()->lockForUpdate()->findOrFail($stage->id);
+
+            if ($stage->phase->type === PhaseType::Groups) {
+                throw CompetitionFlowException::groupStageResults();
+            }
+            if ($stage->results_published_at !== null) {
+                throw CompetitionFlowException::stageResultsPublished();
+            }
+            if ($stage->status !== StageStatus::Closed) {
+                throw CompetitionFlowException::stageNotClosed();
+            }
+
+            $stage->forceFill(['results_published_at' => now()])->save();
+
+            return $stage;
+        });
+
+        app(Realtime::class)->push(
+            [Channel::competition($stage->phase->competition_id), Channel::backOffice($stage->phase->competition_id)],
+            'stage.published',
+            ['competition_id' => $stage->phase->competition_id, 'stage_id' => $stage->id],
+        );
+
+        return $stage;
     }
 
     public function closeIfComplete(Stage $stage): Stage

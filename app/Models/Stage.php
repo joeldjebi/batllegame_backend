@@ -34,6 +34,7 @@ class Stage extends Model
             'submission_deadline' => 'datetime',
             'voting_opens_at' => 'datetime',
             'voting_closes_at' => 'datetime',
+            'results_published_at' => 'datetime',
             'deliberation_minutes' => 'integer',
             'forfeits_applied_at' => 'datetime',
         ];

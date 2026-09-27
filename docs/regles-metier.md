@@ -270,6 +270,10 @@ le match se clôture automatiquement avec les notes reçues.
 - **Départage** (ordre défini dans la phase) : score jury, score public, seed ; confrontation
   directe et différence de score pour les classements de poule. Égalité parfaite : l'organisateur
   désigne le vainqueur.
+- **Publication** : notes du jury, scores et classement restent cachés au public et aux artistes jusqu'à ce que
+  l'organisateur **publie les résultats** de l'étape terminée (délibération comprise) — poules : « Publier les
+  résultats » de la phase ; élimination : « Publier les résultats » de chaque étape (tour). « Afficher les résultats
+  en direct » ne montre que la part du public, jamais les notes du jury. Le back-office voit tout, toujours.
 
 ## Vote du public
 

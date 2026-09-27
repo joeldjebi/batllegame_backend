@@ -24,7 +24,7 @@ use Illuminate\Support\Collection;
  */
 class LiveController extends Controller
 {
-    private const int LIMIT = 30;
+    private const int LIMIT = 60;
 
     private const int UPCOMING_LIMIT = 10;
 

@@ -61,6 +61,18 @@
                 @endif
             </div>
         @endif
+
+        {{-- Elimination stages: the organizer publishes the results (jury notes, scores) once the stage is over. Groups: with their phase. --}}
+        @if ($stage->phase->type !== \App\Enums\PhaseType::Groups && $stage->status === StageStatus::Closed)
+            @if ($stage->results_published_at)
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"><x-ui.icon name="check-circle" variant="m" class="size-4" /> Résultats publiés</span>
+            @elseif ($canRun)
+                <x-ui.confirm :action="route('organizers.competitions.stages.publish-results', [$organizer, $competition, $stage])" :danger="false" icon="megaphone"
+                    title="Publier les résultats de l'étape ?" message="Les notes du jury, les scores et le classement de chaque match deviennent visibles par le public et les artistes." confirm="Publier">
+                    <x-ui.button size="sm" icon="megaphone">Publier les résultats</x-ui.button>
+                </x-ui.confirm>
+            @endif
+        @endif
     </div>
 
     @if ($online && ($stage->status === StageStatus::Submissions || $performances->isNotEmpty()))

@@ -43,6 +43,15 @@ class StageController extends Controller
         return back()->with('status', "Soumissions ouvertes pour « {$stage->name} ».");
     }
 
+    public function publishResults(Organizer $organizer, Competition $competition, Stage $stage): RedirectResponse
+    {
+        $this->authorize('runMatches', $competition);
+
+        $this->stages->publishResults($stage);
+
+        return back()->with('status', "Résultats de « {$stage->name} » publiés : notes du jury et scores visibles par le public.");
+    }
+
     public function openVoting(Organizer $organizer, Competition $competition, Stage $stage): RedirectResponse
     {
         $this->authorize('runMatches', $competition);

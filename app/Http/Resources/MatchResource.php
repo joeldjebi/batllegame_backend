@@ -17,8 +17,9 @@ class MatchResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Scores stay hidden until the match is closed (a group: until its phase results are published), unless live results are enabled.
+        // Jury notes and scores: only once the organizer published the stage results.
         $showScores = $this->resultsArePublic();
+        $showPublic = $this->publicScoreIsPublic();
         $media = $this->publishedPerformances()->groupBy('participant_id');
 
         return [
@@ -44,6 +45,7 @@ class MatchResource extends JsonResource
             'is_forfeit' => $this->is_forfeit,
             'stage' => $this->stage ? ['id' => $this->stage->id, 'name' => $this->stage->name, 'status' => $this->stage->status] : null,
             'winner_id' => $this->winner_id,
+            'results_published' => $showScores,
             // Web page with a preview, for the share sheet of the app.
             'share_url' => route('fan.competitions.show', $this->competition).'#match-'.$this->id,
             'slots' => $this->whenLoaded('slots', fn () => $this->slots->map(fn (MatchParticipant $slot) => [
@@ -54,7 +56,7 @@ class MatchResource extends JsonResource
                     'avatar_url' => $slot->participant->relationLoaded('user') ? $slot->participant->user?->avatarUrl() : null,
                 ] : null,
                 'jury_score' => $showScores ? $slot->jury_score : null,
-                'public_score' => $showScores ? $slot->public_score : null,
+                'public_score' => $showPublic ? $slot->public_score : null,
                 'final_score' => $showScores ? $slot->final_score : null,
                 'rank' => $showScores ? $slot->rank : null,
                 'is_forfeit' => $slot->is_forfeit,

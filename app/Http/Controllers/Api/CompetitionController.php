@@ -85,11 +85,15 @@ class CompetitionController extends Controller
                     'voting_open' => $match->isVotingOpen(),
                     'voting_closes_at' => $match->voting_closes_at,
                     'winner_id' => $public ? $match->winner_id : null,
+                    // Jury notes and scores: once the organizer published the stage results.
+                    'results_published' => $public,
                     'slots' => $match->slots->sortBy('slot')->values()->map(fn (MatchParticipant $slot) => [
                         'participant_id' => $slot->participant_id,
                         'stage_name' => $slot->participant?->stage_name,
                         'avatar_url' => $slot->participant?->user?->avatarUrl(),
                         'final_score' => $public && $slot->final_score !== null ? (float) $slot->final_score : null,
+                        'jury_score' => $public && $slot->jury_score !== null ? (float) $slot->jury_score : null,
+                        'public_score' => $public && $slot->public_score !== null ? (float) $slot->public_score : null,
                         'rank' => $public ? $slot->rank : null,
                         'is_forfeit' => $slot->is_forfeit,
                     ]),

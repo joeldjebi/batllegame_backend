@@ -58,7 +58,8 @@ class CompetitionController extends Controller
             'likes' => $preselection ? PreselectionController::likesState($preselection, $user) : null,
             'competition' => $competition->load('organizer'),
             'voting' => $matches->filter->isVotingOpen()->values(),
-            'results' => $closed->reject->isGroupMatch()->take(12)->values(),
+            // Battles: once the organizer published the stage results (jury notes and scores).
+            'results' => $closed->reject->isGroupMatch()->filter->resultsArePublic()->take(12)->values(),
             // Groups: the ranking once the organizer published the phase results.
             'groupResults' => $closed->filter(fn ($match) => $match->isGroupMatch() && $match->resultsArePublic())->sortBy('bracket_position')->groupBy('phase_id'),
             'myVotes' => $myVotes->pluck('participant_id', 'match_id'),

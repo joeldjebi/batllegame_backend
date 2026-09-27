@@ -95,6 +95,21 @@ class CompetitionFlowException extends DomainException
         return new self('Cette étape est terminée.');
     }
 
+    public static function stageNotClosed(): self
+    {
+        return new self('Publiez les résultats une fois l\'étape terminée : tous les matchs clos, délibération du jury comprise.');
+    }
+
+    public static function stageResultsPublished(): self
+    {
+        return new self('Les résultats de cette étape sont déjà publiés.');
+    }
+
+    public static function groupStageResults(): self
+    {
+        return new self('Les résultats des poules se publient avec la phase.');
+    }
+
     public static function stageNotPending(): self
     {
         return new self("Cette étape n'est plus en attente.");

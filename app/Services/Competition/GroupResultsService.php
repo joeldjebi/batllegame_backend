@@ -43,6 +43,8 @@ class GroupResultsService
             $this->qualification->eliminateNonQualifiers($phase);
 
             $phase->forceFill(['status' => PhaseStatus::Finished, 'finished_at' => now(), 'results_published_at' => now()])->save();
+            // Its stages are published with it (jury notes and scores become public).
+            $phase->stages()->whereNull('results_published_at')->update(['results_published_at' => now()]);
 
             return $phase;
         });

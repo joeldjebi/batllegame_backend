@@ -129,8 +129,8 @@ class ArtistJourney
                 return [...$row, 'state' => 'current', 'label' => $submission ? 'Prestation refusée : renvoie-la' : 'Prestation à envoyer', 'action' => ['type' => 'submit', 'text' => 'Envoie ta prestation avant la date limite, sinon forfait.', 'deadline' => $stage->submission_deadline, 'stageModel' => $stage]];
             }
 
-            return [...$row, 'state' => 'current', 'label' => $submission->status === PerformanceStatus::Approved ? 'Prestation validée · remplaçable jusqu\'à la limite' : 'Prestation envoyée · en attente de validation',
-                'action' => ['type' => 'sent', 'text' => 'Prestation envoyée. Tu peux la remplacer jusqu\'au '.$stage->submission_deadline->translatedFormat('d F à H:i').'.', 'deadline' => $stage->submission_deadline, 'stageModel' => $stage]];
+            return [...$row, 'state' => 'current', 'label' => $submission->status === PerformanceStatus::Approved ? 'Prestation validée · modifiable jusqu\'à la limite' : 'Prestation envoyée · en attente de validation',
+                'action' => ['type' => 'sent', 'text' => 'Prestation envoyée. Tu peux la modifier jusqu\'au '.$stage->submission_deadline->translatedFormat('d F à H:i').'.', 'deadline' => $stage->submission_deadline, 'stageModel' => $stage]];
         }
 
         if ($online && $stage->status === StageStatus::Pending) {

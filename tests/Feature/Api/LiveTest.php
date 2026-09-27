@@ -42,6 +42,7 @@ it('lists the duels whose vote is open, soonest to close first, with the artists
         ->and($response->json('data.0.artists'))->toHaveCount(2)
         ->and($response->json('data.0.artists.0'))->toHaveKeys(['participant_id', 'stage_name', 'avatar_url', 'media'])
         ->and($response->json('data.0.competition.slug'))->toBe($competition->slug)
+        ->and($response->json('data.0.competition.discipline'))->toBe($competition->discipline->value)
         ->and($response->json('data.0.my_vote'))->toBeNull();
 });
 

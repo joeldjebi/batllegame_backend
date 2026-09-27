@@ -66,7 +66,7 @@ class LiveController extends Controller
                     'is_group' => $match->isGroupMatch(),
                     'title' => $match->title(),
                     'stage' => $match->stage?->name,
-                    'competition' => ['id' => $match->competition->id, 'slug' => $match->competition->slug, 'name' => $match->competition->name],
+                    'competition' => ['id' => $match->competition->id, 'slug' => $match->competition->slug, 'name' => $match->competition->name, 'discipline' => $match->competition->discipline],
                     'voting_closes_at' => $match->voting_closes_at?->toIso8601String(),
                     'vote_code_required' => $match->vote_code !== null,
                     'share_url' => route('fan.competitions.show', $match->competition).'#match-'.$match->id,
@@ -87,7 +87,7 @@ class LiveController extends Controller
                 'is_group' => $row['match']->isGroupMatch(),
                 'title' => $row['match']->title(),
                 'stage' => $row['match']->stage?->name,
-                'competition' => ['id' => $row['match']->competition->id, 'slug' => $row['match']->competition->slug, 'name' => $row['match']->competition->name],
+                'competition' => ['id' => $row['match']->competition->id, 'slug' => $row['match']->competition->slug, 'name' => $row['match']->competition->name, 'discipline' => $row['match']->competition->discipline],
                 'voting_opens_at' => $row['opens_at']->toIso8601String(),
                 // Online: artists are still sending their performance.
                 'submissions_open' => $row['match']->status === MatchStatus::Submissions,

@@ -170,6 +170,7 @@ class Feed
                 'type' => $media->media_type,
                 'url' => $media->mediaUrl(),
                 'poster_url' => $media->posterUrl(),
+                'light_url' => $media->lightUrl(),
                 'width' => $media->width,
                 'height' => $media->height,
                 'duration_seconds' => $media->duration_seconds,

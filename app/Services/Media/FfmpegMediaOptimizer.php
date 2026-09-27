@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Process;
  *  - H.264 (8-bit 4:2:0) + AAC/MP3 in MP4/MOV: remuxed with the index first (lossless);
  *  - anything else (HEVC, VP9, WebM, MKV, 3GP…): re-encoded in H.264 CRF 20, which every
  *    phone and browser decodes, long side capped (1920 px by default), never upscaled;
- *  - a JPEG poster taken at 25 % of the video (1 s max).
+ *  - a JPEG poster taken at 25 % of the video (1 s max);
+ *  - a light copy for mobile data (short side 480 px, ~1 Mb/s), when the video is larger.
  */
 class FfmpegMediaOptimizer implements MediaOptimizer
 {
@@ -57,6 +58,7 @@ class FfmpegMediaOptimizer implements MediaOptimizer
             width: $width,
             height: $height,
             reencoded: $reencode,
+            lightPath: min($width ?? 0, $height ?? 0) > config('media.light_size') ? $this->light($output) : null,
         );
     }
 
@@ -88,6 +90,31 @@ class FfmpegMediaOptimizer implements MediaOptimizer
             '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
             ...($audio === null ? [] : (in_array($audio['codec_name'] ?? null, self::COPYABLE_AUDIO, true) ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '192k'])),
         ];
+    }
+
+    /**
+     * Light copy: short side scaled to media.light_size, bitrate capped, index first.
+     */
+    private function light(string $video): ?string
+    {
+        $light = $this->temp('mp4');
+        $size = max(240, config('media.light_size'));
+
+        $result = Process::timeout(1800)->run([
+            config('media.ffmpeg'), '-v', 'error', '-y', '-i', $video, '-map', '0:v:0', '-map', '0:a:0?',
+            '-vf', "scale='if(gt(iw,ih),-2,{$size})':'if(gt(iw,ih),{$size},-2)'",
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-maxrate', '1100k', '-bufsize', '2200k', '-profile:v', 'main', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', $light,
+        ]);
+
+        if ($result->successful() && filesize($light)) {
+            return $light;
+        }
+
+        @unlink($light);
+        Log::info('ffmpeg could not make the light copy; the HD file is used everywhere.', ['error' => trim($result->errorOutput())]);
+
+        return null;
     }
 
     private function poster(string $video, float $duration): ?string

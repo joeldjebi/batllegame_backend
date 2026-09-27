@@ -69,10 +69,20 @@ class MediaOptimization
                 $changes['poster_path'] = "{$base}-poster.jpg";
             }
 
+            if ($result->lightPath !== null) {
+                $disk->putFileAs(dirname($base), $result->lightPath, basename($base).'-sd.mp4');
+                $changes['light_path'] = "{$base}-sd.mp4";
+            }
+
             $previousPoster = $media->poster_path;
+            $previousLight = $media->light_path;
             $media->forceFill($changes)->save();
 
-            foreach (array_filter([isset($changes['media_path']) ? $currentPath : null, isset($changes['poster_path']) ? $previousPoster : null]) as $old) {
+            foreach (array_filter([
+                isset($changes['media_path']) ? $currentPath : null,
+                isset($changes['poster_path']) ? $previousPoster : null,
+                isset($changes['light_path']) ? $previousLight : null,
+            ]) as $old) {
                 $disk->delete($old);
                 MediaUrl::forget($diskName, $old);
             }

@@ -36,6 +36,7 @@ function fakeOptimizer(string $mode = 'ok', ?Closure $during = null): void
                     posterPath: tap(tempnam(sys_get_temp_dir(), 'pos'), fn ($p) => file_put_contents($p, 'jpeg')),
                     width: 720,
                     height: 1280,
+                    lightPath: tap(tempnam(sys_get_temp_dir(), 'sd'), fn ($p) => file_put_contents($p, 'light-video')),
                 ),
             };
         }
@@ -60,6 +61,7 @@ it('replaces the upload by the optimized video and stores its poster before the 
         ->mime_type->toBe('video/mp4')
         ->size_bytes->toBe(strlen('optimized-video'))
         ->poster_path->toEndWith('-poster.jpg')
+        ->light_path->toEndWith('-sd.mp4')
         ->width->toBe(720)
         ->height->toBe(1280)
         ->optimized_at->not->toBeNull();
@@ -67,7 +69,9 @@ it('replaces the upload by the optimized video and stores its poster before the 
     $disk = Storage::disk('public');
     expect($disk->get($entry->media_path))->toBe('optimized-video')
         ->and($disk->exists($entry->poster_path))->toBeTrue()
-        ->and($disk->allFiles("preselections/{$entry->competition_id}"))->toHaveCount(2)
+        ->and($disk->get($entry->light_path))->toBe('light-video')
+        ->and($disk->allFiles("preselections/{$entry->competition_id}"))->toHaveCount(3)
+        ->and((new MediaResource($entry))->resolve()['light_url'])->toContain($entry->light_path)
         ->and((new MediaResource($entry))->resolve())->toMatchArray(['width' => 720, 'height' => 1280])
         ->and((new MediaResource($entry))->resolve()['poster_url'])->toContain($entry->poster_path);
 });
@@ -112,7 +116,8 @@ it('removes the poster with the file when the artist sends a new take', function
         ->and($second->poster_path)->not->toBe($first->poster_path)
         ->and(Storage::disk('public')->exists($first->poster_path))->toBeFalse()
         ->and(Storage::disk('public')->exists($first->media_path))->toBeFalse()
-        ->and(Storage::disk('public')->allFiles())->toHaveCount(2);
+        ->and(Storage::disk('public')->exists($first->light_path))->toBeFalse()
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(3); // Video, poster, light copy.
 });
 
 it('optimizes media uploaded before the feature with media:optimize', function () {
@@ -128,6 +133,11 @@ it('optimizes media uploaded before the feature with media:optimize', function (
     Bus::fake();
     $this->artisan('media:optimize')->expectsOutputToContain('0 média(s)')->assertSuccessful();
     Bus::assertNothingDispatched();
+
+    // Optimized before the light copy existed: --light makes it (small videos are left alone).
+    $entries[0]->fresh()->forceFill(['light_path' => null])->save();
+    $entries[1]->fresh()->forceFill(['light_path' => null, 'width' => 320, 'height' => 240])->save();
+    $this->artisan('media:optimize', ['--light' => true])->expectsOutputToContain('1 média(s)')->assertSuccessful();
 });
 
 it('does nothing when the optimization is disabled', function () {
@@ -174,7 +184,20 @@ describe('with ffmpeg', function () {
         expect($result)->reencoded->toBeFalse()->width->toBe(640)->height->toBe(360)
             ->and(($this->moovFirst)($result->videoPath))->toBeTrue()
             ->and(($this->probe)($result->videoPath)['codec_name'])->toBe('h264')
-            ->and(getimagesize($result->posterPath)[0])->toBe(640);
+            ->and(getimagesize($result->posterPath)[0])->toBe(640)
+            ->and($result->lightPath)->toBeNull(); // 360p: already light.
+        $result->cleanup();
+    });
+
+    it('makes a light 480p copy of a larger video, index first', function () {
+        $source = ($this->make)('-f lavfi -i testsrc2=duration=2:size=1280x720:rate=25 -f lavfi -i sine=duration=2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest', 'mp4');
+
+        $result = app(FfmpegMediaOptimizer::class)->optimize($source, MediaType::Video);
+
+        expect($result->lightPath)->not->toBeNull()
+            ->and(($this->probe)($result->lightPath))->toMatchArray(['codec_name' => 'h264', 'width' => 854, 'height' => 480])
+            ->and(($this->moovFirst)($result->lightPath))->toBeTrue()
+            ->and(filesize($result->lightPath))->toBeLessThan(filesize($result->videoPath));
         $result->cleanup();
     });
 

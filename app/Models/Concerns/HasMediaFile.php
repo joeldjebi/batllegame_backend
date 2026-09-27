@@ -62,18 +62,26 @@ trait HasMediaFile
     }
 
     /**
+     * Light copy (480p) for mobile data; null when the video is small or not optimized yet.
+     */
+    public function lightUrl(): ?string
+    {
+        return MediaUrl::for($this->media_disk, $this->light_path);
+    }
+
+    /**
      * Removes the file and its poster; the row is then ready for a new upload (not saved).
      */
     public function deleteMedia(): void
     {
         $disk = Storage::disk($this->media_disk ?? config('media.disk'));
 
-        foreach (array_filter([$this->media_path, $this->poster_path]) as $path) {
+        foreach (array_filter([$this->media_path, $this->poster_path, $this->light_path]) as $path) {
             $disk->delete($path);
             MediaUrl::forget($this->media_disk, $path);
         }
 
-        $this->forceFill(['poster_path' => null, 'width' => null, 'height' => null, 'optimized_at' => null]);
+        $this->forceFill(['poster_path' => null, 'light_path' => null, 'width' => null, 'height' => null, 'optimized_at' => null]);
     }
 
     /**

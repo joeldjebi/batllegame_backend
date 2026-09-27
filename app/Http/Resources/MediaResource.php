@@ -24,6 +24,8 @@ class MediaResource extends JsonResource
             'url' => $this->mediaUrl(),
             // Poster and display size (rotation applied) once optimized; null before.
             'poster_url' => $this->posterUrl(),
+            // Light copy for mobile data (null: play `url`).
+            'light_url' => $this->lightUrl(),
             'width' => $this->width,
             'height' => $this->height,
             'duration_seconds' => $this->duration_seconds,

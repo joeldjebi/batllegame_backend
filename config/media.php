@@ -34,4 +34,7 @@ return [
     'max_video_size' => (int) env('MEDIA_MAX_VIDEO_SIZE', 1920),
     'poster_width' => (int) env('MEDIA_POSTER_WIDTH', 720),
 
+    // Short side of the light copy played on mobile data (0 = no light copy).
+    'light_size' => (int) env('MEDIA_LIGHT_SIZE', 480),
+
 ];

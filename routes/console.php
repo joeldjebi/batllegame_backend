@@ -84,7 +84,7 @@ Artisan::command('media:provenance {--force : Re-analyze media already analyzed}
     $this->info("{$count} média(s) analysé(s).");
 })->purpose('Read the hidden metadata (recording date, origin) of media uploaded before the analysis existed');
 
-Artisan::command('media:optimize {--limit=500 : Maximum number of media queued} {--sync : Process now instead of queueing}', function () {
+Artisan::command('media:optimize {--limit=500 : Maximum number of media queued} {--sync : Process now instead of queueing} {--light : Also the optimized videos without their light copy (480p)}', function () {
     if (! MediaOptimization::enabled()) {
         $this->warn('Optimisation désactivée (MEDIA_OPTIMIZE=false).');
 
@@ -95,7 +95,13 @@ Artisan::command('media:optimize {--limit=500 : Maximum number of media queued} 
     $limit = max(1, (int) $this->option('limit'));
 
     foreach ([Performance::class, PreselectionSubmission::class] as $model) {
-        $model::query()->whereNotNull('media_path')->whereNull('optimized_at')
+        $model::query()->whereNotNull('media_path')
+            ->when(
+                $this->option('light'),
+                fn ($q) => $q->where(fn ($w) => $w->whereNull('optimized_at')->orWhere(fn ($l) => $l->whereNull('light_path')->where('media_type', 'video')
+                    ->whereRaw('(case when coalesce(width, 0) < coalesce(height, 0) then coalesce(width, 0) else coalesce(height, 0) end) > ?', [config('media.light_size')]))),
+                fn ($q) => $q->whereNull('optimized_at'),
+            )
             ->where('status', '!=', PerformanceStatus::Processing)
             ->lazyById()
             ->each(function ($media) use (&$count, $limit): bool {
@@ -111,7 +117,7 @@ Artisan::command('media:optimize {--limit=500 : Maximum number of media queued} 
     }
 
     $this->info($this->option('sync') ? "{$count} média(s) traité(s)." : "{$count} média(s) mis en file d'attente (worker requis).");
-})->purpose('Optimize for streaming (poster, faststart) the media uploaded before optimization existed');
+})->purpose('Optimize for streaming (poster, faststart, light copy) the media uploaded before optimization existed');
 
 Artisan::command('stages:process', function (StageService $stages) {
     ['forfeits' => $forfeits, 'opened' => $opened] = $stages->processDue();

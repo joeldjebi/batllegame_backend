@@ -1,12 +1,14 @@
 <x-layouts.portal title="Mon profil">
-    <x-ui.page-header title="Mon profil" :breadcrumbs="['Mon espace' => route('artist.dashboard'), 'Profil' => null]"
-        description="Ta photo et ton nom apparaissent sur tes prestations, pour l'organisateur, le jury et le public." />
+    <div class="mx-auto max-w-2xl">
+        <x-app.title title="Mon profil" :back="route('artist.dashboard')" back-label="Mon espace"
+            subtitle="Ta photo et ton nom apparaissent sur tes prestations, pour l'organisateur, le jury et le public." />
+    </div>
 
     <form method="POST" action="{{ route('artist.profile.update') }}" enctype="multipart/form-data" class="mx-auto max-w-2xl space-y-6"
         x-data="{ preview: @js($user->avatarUrl()), remove: false }">
         @csrf @method('PUT')
 
-        <x-ui.card>
+        <x-ui.card class="!shadow-none !ring-0">
             <div class="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
                 <div class="relative">
                     <template x-if="preview">
@@ -31,11 +33,11 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Informations" icon="user">
+        <x-ui.card title="Informations" icon="user" class="!shadow-none !ring-0">
             <div class="grid gap-5 sm:grid-cols-2">
                 <x-ui.input name="name" label="Nom complet" icon="user" :value="$user->name" required class="sm:col-span-2" />
                 <x-ui.field label="Téléphone" hint="Ton identifiant de connexion : il ne se modifie pas ici.">
-                    <p class="flex items-center gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10">{{ $user->country?->flag }} {{ $user->phone }}</p>
+                    <p class="flex items-center gap-2 rounded-xl bg-[#F2F2F7] px-3.5 py-2.5 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10">{{ $user->country?->flag }} {{ $user->phone }}</p>
                 </x-ui.field>
                 <x-ui.input name="email" type="email" label="Email (facultatif)" icon="envelope" :value="$user->email" :disabled="$user->organizerMemberships()->exists()" />
                 <x-location-select :city="$user->city_id" :commune="$user->commune_id" label="Ville" class="sm:col-span-2" />

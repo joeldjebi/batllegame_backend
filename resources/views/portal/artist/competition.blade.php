@@ -12,22 +12,22 @@
         'current' => 'bg-brand-600 text-white ring-4 ring-brand-100 dark:ring-brand-500/20', 'waiting' => 'bg-amber-500 text-white',
         'lost' => 'bg-rose-500 text-white', 'upcoming' => 'bg-slate-200 text-slate-500 dark:bg-white/10', 'skipped' => 'bg-slate-100 text-slate-300 dark:bg-white/5',
     ];
-    $badge = ['won' => 'green', 'done' => 'green', 'current' => 'violet', 'waiting' => 'amber', 'lost' => 'red', 'upcoming' => 'gray', 'skipped' => 'gray'];
+    $badge = ['won' => 'green', 'done' => 'green', 'current' => 'brand', 'waiting' => 'amber', 'lost' => 'red', 'upcoming' => 'gray', 'skipped' => 'gray'];
 @endphp
 
 <x-layouts.portal :title="$competition->name">
-    <x-ui.page-header :title="$competition->name" :breadcrumbs="['Mon espace' => route('artist.dashboard'), $competition->name => null]">
-        <x-slot:description>
-            <x-ui.badge :value="$participant->status" />
-            <span>{{ $competition->organizer->name }}</span>
-            <a href="{{ route('fan.competitions.show', $competition) }}" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Page publique</a>
-            <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Déroulé & règlement</a>
-        </x-slot:description>
-    </x-ui.page-header>
+  <div class="mx-auto max-w-3xl">
+    <x-app.title :title="$competition->name" :back="route('artist.dashboard')" back-label="Mon espace" :subtitle="$competition->organizer->name">
+        <x-slot:meta>
+            <x-app.tag :value="$participant->status" dot />
+            <a href="{{ route('fan.competitions.show', $competition) }}" class="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">Page publique</a>
+            <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300">Déroulé & règlement</a>
+        </x-slot:meta>
+    </x-app.title>
 
     {{-- Me + the one next thing to do --}}
     <section @class([
-        'mb-8 overflow-hidden rounded-3xl p-5 text-white shadow-lift sm:p-7',
+        'mb-8 overflow-hidden rounded-2xl p-5 text-white sm:p-6',
         'bg-brand-600' => ! $out && ! $champion,
         'bg-amber-500' => $champion,
         'bg-slate-700' => $out,
@@ -77,22 +77,22 @@
                 $selected = $pstate === PreselectionState::Published;
                 $preState = ! $selected ? 'current' : ($entry?->selected ? 'won' : 'lost');
             @endphp
-            <li class="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6 dark:bg-slate-900/60 dark:ring-white/10">
+            <li class="rounded-2xl bg-white p-5 sm:p-6 dark:bg-slate-900/70">
                 <div class="flex items-center gap-3">
                     <span class="grid size-9 shrink-0 place-items-center rounded-full {{ $dot[$preState] }}"><x-ui.icon name="funnel" variant="m" class="size-5" /></span>
                     <div class="min-w-0 flex-1">
                         <h2 class="font-display text-lg font-bold">Présélection</h2>
                         <p class="text-xs text-slate-500">Envois jusqu'au {{ $fmt($preselection->ends_at) }} · {{ $preselection->rules->selectionSize }} artistes retenus</p>
                     </div>
-                    <x-ui.badge :tone="$badge[$preState]" :dot="false">
+                    <x-app.tag :tone="$badge[$preState]">
                         {{ ! $selected ? $pstate->label() : ($entry?->selected ? 'Sélectionné'.($entry->rank ? ' · '.$entry->rank.'e' : '') : 'Non retenu') }}
-                    </x-ui.badge>
+                    </x-app.tag>
                 </div>
             </li>
         @endif
 
         @foreach ($phases as ['phase' => $phase, 'stages' => $stages, 'state' => $phaseState])
-            <li class="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6 dark:bg-slate-900/60 dark:ring-white/10">
+            <li class="rounded-2xl bg-white p-5 sm:p-6 dark:bg-slate-900/70">
                 <div class="flex items-center gap-3">
                     <span class="grid size-9 shrink-0 place-items-center rounded-full {{ $dot[$phaseState] }}"><x-ui.icon :name="$phase->type->icon()" variant="m" class="size-5" /></span>
                     <div class="min-w-0 flex-1">
@@ -105,7 +105,7 @@
                     </div>
                 </div>
 
-                <ol class="mt-5 space-y-3 border-l-2 border-slate-100 pl-5 dark:border-white/10">
+                <ol class="mt-5 space-y-3 border-l-2 border-slate-200/70 pl-5 dark:border-white/10">
                     @foreach ($stages as $row)
                         @php
                             $match = $row['match'];
@@ -114,10 +114,10 @@
                         @endphp
                         <li @if ($stageModel) id="etape-{{ $stageModel->id }}" @endif class="relative scroll-mt-24">
                             <span class="absolute top-2 -left-[1.72rem] size-3 rounded-full {{ $dot[$row['state']] }}"></span>
-                            <div @class(['rounded-2xl p-4 ring-1', 'bg-brand-50/60 ring-brand-200 dark:bg-brand-500/5 dark:ring-brand-500/20' => $row['state'] === 'current', 'ring-slate-100 dark:ring-white/10' => $row['state'] !== 'current', 'opacity-60' => $row['state'] === 'skipped'])>
+                            <div @class(['rounded-2xl p-4', 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/5 dark:ring-brand-500/20' => $row['state'] === 'current', 'bg-[#F2F2F7] dark:bg-white/5' => $row['state'] !== 'current', 'opacity-60' => $row['state'] === 'skipped'])>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="font-semibold">{{ $row['name'] }}</p>
-                                    <x-ui.badge :tone="$badge[$row['state']]" :dot="false">{{ $row['label'] }}</x-ui.badge>
+                                    <x-app.tag :tone="$badge[$row['state']]">{{ $row['label'] }}</x-app.tag>
                                 </div>
                                 <p class="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-500">
                                     @if ($row['dates']['submission'])<span>Envoi avant le {{ $fmt($row['dates']['submission']) }}</span>@endif
@@ -152,9 +152,9 @@
                                 @if ($row['submission']?->media_path)
                                     <div x-data="{ open: false }" class="mt-3">
                                         <button type="button" x-on:click="open = ! open" class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 dark:text-brand-300">
-                                            <x-ui.icon name="play-circle" variant="m" class="size-4" /> Ma prestation · <x-ui.badge :value="$row['submission']->status" />
+                                            <x-ui.icon name="play-circle" variant="m" class="size-4" /> Ma prestation · <x-app.tag :value="$row['submission']->status" dot />
                                         </button>
-                                        <div x-show="open" x-collapse x-cloak class="mt-2 overflow-hidden rounded-xl"><x-bo.media-player :performance="$row['submission']" preload="none" /></div>
+                                        <div x-show="open" x-collapse x-cloak class="mt-2"><x-app.player :performance="$row['submission']" :title="$participant->stage_name" /></div>
                                         @if ($row['submission']->rejection_reason)<p class="mt-2 text-xs text-rose-600">Motif : {{ $row['submission']->rejection_reason }}</p>@endif
                                     </div>
                                 @endif
@@ -187,4 +187,5 @@
             <x-ui.empty icon="calendar" title="Programme bientôt disponible" description="L'organisateur prépare les phases de la compétition." />
         @endif
     </ol>
+  </div>
 </x-layouts.portal>

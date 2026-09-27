@@ -9,40 +9,35 @@
 @endphp
 
 <x-layouts.portal title="Mon espace">
-    {{-- Hero --}}
-    <section class="relative -mx-4 -mt-6 overflow-hidden bg-brand-600 px-4 pt-8 pb-8 text-white sm:mx-0 sm:mt-0 sm:rounded-3xl sm:px-8 sm:pt-10 sm:pb-10">
-        <div class="absolute -top-20 -right-20 size-64 rounded-full border-[36px] border-white/10"></div>
-        <div class="absolute right-24 -bottom-24 size-40 rounded-full bg-brand-700"></div>
-        <div class="relative flex items-center gap-4">
-            <a href="{{ route('artist.profile.edit') }}" class="relative shrink-0" title="Mon profil">
-                <x-ui.avatar :name="$user->name" :src="$user->avatarUrl()" size="lg" class="!ring-white/30" />
-                @unless ($user->avatar_path)<span class="absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full bg-white text-brand-700 shadow"><x-ui.icon name="camera" variant="m" class="size-3.5" /></span>@endunless
-            </a>
-            <div class="min-w-0">
-                <p class="text-sm text-white/70">Espace artiste</p>
-                <h1 class="truncate font-display text-2xl font-extrabold sm:text-3xl">Salut, {{ Str::before($user->name, ' ') }}</h1>
-            </div>
-        </div>
-        <dl class="relative mt-7 grid grid-cols-3 gap-2 sm:max-w-lg sm:gap-3">
+  <div class="mx-auto max-w-3xl">
+    <x-app.title title="Mon espace" subtitle="Espace artiste" />
+
+    {{-- Profile and key figures, the app way --}}
+    <x-app.section>
+        <x-app.row :href="route('artist.profile.edit')" :title="'Salut, '.Str::before($user->name, ' ')" :subtitle="$user->phone.' · Mon profil'">
+            <x-slot:leading>
+                <span class="relative shrink-0">
+                    <x-ui.avatar :name="$user->name" :src="$user->avatarUrl()" size="lg" />
+                    @unless ($user->avatar_path)<span class="absolute -right-1 -bottom-1 grid size-6 place-items-center rounded-full bg-brand-600 text-white shadow"><x-ui.icon name="camera" variant="m" class="size-3.5" /></span>@endunless
+                </span>
+            </x-slot:leading>
+        </x-app.row>
+        <dl class="grid grid-cols-3 divide-x divide-slate-200/70 dark:divide-white/5">
             @foreach ([['Compétitions', $participations->count()], ['En course', $active], ['À faire', $actions->count()]] as [$label, $value])
-                <div class="rounded-2xl bg-white/10 px-3 py-3 ring-1 ring-white/15 sm:px-4">
-                    <dt class="text-[11px] font-medium tracking-wide text-white/70 uppercase">{{ $label }}</dt>
-                    <dd class="mt-1 font-display text-2xl font-extrabold tabular-nums">{{ $value }}</dd>
+                <div class="px-3 py-3 text-center">
+                    <dd class="font-display text-2xl font-extrabold tabular-nums">{{ $value }}</dd>
+                    <dt class="text-[11px] font-medium tracking-wide text-slate-500 uppercase">{{ $label }}</dt>
                 </div>
             @endforeach
         </dl>
-    </section>
+    </x-app.section>
 
-    <div class="mt-8 space-y-10">
+    <div class="space-y-8">
         @unless ($user->avatar_path)
-            <a href="{{ route('artist.profile.edit') }}" class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-slate-900/5 transition hover:ring-brand-300 dark:bg-white/5 dark:ring-white/10">
-                <span class="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"><x-ui.icon name="camera" class="size-5" /></span>
-                <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-semibold">Ajoute ta photo de profil</span>
-                    <span class="block text-xs text-slate-500">Elle accompagne tes prestations : l'organisateur, le jury et le public te reconnaissent.</span>
-                </span>
-                <x-ui.icon name="chevron-right" variant="m" class="size-5 text-slate-300" />
-            </a>
+            <x-app.section class="!mb-0">
+                <x-app.row :href="route('artist.profile.edit')" icon="camera" tone="amber" title="Ajoute ta photo de profil"
+                    subtitle="Obligatoire pour envoyer une prestation : l'organisateur, le jury et le public te reconnaissent." />
+            </x-app.section>
         @endunless
 
         {{-- Action center --}}
@@ -57,7 +52,7 @@
                             $isPreselection = $journey['action'] === 'preselection';
                             $mediaRules = $isPreselection ? $journey['preselection']->rules : $journey['stage']->phase->rules;
                         @endphp
-                        <div class="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-7 dark:bg-slate-900 dark:ring-white/10">
+                        <div class="rounded-2xl bg-white p-5 sm:p-6 dark:bg-slate-900/70">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="text-xs font-semibold tracking-wide text-brand-600 uppercase dark:text-brand-300">{{ $isPreselection ? 'Présélection' : $journey['stage']->name }}</p>
@@ -100,11 +95,11 @@
 
         {{-- My competitions --}}
         <section>
-            <h2 class="mb-4 font-display text-lg font-bold">Mes compétitions</h2>
+            <h2 class="mb-3 font-display text-xl font-bold">Mes compétitions</h2>
             @if ($participations->isEmpty())
                 <x-ui.empty icon="microphone" title="Pas encore de compétition" description="Inscris-toi à une compétition ouverte ci-dessous pour commencer." />
             @else
-                <div class="grid gap-4 lg:grid-cols-2">
+                <div class="grid grid-cols-1 gap-4">
                     @foreach ($participations as $journey)
                         @php
                             $participant = $journey['participant'];
@@ -139,7 +134,7 @@
                                 'gray' => 'bg-slate-50 text-slate-600 dark:bg-white/5 dark:text-slate-300',
                             ][$tone];
                         @endphp
-                        <article @class(['flex flex-col rounded-3xl bg-white shadow-soft ring-1 ring-slate-900/5 dark:bg-slate-900 dark:ring-white/10', 'opacity-80' => $journey['out']])>
+                        <article @class(['flex flex-col rounded-2xl bg-white dark:bg-slate-900/70', 'opacity-80' => $journey['out']])>
                             <header class="flex items-start gap-3 p-4 sm:p-5">
                                 <span @class(['grid size-11 shrink-0 place-items-center rounded-2xl text-white', 'bg-brand-600' => ! $journey['out'], 'bg-slate-400 dark:bg-slate-600' => $journey['out']])>
                                     <x-ui.icon :name="$competition->discipline->icon()" class="size-5" />
@@ -151,7 +146,7 @@
                                         · <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 hover:underline dark:text-brand-300">Déroulé & règlement</a>
                                     </p>
                                 </div>
-                                <x-ui.badge :value="$participant->status" class="shrink-0" />
+                                <x-app.tag :value="$participant->status" dot class="shrink-0" />
                             </header>
 
                             <x-portal.progress :steps="$journey['steps']" class="px-4 sm:px-5" />
@@ -162,7 +157,7 @@
                             </div>
 
                             @if ($media?->media_path)
-                                <div class="mx-4 mt-3 flex items-center gap-3 rounded-2xl p-2 ring-1 ring-slate-100 sm:mx-5 dark:ring-white/10">
+                                <div class="mx-4 mt-3 flex items-center gap-3 rounded-2xl bg-[#F2F2F7] p-2 sm:mx-5 dark:bg-white/5">
                                     <button type="button" x-data x-on:click="$dispatch('open-modal', '{{ $modal }}')" class="group relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-slate-900" aria-label="Revoir ma prestation">
                                         @if ($media->poster_path)
                                             <img src="{{ $media->posterUrl() }}" alt="" loading="lazy" class="pointer-events-none size-full object-cover opacity-80">
@@ -174,7 +169,7 @@
                                     <div class="min-w-0 flex-1">
                                         <p class="text-xs font-semibold text-slate-500">{{ $entry ? 'Ma prestation de présélection' : ($journey['stage']?->name ?? 'Ma prestation') }}</p>
                                         <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                                            <x-ui.badge :value="$media->status" />
+                                            <x-app.tag :value="$media->status" dot />
                                             @if ($entry)
                                                 <span class="inline-flex items-center gap-1 text-sm font-bold text-fuchsia-600 tabular-nums dark:text-fuchsia-300"><x-ui.icon name="heart" variant="s" class="size-4" />{{ $entry->likes_count }}</span>
                                             @endif
@@ -199,7 +194,7 @@
                         @if ($media?->media_path)
                             @push('modals')
                                 <x-ui.modal :name="$modal" :title="$competition->name" icon="film" max-width="2xl" :description="$participant->stage_name.' · '.$media->status->label()">
-                                    <x-bo.media-player :performance="$media" preload="none" />
+                                    <x-app.player :performance="$media" :title="$participant->stage_name" />
                                 </x-ui.modal>
                             @endpush
                         @endif
@@ -217,12 +212,12 @@
             @if ($open->isEmpty())
                 <x-ui.empty icon="calendar" title="Aucune inscription ouverte" description="De nouvelles compétitions arrivent bientôt." />
             @else
-                <div class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+                <div class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0">
                     @foreach ($open as $competition)
-                        <article class="flex w-[85%] shrink-0 snap-center flex-col rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:w-auto dark:bg-slate-900 dark:ring-white/10">
+                        <article class="flex w-[85%] shrink-0 snap-center flex-col rounded-2xl bg-white p-5 sm:w-auto dark:bg-slate-900/70">
                             <div class="flex items-start justify-between gap-2">
                                 <span class="grid size-12 place-items-center rounded-2xl bg-brand-600 text-white"><x-ui.icon :name="$competition->discipline->icon()" class="size-6" /></span>
-                                <x-ui.badge tone="gray" :dot="false" :icon="$competition->mode->icon()">{{ $competition->mode->label() }}</x-ui.badge>
+                                <x-app.tag :icon="$competition->mode->icon()">{{ $competition->mode->label() }}</x-app.tag>
                             </div>
                             <h3 class="mt-4 font-display text-lg font-bold">{{ $competition->name }}</h3>
                             <p class="text-sm text-slate-500">{{ $competition->organizer->name }} · {{ $competition->discipline->label() }}</p>
@@ -237,15 +232,15 @@
                             @endif
                             <a href="{{ route('fan.competitions.show', $competition) }}" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 dark:text-brand-300">Voir les détails <x-ui.icon name="arrow-right" variant="m" class="size-4" /></a>
                             <dl class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Frais</dt><dd class="font-semibold">{{ $fmtFee($competition) }}</dd></div>
-                                <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Inscrits</dt><dd class="font-semibold">{{ $competition->participants_count }}{{ $competition->max_participants ? ' / '.$competition->max_participants : '' }}</dd></div>
+                                <div class="rounded-xl bg-[#F2F2F7] px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Frais</dt><dd class="font-semibold">{{ $fmtFee($competition) }}</dd></div>
+                                <div class="rounded-xl bg-[#F2F2F7] px-3 py-2 dark:bg-white/5"><dt class="text-slate-400">Inscrits</dt><dd class="font-semibold">{{ $competition->participants_count }}{{ $competition->max_participants ? ' / '.$competition->max_participants : '' }}</dd></div>
                                 @if ($competition->preselection)
                                     <div class="col-span-2 rounded-xl bg-fuchsia-50 px-3 py-2 text-fuchsia-800 dark:bg-fuchsia-500/10 dark:text-fuchsia-200"><dt class="opacity-70">Présélection</dt><dd class="font-semibold">{{ $competition->preselection->rules->selectionSize }} artistes retenus · jusqu'au {{ $competition->preselection->ends_at->translatedFormat('d M') }}</dd></div>
                                 @endif
                             </dl>
                             <form method="POST" action="{{ route('artist.competitions.register', $competition) }}" class="mt-5 space-y-2">
                                 @csrf
-                                <input name="stage_name" required placeholder="Ton nom de scène" value="{{ $user->name }}" class="block w-full rounded-xl border-0 bg-slate-50 py-3 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
+                                <input name="stage_name" required placeholder="Ton nom de scène" value="{{ $user->name }}" class="block w-full rounded-xl border-0 bg-[#F2F2F7] py-3 text-sm focus:ring-2 focus:ring-brand-500 dark:bg-white/5">
                                 <x-ui.button type="submit" size="lg" class="w-full" icon="user-plus">S'inscrire{{ $competition->entry_fee ? ' · '.$fmtFee($competition) : '' }}</x-ui.button>
                                 @if (filled($competition->regulations))
                                     <p class="text-center text-xs text-slate-500">En t'inscrivant, tu acceptes le <a href="{{ route('fan.competitions.show', $competition) }}#reglement" class="font-semibold text-brand-700 underline dark:text-brand-300">règlement</a>.</p>
@@ -257,6 +252,8 @@
             @endif
         </section>
     </div>
+
+  </div>
 
     <x-realtime :channels="[\App\Realtime\Channel::user($user->id), ...$participations->map(fn ($j) => \App\Realtime\Channel::competition($j['competition']->id))->all()]" />
 </x-layouts.portal>

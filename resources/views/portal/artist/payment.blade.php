@@ -2,14 +2,14 @@
 
 <x-layouts.portal title="Paiement">
     <div class="mx-auto max-w-2xl">
-        <x-ui.page-header title="Frais d'inscription" :breadcrumbs="['Mon espace' => route('artist.dashboard'), $competition->name => null]" />
+        <x-app.title title="Frais d'inscription" :back="route('artist.dashboard')" back-label="Mon espace" :subtitle="$competition->name" />
 
         <div class="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200">
             <x-ui.icon name="beaker" class="size-5 shrink-0" />
             <p><strong>Paiement simulé.</strong> Aucun moyen de paiement réel n'est encore branché : aucune somme n'est prélevée. Choisissez le résultat à simuler.</p>
         </div>
 
-        <x-ui.card :padding="false">
+        <x-ui.card :padding="false" class="!shadow-none !ring-0">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5 dark:border-white/5">
                 <div>
                     <p class="font-display text-lg font-semibold">{{ $competition->name }}</p>

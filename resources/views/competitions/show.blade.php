@@ -427,6 +427,36 @@
 
         {{-- Settings --}}
         <x-ui.tab-panel name="settings">
+            {{-- Cover shown in the apps (Découvrir), else a performance poster. --}}
+            @can('update', $competition)
+                <x-ui.card title="Image de couverture" icon="photo" description="Affichée dans l'application (Découvrir). Format 16:9, recadrée automatiquement ; sans image, la miniature d'une prestation est utilisée." class="mb-6">
+                    <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
+                        <div class="aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:w-72 dark:bg-white/5">
+                            @if ($competition->coverUrl())
+                                <img src="{{ $competition->coverUrl() }}" alt="Couverture de {{ $competition->name }}" class="size-full object-cover">
+                            @else
+                                <div class="grid size-full place-items-center text-sm text-slate-400"><x-ui.icon name="photo" class="size-8" /></div>
+                            @endif
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <form method="POST" enctype="multipart/form-data" action="{{ route('organizers.competitions.cover', [$organizer, $competition]) }}" x-data x-ref="coverForm">
+                                @csrf
+                                <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-500">
+                                    <x-ui.icon name="arrow-up-tray" variant="m" class="size-4" /> {{ $competition->cover_path ? 'Remplacer l\'image' : 'Choisir une image' }}
+                                    <input type="file" name="cover" accept="image/jpeg,image/png,image/webp" class="sr-only" x-on:change="$refs.coverForm.submit()">
+                                </label>
+                            </form>
+                            @if ($competition->cover_path)
+                                <form method="POST" action="{{ route('organizers.competitions.cover', [$organizer, $competition]) }}">
+                                    @csrf <input type="hidden" name="remove" value="1">
+                                    <x-ui.button type="submit" variant="secondary" icon="trash">Retirer</x-ui.button>
+                                </form>
+                            @endif
+                            @error('cover')<p class="w-full text-sm text-rose-600">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </x-ui.card>
+            @endcan
             <form method="POST" action="{{ route('organizers.competitions.update', [$organizer, $competition]) }}" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 @csrf @method('PUT')
                 <x-ui.card title="Informations générales" icon="pencil-square" class="xl:col-span-2">

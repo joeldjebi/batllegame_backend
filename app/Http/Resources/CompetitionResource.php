@@ -30,6 +30,10 @@ class CompetitionResource extends JsonResource
             'discipline' => $this->discipline,
             'mode' => $this->mode,
             'status' => $this->status,
+            // The organizer's cover, else a performance poster (set by the list, see Competition::coverUrls).
+            'cover_url' => $this->cover_url ?? $this->coverUrl(),
+            'participants_count' => $this->whenCounted('participants'),
+            'top_prize' => $this->prizeList()[0] ?? null,
             'registration_open' => $this->isRegistrationOpen(),
             'registration_ends_at' => $this->registration_ends_at,
             'max_participants' => $this->max_participants,

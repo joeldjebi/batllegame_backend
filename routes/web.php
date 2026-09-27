@@ -68,6 +68,7 @@ Route::middleware(['auth:web', 'organizer.area'])->group(function () {
                     Route::get('/', [CompetitionController::class, 'show'])->name('show');
                     Route::put('/', [CompetitionController::class, 'update'])->name('update');
                     Route::patch('status', [CompetitionController::class, 'updateStatus'])->name('status');
+                    Route::post('cover', [CompetitionController::class, 'updateCover'])->name('cover');
                     Route::delete('/', [CompetitionController::class, 'destroy'])->name('destroy');
                     Route::post('duplicate', [CompetitionController::class, 'duplicate'])->name('duplicate');
                     Route::post('guide/draft', [CompetitionController::class, 'draftGuide'])->name('guide.draft');

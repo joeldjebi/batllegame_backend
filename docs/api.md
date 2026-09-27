@@ -42,7 +42,7 @@ sont toujours résolues à travers leur compétition.
 
 | Méthode | URL | Notes |
 |---|---|---|
-| GET | `/competitions` | Filtres `status`, `discipline`, `q` (nom ou organisateur) ; les brouillons ne sont jamais exposés |
+| GET | `/competitions` | Filtres `status`, `discipline`, `q` (nom ou organisateur) ; les brouillons ne sont jamais exposés. Chaque compétition : `cover_url` (couverture 16:9 de l'organisateur, sinon miniature d'une prestation publique, ou `null`), `participants_count`, `top_prize` (`rank`, `reward`) |
 | GET | `/artists/{participant}` | Page d'un artiste (son compte : toutes ses compétitions publiques, depuis n'importe laquelle de ses participations) : `stage_name`, `avatar_url`, `followers_count`, `following`, `is_me`, `performances_count`, `participations[]` (`participant_id`, `stage_name`, `status`, `status_label`, `competition`). Ses vidéos : `/feed?artist={participant}`. Jeton facultatif |
 | POST / DELETE | `/artists/{participant}/follow` | Suivre / ne plus suivre l'artiste (connecté ; pas soi-même) → 204 |
 | GET | `/me/following` | Artistes suivis, le plus récent d'abord (`participant_id` de leur dernière participation, `stage_name`, `avatar_url`, `competition`) |

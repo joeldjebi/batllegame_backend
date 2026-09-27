@@ -8,9 +8,11 @@ use App\Enums\CompetitionStatus;
 use App\Enums\Discipline;
 use App\Enums\ParticipantStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\PerformanceStatus;
 use App\Enums\SeedKind;
 use App\Models\Concerns\HasLocation;
 use App\Models\Concerns\HasUniqueSlug;
+use App\Support\MediaUrl;
 use App\Support\RichText;
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -91,6 +93,35 @@ class Competition extends Model
      *
      * @return list<array{rank: string, reward: string}>
      */
+    /**
+     * The organizer's cover image (16:9), or null.
+     */
+    public function coverUrl(): ?string
+    {
+        return MediaUrl::for($this->cover_disk ?? config('media.disk'), $this->cover_path);
+    }
+
+    /**
+     * Covers of a list: the organizer's image, else the poster of the latest public
+     * performance (one query per media table, not one per competition).
+     *
+     * @param  iterable<Competition>  $competitions
+     * @return array<int, string> Cover URL by competition id.
+     */
+    public static function coverUrls(iterable $competitions): array
+    {
+        $competitions = collect($competitions);
+        $missing = $competitions->filter(fn (Competition $c) => $c->cover_path === null)->pluck('id')->all();
+        $posters = collect([PreselectionSubmission::class, Performance::class])
+            ->flatMap(fn (string $model) => $model::query()->whereIn('competition_id', $missing)->where('status', PerformanceStatus::Approved)
+                ->whereNotNull('poster_path')->latest('published_at')->get(['id', 'competition_id', 'media_disk', 'poster_path', 'published_at']))
+            ->sortByDesc('published_at')
+            ->unique('competition_id')
+            ->mapWithKeys(fn ($media) => [$media->competition_id => $media->posterUrl()]);
+
+        return $competitions->mapWithKeys(fn (Competition $c) => [$c->id => $c->coverUrl() ?? $posters->get($c->id)])->filter()->all();
+    }
+
     public function prizeList(): array
     {
         return array_values(array_filter((array) $this->prizes, fn ($p) => filled($p['reward'] ?? null)));

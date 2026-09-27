@@ -31,6 +31,7 @@ class CompetitionController extends Controller
 
         $competitions = Competition::query()
             ->with('organizer')
+            ->withCount('participants')
             ->where('status', '!=', CompetitionStatus::Draft)
             ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
             ->when($request->query('discipline'), fn ($q, $discipline) => $q->where('discipline', $discipline))
@@ -38,6 +39,10 @@ class CompetitionController extends Controller
                 ->orWhereHas('organizer', fn ($o) => $o->whereLike('name', "%{$search}%"))))
             ->latest()
             ->paginate(20);
+        $covers = Competition::coverUrls($competitions->items());
+        foreach ($competitions->items() as $competition) {
+            $competition->setAttribute('cover_url', $covers[$competition->id] ?? null);
+        }
 
         return CompetitionResource::collection($competitions);
     }
@@ -46,7 +51,9 @@ class CompetitionController extends Controller
     {
         abort_unless($competition->status->isPublic(), 404);
 
-        return new CompetitionResource($competition->load(['organizer', 'phases', 'criteria']));
+        $competition->setAttribute('cover_url', Competition::coverUrls([$competition])[$competition->id] ?? null);
+
+        return new CompetitionResource($competition->load(['organizer', 'phases', 'criteria'])->loadCount('participants'));
     }
 
     /**

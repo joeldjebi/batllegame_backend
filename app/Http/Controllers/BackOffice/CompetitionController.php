@@ -13,6 +13,7 @@ use App\Http\Requests\BackOffice\StoreCompetitionRequest;
 use App\Models\Competition;
 use App\Models\Organizer;
 use App\Services\Competition\PhaseCreator;
+use App\Services\CompetitionCoverService;
 use App\Services\CompetitionDuplicator;
 use App\Services\CompetitionGuideDraft;
 use App\Services\PreselectionService;
@@ -165,6 +166,28 @@ class CompetitionController extends Controller
         $competition->update($request->competitionData());
 
         return back()->with('status', 'Compétition mise à jour.');
+    }
+
+    /**
+     * Cover image shown in the apps (Découvrir): upload or remove.
+     */
+    public function updateCover(Request $request, Organizer $organizer, Competition $competition, CompetitionCoverService $covers): RedirectResponse
+    {
+        $this->authorize('update', $competition);
+
+        if ($request->boolean('remove')) {
+            $covers->delete($competition);
+
+            return back()->with('status', 'Image de couverture retirée.');
+        }
+
+        $request->validate(['cover' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192']], [
+            'cover.required' => 'Choisissez une image.',
+            'cover.max' => 'L\'image dépasse 8 Mo.',
+        ]);
+        $covers->store($competition, $request->file('cover'));
+
+        return back()->with('status', 'Image de couverture enregistrée.');
     }
 
     public function updateStatus(Request $request, Organizer $organizer, Competition $competition): RedirectResponse

@@ -34,7 +34,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
-<body class="min-h-full bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+{{-- Artist and jury areas: the mobile app look (grey page, white grouped sections). --}}
+<body @class(['min-h-full font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100', 'bg-[#F2F2F7]' => in_array($portal->key, ['artist', 'jury'], true), 'bg-slate-50' => ! in_array($portal->key, ['artist', 'jury'], true)])>
     <header class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl dark:border-white/5 dark:bg-slate-950/80">
         <div class="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
             <a href="{{ route($portal->home) }}" class="flex items-center gap-2.5">

@@ -8,16 +8,14 @@
 @endphp
 
 <x-layouts.portal :title="'Présélection · '.$competition->name">
-    <x-ui.page-header title="Présélection" :breadcrumbs="['Mes compétitions' => route('jury.dashboard'), $competition->name => route('jury.competitions.show', $competition), 'Présélection' => null]">
-        <x-slot:description>
-            <x-ui.badge :value="$state" />
-            <span>Jury {{ $preselection->effectiveWeights()['jury'] }} % du score</span>
-            @if ($preselection->splitsJudging())<span>· Prestations réparties entre les jurés</span>@endif
-        </x-slot:description>
-    </x-ui.page-header>
+  <div class="mx-auto max-w-2xl">
+    <x-app.title title="Présélection" :back="route('jury.competitions.show', $competition)" :back-label="$competition->name"
+        :subtitle="'Jury '.$preselection->effectiveWeights()['jury'].' % du score'.($preselection->splitsJudging() ? ' · Prestations réparties entre les jurés' : '')">
+        <x-slot:meta><x-app.tag :value="$state" dot /></x-slot:meta>
+    </x-app.title>
 
     {{-- Progress and next entry --}}
-    <div class="mb-6 rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6 dark:bg-slate-900/60 dark:ring-white/10">
+    <div class="mb-6 rounded-2xl bg-white p-5 sm:p-6 dark:bg-slate-900/70">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
                 <p class="text-sm text-slate-500">Ta progression</p>
@@ -43,7 +41,7 @@
 
     {{-- Tabs + search --}}
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <nav class="flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-white/5">
+        <nav class="flex gap-1 rounded-xl bg-slate-900/[0.06] p-0.5 dark:bg-white/5">
             @foreach (['a_noter' => ['À noter', $total - $scored], 'notees' => ['Notées', $scored]] as $key => [$label, $count])
                 <a href="{{ $tabUrl($key) }}" @class([
                     'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition',
@@ -55,7 +53,7 @@
         <form method="GET" class="relative w-full sm:w-64">
             @if ($tab === 'notees')<input type="hidden" name="onglet" value="notees">@endif
             <x-ui.icon name="magnifying-glass" variant="m" class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-            <input type="search" name="q" value="{{ $search }}" placeholder="Rechercher un artiste…" class="w-full rounded-xl border-0 bg-white py-2 pr-3 pl-9 text-sm ring-1 ring-slate-200 focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:ring-white/10">
+            <input type="search" name="q" value="{{ $search }}" placeholder="Rechercher un artiste…" class="w-full rounded-xl border-0 bg-slate-900/[0.06] py-2 pr-3 pl-9 text-sm focus:ring-2 focus:ring-brand-500 dark:bg-white/5">
         </form>
     </div>
 
@@ -64,7 +62,7 @@
             :description="$search ? 'Aucun artiste ne correspond à la recherche.' : 'Les prestations validées par l\'organisateur apparaissent ici.'" />
     @else
         {{-- Compact list: no player here, one entry at a time on its page --}}
-        <ul class="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5 dark:divide-white/5 dark:bg-slate-900/60 dark:ring-white/10">
+        <ul class="divide-y divide-slate-200/70 overflow-hidden rounded-2xl bg-white dark:divide-white/5 dark:bg-slate-900/70">
             @foreach ($entries as $entry)
                 @php
                     $mine = $myScores->get($entry->id);
@@ -78,9 +76,9 @@
                             <span class="block text-xs text-slate-500">{{ $entry->media_type?->label() }}@if ($entry->duration_seconds) · {{ gmdate('i:s', $entry->duration_seconds) }}@endif</span>
                         </span>
                         @if ($mine)
-                            <x-ui.badge tone="green" icon="check" :dot="false">{{ rtrim(rtrim(number_format($total100, 1, ',', ''), '0'), ',') }} pts</x-ui.badge>
+                            <x-app.tag tone="green" icon="check">{{ rtrim(rtrim(number_format($total100, 1, ',', ''), '0'), ',') }} pts</x-app.tag>
                         @else
-                            <x-ui.badge tone="amber">À noter</x-ui.badge>
+                            <x-app.tag tone="amber" dot>À noter</x-app.tag>
                         @endif
                         <x-ui.icon name="chevron-right" variant="m" class="size-5 text-slate-300" />
                     </a>
@@ -89,4 +87,5 @@
         </ul>
         <div class="mt-4">{{ $entries->links() }}</div>
     @endif
+  </div>
 </x-layouts.portal>

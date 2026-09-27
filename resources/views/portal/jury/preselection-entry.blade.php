@@ -3,19 +3,17 @@
 @endphp
 
 <x-layouts.portal :title="$name.' · Présélection'">
-    <x-ui.page-header :title="$name" :breadcrumbs="['Mes compétitions' => route('jury.dashboard'), $competition->name => route('jury.competitions.show', $competition), 'Présélection' => route('jury.competitions.preselection', $competition), $name => null]">
-        <x-slot:description>
-            <span class="tabular-nums">{{ $scored }} / {{ $total }} notées</span>
-            @if ($mine->isNotEmpty())<x-ui.badge tone="green" icon="check" :dot="false">Notée</x-ui.badge>@endif
-        </x-slot:description>
-    </x-ui.page-header>
+    <x-app.title :title="$name" :back="route('jury.competitions.preselection', $competition)" back-label="Présélection">
+        <x-slot:meta>
+            <x-app.tag><span class="tabular-nums">{{ $scored }} / {{ $total }} notées</span></x-app.tag>
+            @if ($mine->isNotEmpty())<x-app.tag tone="green" icon="check">Notée</x-app.tag>@endif
+        </x-slot:meta>
+    </x-app.title>
 
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div class="space-y-4">
-            <div class="overflow-hidden rounded-3xl bg-slate-950 shadow-lift">
-                <x-bo.media-player :performance="$entry" />
-            </div>
-            <div class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-slate-900/5 dark:bg-slate-900/60 dark:ring-white/10">
+            <x-app.player :performance="$entry" :title="$name" />
+            <div class="flex items-center gap-3 rounded-2xl bg-white p-4 dark:bg-slate-900/70">
                 <x-ui.avatar :name="$name" :src="$entry->participant->user?->avatarUrl()" size="lg" />
                 <div class="min-w-0">
                     <p class="truncate font-display text-lg font-bold">{{ $name }}</p>
@@ -24,12 +22,12 @@
             </div>
         </div>
 
-        <div class="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6 lg:sticky lg:top-24 dark:bg-slate-900/60 dark:ring-white/10">
+        <div class="rounded-2xl bg-white p-5 sm:p-6 lg:sticky lg:top-24 dark:bg-slate-900/70">
             @if ($mine->isNotEmpty())
                 <h2 class="flex items-center gap-2 font-display text-lg font-bold"><x-ui.icon name="lock-closed" variant="m" class="size-5 text-emerald-600" /> Tes notes (définitives)</h2>
                 <dl class="mt-4 space-y-3">
                     @foreach ($criteria as $criterion)
-                        <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-white/5">
+                        <div class="flex items-center justify-between rounded-xl bg-[#F2F2F7] px-4 py-3 dark:bg-white/5">
                             <dt class="text-sm font-medium">{{ $criterion->name }}</dt>
                             <dd class="font-display font-bold tabular-nums">{{ rtrim(rtrim(number_format($mine->get($criterion->id)?->score ?? 0, 1, ',', ''), '0'), ',') }} / {{ $criterion->max_points }}</dd>
                         </div>

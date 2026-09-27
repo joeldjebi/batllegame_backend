@@ -515,4 +515,119 @@ Alpine.data('ajaxForm', ({ modal = null } = {}) => ({
     },
 }));
 
+// A video to watch closely (jury, artist): the same controls as the mobile app.
+// Play / pause, ±10 s (buttons and double tap on the sides), scrubbing, speed, full screen.
+Alpine.data('reviewPlayer', () => ({
+    playing: false,
+    current: 0,
+    duration: 0,
+    speed: 1,
+    controls: true,
+    seekLabel: null,
+    failed: false,
+    full: false,
+    lastTap: 0,
+    hideTimer: null,
+    seekTimer: null,
+
+    init() {
+        const video = this.$refs.video;
+        video.volume = 1;
+        video.addEventListener('loadedmetadata', () => (this.duration = video.duration || 0));
+        video.addEventListener('timeupdate', () => (this.current = video.currentTime));
+        video.addEventListener('play', () => { this.playing = true; this.show(); });
+        video.addEventListener('pause', () => { this.playing = false; this.controls = true; });
+        video.addEventListener('ended', () => { this.playing = false; this.controls = true; });
+        video.addEventListener('error', () => (this.failed = true));
+        document.addEventListener('fullscreenchange', () => (this.full = document.fullscreenElement === this.$root));
+    },
+
+    get ended() {
+        return this.duration > 0 && this.current >= this.duration - 0.3 && ! this.playing;
+    },
+
+    get progress() {
+        return this.duration ? (this.current / this.duration) * 1000 : 0;
+    },
+
+    time(seconds) {
+        const s = Math.max(0, Math.floor(seconds || 0));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    },
+
+    show() {
+        this.controls = true;
+        clearTimeout(this.hideTimer);
+        this.hideTimer = setTimeout(() => { if (this.playing) this.controls = false; }, 3000);
+    },
+
+    toggle() {
+        const video = this.$refs.video;
+        if (this.ended) video.currentTime = 0;
+        video.paused ? video.play() : video.pause();
+        this.show();
+    },
+
+    seek(step, fromDoubleTap = false) {
+        const video = this.$refs.video;
+        video.currentTime = Math.min(Math.max(0, video.currentTime + step), this.duration || video.currentTime + step);
+        if (fromDoubleTap) {
+            this.seekLabel = step < 0 ? '−10 s' : '+10 s';
+            clearTimeout(this.seekTimer);
+            this.seekTimer = setTimeout(() => (this.seekLabel = null), 700);
+        }
+        this.show();
+    },
+
+    scrub(value) {
+        this.$refs.video.currentTime = (value / 1000) * this.duration;
+        this.show();
+    },
+
+    cycleSpeed() {
+        const speeds = [1, 1.25, 0.75];
+        this.speed = speeds[(speeds.indexOf(this.speed) + 1) % speeds.length];
+        this.$refs.video.playbackRate = this.speed;
+        this.show();
+    },
+
+    speedLabel() {
+        return `${String(this.speed).replace('.', ',')}×`;
+    },
+
+    // A tap shows / hides the controls; a double tap on a side jumps 10 s, in the middle plays / pauses.
+    tap(event) {
+        const now = Date.now();
+        const rect = this.$root.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width;
+        if (now - this.lastTap < 300) {
+            this.lastTap = 0;
+            if (x < 1 / 3) this.seek(-10, true);
+            else if (x > 2 / 3) this.seek(10, true);
+            else this.toggle();
+            return;
+        }
+        this.lastTap = now;
+        setTimeout(() => {
+            if (this.lastTap !== now) return;
+            this.controls && this.playing ? (this.controls = false) : this.show();
+        }, 300);
+    },
+
+    async fullscreen() {
+        const video = this.$refs.video;
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+            return;
+        }
+        if (this.$root.requestFullscreen) {
+            await this.$root.requestFullscreen();
+            // A landscape video turns the phone, where the browser allows it.
+            if (video.videoWidth > video.videoHeight) screen.orientation?.lock?.('landscape').catch(() => {});
+        } else if (video.webkitEnterFullscreen) {
+            video.webkitEnterFullscreen(); // iPhone: the system player.
+        }
+    },
+}));
+
 Alpine.start();

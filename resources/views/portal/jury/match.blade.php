@@ -1,13 +1,8 @@
 <x-layouts.portal :title="'Notation · '.$competition->name">
-    <x-ui.page-header :title="$match->title()"
-        :breadcrumbs="['Mes compétitions' => route('jury.dashboard'), $competition->name => route('jury.competitions.show', $competition), $match->stage?->name ?? 'Match' => null]">
-        <x-slot:description>
-            <x-ui.badge :value="$match->status" />
-            <span>{{ $match->phase->effectiveMode()->label() }}</span>
-            @if ($match->voting_closes_at)<span>Fin du vote : {{ $match->voting_closes_at->translatedFormat('d M, H:i') }}</span>@endif
-            @if ($match->deliberation_ends_at)<span>Délibération jusqu'au {{ $match->deliberation_ends_at->translatedFormat('d M, H:i') }}</span>@endif
-        </x-slot:description>
-    </x-ui.page-header>
+    <x-app.title :title="$match->title()" :back="route('jury.competitions.show', $competition)" :back-label="$competition->name"
+        :subtitle="collect([$match->stage?->name, $match->phase->effectiveMode()->label(), $match->voting_closes_at ? 'Fin du vote : '.$match->voting_closes_at->translatedFormat('d M, H:i') : null, $match->deliberation_ends_at ? 'Délibération jusqu\'au '.$match->deliberation_ends_at->translatedFormat('d M, H:i') : null])->filter()->implode(' · ')">
+        <x-slot:meta><x-app.tag :value="$match->status" dot /></x-slot:meta>
+    </x-app.title>
 
     @if ($canScore && $match->juryDeadline())
         <div @class(['mb-6 flex flex-wrap items-center gap-2 rounded-2xl p-4 text-sm ring-1', 'bg-amber-50 text-amber-900 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200' => $match->isDeliberating(), 'bg-brand-50 text-brand-800 ring-brand-600/20 dark:bg-brand-500/10 dark:text-brand-200' => ! $match->isDeliberating()])
@@ -28,13 +23,15 @@
         @foreach ($match->slots->filter(fn ($slot) => $slot->participant && ! $slot->is_forfeit) as $slot)
             @php($participant = $slot->participant)
             @php($mine = $myScores->get($participant->id, collect())->keyBy('criterion_id'))
-            <x-ui.card :title="$participant->stage_name" icon="microphone">
-                <x-slot:actions>
-                    @if ($mine->isNotEmpty())<x-ui.badge tone="green">Noté</x-ui.badge>@else<x-ui.badge tone="amber">À noter</x-ui.badge>@endif
-                </x-slot:actions>
+            <div class="rounded-2xl bg-white p-5 dark:bg-slate-900/70">
+                <div class="mb-4 flex items-center gap-3">
+                    <x-ui.avatar :name="$participant->stage_name" :src="$participant->user?->avatarUrl()" />
+                    <p class="min-w-0 flex-1 truncate font-display text-lg font-bold">{{ $participant->stage_name }}</p>
+                    @if ($mine->isNotEmpty())<x-app.tag tone="green" icon="check">Noté</x-app.tag>@else<x-app.tag tone="amber" dot>À noter</x-app.tag>@endif
+                </div>
 
                 @forelse ($media->get($participant->id, collect()) as $performance)
-                    <x-bo.media-player :performance="$performance" class="mb-4" />
+                    <x-app.player :performance="$performance" :title="$participant->stage_name" class="mb-4" />
                 @empty
                     <div class="mb-4 rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400 dark:border-white/10">
                         {{ $match->phase->effectiveMode() === \App\Enums\CompetitionMode::OnSite ? 'Prestation sur scène : notez en direct.' : 'Aucun média publié.' }}
@@ -62,7 +59,7 @@
                         @endif
                     </fieldset>
                 </form>
-            </x-ui.card>
+            </div>
         @endforeach
     </div>
 

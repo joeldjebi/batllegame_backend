@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\Discipline;
 use App\Http\Controllers\Controller;
 use App\Models\Competition;
+use App\Models\Participant;
 use App\Services\Feed;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,8 @@ class FeedController extends Controller
             'competition' => ['nullable', 'string', 'max:120'],
             'discipline' => ['nullable', Rule::enum(Discipline::class)],
             'q' => ['nullable', 'string', 'max:80'],
+            // An artist's performances: any of their participations.
+            'artist' => ['nullable', 'integer'],
         ]);
 
         $competitionId = null;
@@ -37,6 +40,7 @@ class FeedController extends Controller
             'competition_id' => $competitionId,
             'discipline' => $validated['discipline'] ?? null,
             'q' => $validated['q'] ?? null,
+            'artist_id' => filled($validated['artist'] ?? null) ? Participant::query()->whereKey($validated['artist'])->value('user_id') ?? 0 : null,
         ]);
 
         return response()->json(['data' => $page['items'], 'meta' => ['next_cursor' => $page['next_cursor']]]);

@@ -92,6 +92,26 @@ class User extends Authenticatable
     /**
      * @return HasMany<Participant, $this>
      */
+    /**
+     * Artists this user follows.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'user_id', 'artist_id')->withTimestamps();
+    }
+
+    /**
+     * Users following this artist.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'artist_id', 'user_id')->withTimestamps();
+    }
+
     public function participations(): HasMany
     {
         return $this->hasMany(Participant::class);

@@ -32,7 +32,7 @@ class Feed
     public const string PERFORMANCE = 'performance';
 
     /**
-     * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string}  $filters
+     * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string, artist_id?: ?int}  $filters
      * @return array{items: list<array<string, mixed>>, next_cursor: ?string}
      */
     public function page(?User $viewer, ?string $cursor = null, int $limit = self::DEFAULT_LIMIT, array $filters = []): array
@@ -61,7 +61,7 @@ class Feed
     }
 
     /**
-     * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string}  $filters
+     * @param  array{competition_id?: ?int, discipline?: ?string, q?: ?string, artist_id?: ?int}  $filters
      */
     private function source(string $kind, string $table, array $filters): Builder
     {
@@ -74,6 +74,9 @@ class Feed
             ->where('competitions.status', '!=', CompetitionStatus::Draft->value)
             ->when($filters['competition_id'] ?? null, fn (Builder $q, int $id) => $q->where('competitions.id', $id))
             ->when($filters['discipline'] ?? null, fn (Builder $q, string $discipline) => $q->where('competitions.discipline', $discipline))
+            // An artist's page: every performance of their account, all competitions.
+            ->when($filters['artist_id'] ?? null, fn (Builder $q, int $id) => $q->whereExists(fn (Builder $p) => $p->selectRaw('1')->from('participants')
+                ->whereColumn('participants.id', "{$table}.participant_id")->where('participants.user_id', $id)))
             // Search: the artist's stage name or the competition's name.
             ->when(filled($filters['q'] ?? null), fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->whereLike('competitions.name', '%'.self::escapeLike($filters['q']).'%')

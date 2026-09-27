@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ArtistController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\CountryController;
@@ -35,6 +36,12 @@ Route::get('feed', FeedController::class)->middleware('throttle:120,1')->name('a
 // « Battles » tab: matches whose public vote is open now (duels and groups; no live video).
 Route::get('live', LiveController::class)->middleware('throttle:120,1')->name('api.live');
 Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('api.search');
+Route::get('artists/{participant}', [ArtistController::class, 'show'])->middleware('throttle:120,1')->name('api.artists.show');
+Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
+    Route::post('artists/{participant}/follow', [ArtistController::class, 'follow'])->name('api.artists.follow');
+    Route::delete('artists/{participant}/follow', [ArtistController::class, 'unfollow'])->name('api.artists.unfollow');
+    Route::get('me/following', [ArtistController::class, 'following'])->name('api.me.following');
+});
 
 // Socket.IO: server URL + signed token for the private channels of the user.
 Route::get('realtime', RealtimeController::class)->middleware(['auth:sanctum', 'throttle:30,1'])->name('api.realtime');
